@@ -44,20 +44,33 @@
 |---|---|---|
 | 后端语言 | **Python 3.12+**（uv 管理） | 用户熟悉 Python；CLI 生态（Typer）优；与用户全局 `uv` 规范对齐 |
 | 后端框架 | **FastAPI** | 自动生成 OpenAPI，前端可生成类型安全客户端 |
-| ORM / 模型 | **SQLModel**（基于 SQLAlchemy + Pydantic） | Pydantic schema 与 ORM 模型合一 |
+| ORM / 持久化模型 | **SQLModel**（`table=True` 仅作持久化模型） | 与 SQLAlchemy 2.x 兼容；**聚合/复杂查询直接走 SQLAlchemy 2.x `select()`** 而非 SQLModel 高层糖 |
+| API DTO | **独立 Pydantic `BaseModel`**（不与 ORM 模型共用） | 持久化模型与请求/响应 schema 解耦，便于未来改栈或改接口形状 |
 | 数据库 | **SQLite**（v1），预留迁 Postgres | 单机足够；Repository 层抽象使替换代价低 |
 | 附件存储 | **本地文件系统**（通过 `StorageAdapter` 抽象） | 数据库只存元数据；未来可无缝切 S3/MinIO |
-| CLI | **Typer** + 自定义 JSON 信封中间件 | 与后端共享 service 层，零网络开销 import 调用 |
-| 前端 | **TypeScript + React + Vite** | 现代 SPA 审美必需；shadcn/ui、Tremor 等生态绑定 TS |
+| CLI | **Typer** + 自定义 JSON 信封中间件 | 底层即 Click；类型签名驱动，`--help` 对 Agent 直接可用 |
+| 前端 | **TypeScript + React + Vite** | 现代 SPA 审美必需；shadcn/ui 生态绑定 TS |
+| 路由 | **TanStack Router** | 纯 SPA + typed search params，表格/过滤器 URL 化天然契合；RR7 的 framework mode 特性用不上 |
 | 样式 | **Tailwind CSS + shadcn/ui** | 可定制的设计系统基座 |
 | 表格 | **TanStack Table** | 排序/筛选/分页/虚拟滚动 |
-| 图表 | **Tremor** | shadcn 风格，组件级 API |
+| 图表 | **shadcn/ui charts（基于 Recharts）** | 与 shadcn/ui 同体系，避免再引一套命名空间和 Tailwind preset |
 | 表单 | **React Hook Form + Zod** | 类型安全、体验佳 |
-| API 类型同步 | **openapi-typescript** | 由 FastAPI 的 OpenAPI 生成前端类型 |
+| API 契约 | **openapi-typescript + openapi-fetch** | 类型生成 + 薄运行时客户端；避免手拼 URL/query 导致的类型不同步 |
 | 前端包管理 | **pnpm** | 仓库默认 |
 | XLSX 生成 | **openpyxl** | 成熟稳定 |
 
 **协议层面**：遵循 Agent-Native 设计指南（CLI + Skill 为默认，不引入 MCP）。CLI 是唯一 Agent 入口，`SKILL.md` 提供可发现性。
+
+### 3.1 ORM / DTO 隔离约定
+
+为避免持久化模型与 API schema 耦合，本项目强制执行：
+
+- `src/asset_hub/models/` 下的 `table=True` SQLModel 类**只用于数据库映射**
+- `src/asset_hub/api/schemas/` 下的 Pydantic `BaseModel` 定义所有请求/响应 DTO，**不继承** ORM 模型
+- Service 层返回 domain 对象或 DTO，不直接把 ORM 模型泄漏到 FastAPI 路由或 CLI
+- 聚合/批量查询优先使用 SQLAlchemy 2.x `select()` 风格，不依赖 SQLModel 的高层查询糖
+
+这样未来若 SQLModel 演进停滞，迁 "SQLAlchemy 2.x + 纯 Pydantic" 只是删掉一层，无需重构业务逻辑。
 
 ## 4. 架构（三层分离）
 
@@ -251,7 +264,7 @@ asset-hub export --format xlsx --out inventory.xlsx \
 
 ## 8. 可视化看板（v1）
 
-**固定 4 张图**，不做可配置化，使用 Tremor：
+**固定 4 张图**，不做可配置化，使用 **shadcn/ui charts（基于 Recharts）**：
 
 | 图表 | 类型 | 数据 |
 |---|---|---|
@@ -314,7 +327,7 @@ asset-hub/
 │       ├── main.tsx / App.tsx
 │       ├── routes/             # assets/ dashboard/ types/
 │       ├── components/ui/      # shadcn
-│       ├── api/                # openapi-typescript 生成 + 封装
+│       ├── api/                # openapi-typescript 类型 + openapi-fetch 客户端
 │       ├── lib/
 │       └── styles/
 │
@@ -351,5 +364,13 @@ asset-hub/
 - 自动编号的具体规则：类型前缀如何选取（从 type.name 推断 vs 类型自带 `code_prefix` 字段）
 - 附件目录按日期分片（`yyyy/mm`）还是按资产 id 前缀分片
 - 首次运行初始化策略（是否自动创建 `data/` 目录、是否内置几个常见类型模板）
-- 前端的路由库（React Router 还是 TanStack Router）
+- API 客户端在 Plan 阶段最终敲定：**openapi-fetch**（更轻）vs **@hey-api/openapi-ts**（客户端更完整、原生集成 TanStack Query）
 - 测试策略细节（service 层单测 + CLI 输出断言 + 极简 API 集成测试）
+
+## 13. 选型待观察项
+
+以下项在 v1 按现有选型推进，但需在后续版本重新评估：
+
+- **SQLModel 维护节奏**：若 2026 下半年仍无 minor feature release，考虑迁 SQLAlchemy 2.x + 独立 Pydantic schema。由于第 3.1 节的隔离约定，迁移代价可控
+- **Tremor**：若推出 Radix/shadcn 原生版本，可再评估是否回迁（目前 shadcn charts 已足够）
+- **openapi-fetch vs hey-api**：实操时择优，两者均与 openapi-typescript 生成的 schema 兼容
