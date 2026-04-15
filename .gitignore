@@ -44,3 +44,6 @@ frontend/dist/
 *.swp
 .DS_Store
 Thumbs.db
+
+# ===== Claude Code 本地配置 =====
+.claude/
