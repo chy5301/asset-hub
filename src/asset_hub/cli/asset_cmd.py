@@ -1,10 +1,10 @@
 import json
 from typing import Annotated
-from uuid import UUID
 
 import typer
 
-from asset_hub.cli.deps import cli_session
+from asset_hub.api.schemas.asset import AssetRead
+from asset_hub.cli.deps import cli_session, parse_uuid
 from asset_hub.cli.envelope import print_error, print_result
 from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import AssetStatus
@@ -14,19 +14,7 @@ asset_app = typer.Typer(name="asset", help="资产管理", no_args_is_help=True)
 
 
 def _asset_to_dict(a) -> dict:
-    return {
-        "id": str(a.id),
-        "name": a.name,
-        "serial_number": a.serial_number,
-        "type_id": str(a.type_id),
-        "status": a.status.value,
-        "holder": a.holder,
-        "location": a.location,
-        "notes": a.notes,
-        "custom_data": a.custom_data,
-        "created_at": a.created_at.isoformat(),
-        "updated_at": a.updated_at.isoformat(),
-    }
+    return AssetRead.model_validate(a).model_dump(mode="json")
 
 
 @asset_app.command("register")
@@ -41,11 +29,7 @@ def asset_register(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """登记新资产。"""
-    try:
-        uid = UUID(type_id)
-    except ValueError:
-        print_error(f"无效的 UUID: {type_id}", json_output, exit_code=2)
-        return
+    uid = parse_uuid(type_id, json_output)
 
     custom_data = json.loads(custom) if custom else {}
 
@@ -79,6 +63,8 @@ def asset_list(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """列出资产。"""
+    from uuid import UUID
+
     parsed_type_id = UUID(type_id) if type_id else None
     parsed_status = AssetStatus(status) if status else None
 
@@ -100,11 +86,7 @@ def asset_show(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """查看资产详情。"""
-    try:
-        uid = UUID(asset_id)
-    except ValueError:
-        print_error(f"无效的 UUID: {asset_id}", json_output, exit_code=2)
-        return
+    uid = parse_uuid(asset_id, json_output)
 
     with cli_session() as session:
         svc = AssetService(session)
@@ -123,11 +105,7 @@ def asset_update(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """更新资产字段。"""
-    try:
-        uid = UUID(asset_id)
-    except ValueError:
-        print_error(f"无效的 UUID: {asset_id}", json_output, exit_code=2)
-        return
+    uid = parse_uuid(asset_id, json_output)
 
     updates = json.loads(set_data)
 
@@ -149,11 +127,7 @@ def asset_delete(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """删除资产。"""
-    try:
-        uid = UUID(asset_id)
-    except ValueError:
-        print_error(f"无效的 UUID: {asset_id}", json_output, exit_code=2)
-        return
+    uid = parse_uuid(asset_id, json_output)
 
     with cli_session() as session:
         svc = AssetService(session)

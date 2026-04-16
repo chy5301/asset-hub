@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CustomFieldDef(BaseModel):
@@ -19,6 +19,8 @@ class TypeCreate(BaseModel):
 
 
 class TypeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     description: str | None

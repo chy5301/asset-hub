@@ -1,12 +1,11 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from sqlmodel import Session
 
 from asset_hub.api.deps import get_session
 from asset_hub.api.schemas.asset import AssetCreate, AssetRead, AssetUpdate
-from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import AssetStatus
 from asset_hub.services.asset import AssetService
 
@@ -22,23 +21,15 @@ def create_asset(
     body: AssetCreate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    try:
-        a = svc.register(
-            name=body.name,
-            type_id=body.type_id,
-            serial_number=body.serial_number,
-            holder=body.holder,
-            location=body.location,
-            notes=body.notes,
-            custom_data=body.custom_data,
-        )
-    except NotFoundError:
-        raise HTTPException(404, "类型不存在")
-    except DuplicateError as e:
-        raise HTTPException(409, str(e))
-    except ValidationError as e:
-        raise HTTPException(422, str(e))
-    return a
+    return svc.register(
+        name=body.name,
+        type_id=body.type_id,
+        serial_number=body.serial_number,
+        holder=body.holder,
+        location=body.location,
+        notes=body.notes,
+        custom_data=body.custom_data,
+    )
 
 
 @router.get("", response_model=list[AssetRead])
@@ -57,10 +48,7 @@ def get_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    try:
-        return svc.get_asset(asset_id)
-    except NotFoundError:
-        raise HTTPException(404, "资产不存在")
+    return svc.get_asset(asset_id)
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)
@@ -69,11 +57,7 @@ def update_asset(
     body: AssetUpdate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    kwargs = body.model_dump(exclude_unset=True)
-    try:
-        return svc.update_asset(asset_id, **kwargs)
-    except NotFoundError:
-        raise HTTPException(404, "资产不存在")
+    return svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
 
 
 @router.delete("/{asset_id}", status_code=204)
@@ -81,8 +65,5 @@ def delete_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    try:
-        svc.delete_asset(asset_id)
-    except NotFoundError:
-        raise HTTPException(404, "资产不存在")
+    svc.delete_asset(asset_id)
     return Response(status_code=204)

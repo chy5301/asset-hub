@@ -3,7 +3,8 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from asset_hub.errors import DuplicateError, NotFoundError
+from asset_hub.api.schemas.asset_type import CustomFieldDef
+from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset_type import AssetType
 from asset_hub.repositories.asset_type import TypeRepository
 
@@ -19,10 +20,16 @@ class TypeService:
         description: str | None = None,
         custom_fields: list | None = None,
     ) -> AssetType:
+        fields = custom_fields or []
+        try:
+            [CustomFieldDef.model_validate(f) for f in fields]
+        except Exception as e:
+            raise ValidationError(f"custom_fields 结构无效: {e}") from e
+
         asset_type = AssetType(
             name=name,
             description=description,
-            custom_fields=custom_fields or [],
+            custom_fields=fields,
         )
         try:
             self.repo.add(asset_type)

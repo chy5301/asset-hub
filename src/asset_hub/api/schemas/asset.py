@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from asset_hub.models.asset import AssetStatus
 
@@ -13,7 +13,7 @@ class AssetCreate(BaseModel):
     holder: str | None = None
     location: str | None = None
     notes: str | None = None
-    custom_data: dict = {}
+    custom_data: dict = Field(default_factory=dict)
 
 
 class AssetUpdate(BaseModel):
@@ -26,6 +26,8 @@ class AssetUpdate(BaseModel):
 
 
 class AssetRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     serial_number: str | None

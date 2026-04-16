@@ -4,7 +4,8 @@ from typing import Annotated
 
 import typer
 
-from asset_hub.cli.deps import cli_session
+from asset_hub.api.schemas.asset_type import TypeRead
+from asset_hub.cli.deps import cli_session, parse_uuid
 from asset_hub.cli.envelope import print_error, print_result
 from asset_hub.errors import DuplicateError, NotFoundError
 from asset_hub.services.asset_type import TypeService
@@ -13,14 +14,7 @@ type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=T
 
 
 def _type_to_dict(t) -> dict:
-    return {
-        "id": str(t.id),
-        "name": t.name,
-        "description": t.description,
-        "custom_fields": t.custom_fields,
-        "created_at": t.created_at.isoformat(),
-        "updated_at": t.updated_at.isoformat(),
-    }
+    return TypeRead.model_validate(t).model_dump(mode="json")
 
 
 @type_app.command("define")
@@ -71,12 +65,7 @@ def type_show(
     json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
 ) -> None:
     """查看单个资产类型详情。"""
-    from uuid import UUID
-    try:
-        uid = UUID(type_id)
-    except ValueError:
-        print_error(f"无效的 UUID: {type_id}", json_output, exit_code=2)
-        return
+    uid = parse_uuid(type_id, json_output)
 
     with cli_session() as session:
         svc = TypeService(session)

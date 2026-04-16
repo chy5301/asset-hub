@@ -19,7 +19,3 @@ class TypeRepository:
 
     def list_all(self) -> list[AssetType]:
         return list(self.session.exec(select(AssetType)).all())
-
-    def get_by_name(self, name: str) -> AssetType | None:
-        stmt = select(AssetType).where(AssetType.name == name)
-        return self.session.exec(stmt).first()
