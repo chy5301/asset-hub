@@ -1,0 +1,6 @@
+import typer
+
+from asset_hub.cli.type_cmd import type_app
+
+app = typer.Typer(name="asset-hub", no_args_is_help=True)
+app.add_typer(type_app, name="type")
