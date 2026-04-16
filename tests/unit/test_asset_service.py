@@ -1,0 +1,144 @@
+import pytest
+from uuid import uuid4
+from sqlmodel import Session
+
+from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
+from asset_hub.models.asset import AssetStatus
+from asset_hub.services.asset import AssetService
+from asset_hub.services.asset_type import TypeService
+
+
+@pytest.fixture()
+def type_svc(session: Session) -> TypeService:
+    return TypeService(session)
+
+
+@pytest.fixture()
+def svc(session: Session) -> AssetService:
+    return AssetService(session)
+
+
+@pytest.fixture()
+def laptop_type(type_svc: TypeService):
+    return type_svc.create_type(
+        name="笔记本电脑",
+        custom_fields=[
+            {"key": "brand", "label": "品牌", "type": "string", "required": True},
+            {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},
+            {"key": "ram_gb", "label": "内存(GB)", "type": "int"},
+        ],
+    )
+
+
+class TestRegisterAsset:
+    def test_register_minimal(self, svc: AssetService, laptop_type):
+        a = svc.register(
+            name="ThinkPad X1",
+            type_id=laptop_type.id,
+            custom_data={"brand": "Lenovo"},
+        )
+        assert a.id is not None
+        assert a.name == "ThinkPad X1"
+        assert a.status == AssetStatus.IDLE
+
+    def test_register_with_all_fields(self, svc: AssetService, laptop_type):
+        a = svc.register(
+            name="MacBook Pro",
+            type_id=laptop_type.id,
+            serial_number="C02X12345",
+            holder="张三",
+            location="工位 5",
+            notes="全新",
+            custom_data={"brand": "Apple", "os": "macOS", "ram_gb": 16},
+        )
+        assert a.serial_number == "C02X12345"
+        assert a.holder == "张三"
+        assert a.custom_data["ram_gb"] == 16
+
+    def test_register_nonexistent_type_raises(self, svc: AssetService):
+        with pytest.raises(NotFoundError):
+            svc.register(name="X", type_id=uuid4(), custom_data={})
+
+    def test_register_duplicate_sn_raises(self, svc: AssetService, laptop_type):
+        svc.register(name="A", type_id=laptop_type.id, serial_number="SN001", custom_data={"brand": "X"})
+        with pytest.raises(DuplicateError):
+            svc.register(name="B", type_id=laptop_type.id, serial_number="SN001", custom_data={"brand": "Y"})
+
+    def test_register_missing_required_field_raises(self, svc: AssetService, laptop_type):
+        with pytest.raises(ValidationError, match="品牌"):
+            svc.register(name="X", type_id=laptop_type.id, custom_data={})
+
+    def test_register_invalid_enum_raises(self, svc: AssetService, laptop_type):
+        with pytest.raises(ValidationError, match="操作系统"):
+            svc.register(
+                name="X",
+                type_id=laptop_type.id,
+                custom_data={"brand": "Dell", "os": "FreeBSD"},
+            )
+
+    def test_register_unknown_custom_key_raises(self, svc: AssetService, laptop_type):
+        with pytest.raises(ValidationError, match="unknown_key"):
+            svc.register(
+                name="X",
+                type_id=laptop_type.id,
+                custom_data={"brand": "Dell", "unknown_key": "val"},
+            )
+
+
+class TestListAssets:
+    def test_list_empty(self, svc: AssetService):
+        assert svc.list_assets() == []
+
+    def test_list_all(self, svc: AssetService, laptop_type):
+        svc.register(name="A", type_id=laptop_type.id, custom_data={"brand": "X"})
+        svc.register(name="B", type_id=laptop_type.id, custom_data={"brand": "Y"})
+        assert len(svc.list_assets()) == 2
+
+    def test_filter_by_status(self, svc: AssetService, laptop_type):
+        a = svc.register(name="A", type_id=laptop_type.id, custom_data={"brand": "X"})
+        svc.register(name="B", type_id=laptop_type.id, custom_data={"brand": "Y"})
+        svc.update_asset(a.id, status=AssetStatus.IN_USE)
+        result = svc.list_assets(status=AssetStatus.IN_USE)
+        assert len(result) == 1
+        assert result[0].name == "A"
+
+    def test_filter_by_q(self, svc: AssetService, laptop_type):
+        svc.register(name="ThinkPad X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        svc.register(name="MacBook Pro", type_id=laptop_type.id, custom_data={"brand": "Apple"})
+        result = svc.list_assets(q="ThinkPad")
+        assert len(result) == 1
+
+
+class TestGetAsset:
+    def test_get_existing(self, svc: AssetService, laptop_type):
+        created = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        fetched = svc.get_asset(created.id)
+        assert fetched.name == "X1"
+
+    def test_get_nonexistent_raises(self, svc: AssetService):
+        with pytest.raises(NotFoundError):
+            svc.get_asset(uuid4())
+
+
+class TestUpdateAsset:
+    def test_update_fields(self, svc: AssetService, laptop_type):
+        a = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        updated = svc.update_asset(a.id, holder="李四", location="机房 A")
+        assert updated.holder == "李四"
+        assert updated.location == "机房 A"
+
+    def test_update_nonexistent_raises(self, svc: AssetService):
+        with pytest.raises(NotFoundError):
+            svc.update_asset(uuid4(), holder="X")
+
+
+class TestDeleteAsset:
+    def test_delete_existing(self, svc: AssetService, laptop_type):
+        a = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        svc.delete_asset(a.id)
+        with pytest.raises(NotFoundError):
+            svc.get_asset(a.id)
+
+    def test_delete_nonexistent_raises(self, svc: AssetService):
+        with pytest.raises(NotFoundError):
+            svc.delete_asset(uuid4())
