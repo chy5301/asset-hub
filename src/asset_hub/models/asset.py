@@ -1,13 +1,13 @@
 import uuid
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import Column
 from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
 
-class AssetStatus(str, Enum):
+class AssetStatus(StrEnum):
     IN_USE = "IN_USE"
     IDLE = "IDLE"
     MAINTENANCE = "MAINTENANCE"

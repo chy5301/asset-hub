@@ -33,6 +33,7 @@ src = ["src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+ignore = ["E501"]  # ruff format 负责行长控制
 
 [dependency-groups]
 dev = [
