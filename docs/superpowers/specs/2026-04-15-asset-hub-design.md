@@ -40,24 +40,24 @@
 
 ## 3. 技术选型
 
-| 层 | 选型 | 理由 |
-|---|---|---|
-| 后端语言 | **Python 3.12+**（uv 管理） | 用户熟悉 Python；CLI 生态（Typer）优；与用户全局 `uv` 规范对齐 |
-| 后端框架 | **FastAPI** | 自动生成 OpenAPI，前端可生成类型安全客户端 |
-| ORM / 持久化模型 | **SQLModel**（`table=True` 仅作持久化模型） | 与 SQLAlchemy 2.x 兼容；**聚合/复杂查询直接走 SQLAlchemy 2.x `select()`** 而非 SQLModel 高层糖 |
-| API DTO | **独立 Pydantic `BaseModel`**（不与 ORM 模型共用） | 持久化模型与请求/响应 schema 解耦，便于未来改栈或改接口形状 |
-| 数据库 | **SQLite**（v1），预留迁 Postgres | 单机足够；Repository 层抽象使替换代价低 |
-| 附件存储 | **本地文件系统**（通过 `StorageAdapter` 抽象） | 数据库只存元数据；未来可无缝切 S3/MinIO |
-| CLI | **Typer** + 自定义 JSON 信封中间件 | 底层即 Click；类型签名驱动，`--help` 对 Agent 直接可用 |
-| 前端 | **TypeScript + React + Vite** | 现代 SPA 审美必需；shadcn/ui 生态绑定 TS |
-| 路由 | **TanStack Router** | 纯 SPA + typed search params，表格/过滤器 URL 化天然契合；RR7 的 framework mode 特性用不上 |
-| 样式 | **Tailwind CSS + shadcn/ui** | 可定制的设计系统基座 |
-| 表格 | **TanStack Table** | 排序/筛选/分页/虚拟滚动 |
-| 图表 | **shadcn/ui charts（基于 Recharts）** | 与 shadcn/ui 同体系，避免再引一套命名空间和 Tailwind preset |
-| 表单 | **React Hook Form + Zod** | 类型安全、体验佳 |
-| API 契约 | **openapi-typescript + openapi-fetch** | 类型生成 + 薄运行时客户端；避免手拼 URL/query 导致的类型不同步 |
-| 前端包管理 | **pnpm** | 仓库默认 |
-| XLSX 生成 | **openpyxl** | 成熟稳定 |
+| 层               | 选型                                               | 理由                                                                                           |
+| ---------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 后端语言         | **Python 3.12+**（uv 管理）                        | 用户熟悉 Python；CLI 生态（Typer）优；与用户全局 `uv` 规范对齐                                 |
+| 后端框架         | **FastAPI**                                        | 自动生成 OpenAPI，前端可生成类型安全客户端                                                     |
+| ORM / 持久化模型 | **SQLModel**（`table=True` 仅作持久化模型）        | 与 SQLAlchemy 2.x 兼容；**聚合/复杂查询直接走 SQLAlchemy 2.x `select()`** 而非 SQLModel 高层糖 |
+| API DTO          | **独立 Pydantic `BaseModel`**（不与 ORM 模型共用） | 持久化模型与请求/响应 schema 解耦，便于未来改栈或改接口形状                                    |
+| 数据库           | **SQLite**（v1），预留迁 Postgres                  | 单机足够；Repository 层抽象使替换代价低                                                        |
+| 附件存储         | **本地文件系统**（通过 `StorageAdapter` 抽象）     | 数据库只存元数据；未来可无缝切 S3/MinIO                                                        |
+| CLI              | **Typer** + 自定义 JSON 信封中间件                 | 底层即 Click；类型签名驱动，`--help` 对 Agent 直接可用                                         |
+| 前端             | **TypeScript + React + Vite**                      | 现代 SPA 审美必需；shadcn/ui 生态绑定 TS                                                       |
+| 路由             | **TanStack Router**                                | 纯 SPA + typed search params，表格/过滤器 URL 化天然契合；RR7 的 framework mode 特性用不上     |
+| 样式             | **Tailwind CSS + shadcn/ui**                       | 可定制的设计系统基座                                                                           |
+| 表格             | **TanStack Table**                                 | 排序/筛选/分页/虚拟滚动                                                                        |
+| 图表             | **shadcn/ui charts（基于 Recharts）**              | 与 shadcn/ui 同体系，避免再引一套命名空间和 Tailwind preset                                    |
+| 表单             | **React Hook Form + Zod**                          | 类型安全、体验佳                                                                               |
+| API 契约         | **openapi-typescript + openapi-fetch**             | 类型生成 + 薄运行时客户端；避免手拼 URL/query 导致的类型不同步                                 |
+| 前端包管理       | **pnpm**                                           | 仓库默认                                                                                       |
+| XLSX 生成        | **openpyxl**                                       | 成熟稳定                                                                                       |
 
 **协议层面**：遵循 Agent-Native 设计指南（CLI + Skill 为默认，不引入 MCP）。CLI 是唯一 Agent 入口，`SKILL.md` 提供可发现性。
 
@@ -109,20 +109,20 @@
 
 ### 5.1 通用字段（所有资产共享，Asset 表顶层）
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `id` | UUID | 系统内部主键 |
-| `asset_code` | string, unique | **内部编号**，默认自动生成（`<类型前缀>-<年>-<序号>`，如 `NB-2026-001`），可手改 |
-| `serial_number` | string?, unique | **铭牌编码 / SN**（厂家刻印），用户填入，允许空，非空时组织内唯一 |
-| `name` | string | 展示名，通常等于型号（如 `ThinkPad X1 Carbon Gen 11`） |
-| `type_id` | FK → AssetType | 所属类型 |
-| `status` | enum | `IN_USE` / `IDLE` / `MAINTENANCE` / `RETIRED` |
-| `holder` | string? | 当前保管人，空 = 仓库/无 |
-| `location` | string? | 当前位置 |
-| `notes` | text? | 备注 |
-| `custom_data` | JSON | 按类型的 `custom_fields` 填入的键值对 |
-| `current_checkout_id` | FK? | 当前未归还的派发记录，`NULL` 表示无派发中 |
-| `created_at` / `updated_at` | timestamp | 时间戳 |
+| 字段                        | 类型            | 说明                                                                             |
+| --------------------------- | --------------- | -------------------------------------------------------------------------------- |
+| `id`                        | UUID            | 系统内部主键                                                                     |
+| `asset_code`                | string, unique  | **内部编号**，默认自动生成（`<类型前缀>-<年>-<序号>`，如 `NB-2026-001`），可手改 |
+| `serial_number`             | string?, unique | **铭牌编码 / SN**（厂家刻印），用户填入，允许空，非空时组织内唯一                |
+| `name`                      | string          | 展示名，通常等于型号（如 `ThinkPad X1 Carbon Gen 11`）                           |
+| `type_id`                   | FK → AssetType  | 所属类型                                                                         |
+| `status`                    | enum            | `IN_USE` / `IDLE` / `MAINTENANCE` / `RETIRED`                                    |
+| `holder`                    | string?         | 当前保管人，空 = 仓库/无                                                         |
+| `location`                  | string?         | 当前位置                                                                         |
+| `notes`                     | text?           | 备注                                                                             |
+| `custom_data`               | JSON            | 按类型的 `custom_fields` 填入的键值对                                            |
+| `current_checkout_id`       | FK?             | 当前未归还的派发记录，`NULL` 表示无派发中                                        |
+| `created_at` / `updated_at` | timestamp       | 时间戳                                                                           |
 
 ### 5.2 其他实体
 
@@ -218,13 +218,13 @@ asset-hub export --format xlsx --out inventory.xlsx \
 
 ### 6.3 退出码
 
-| 码 | 含义 |
-|---|---|
-| 0 | 成功 |
-| 1 | 一般错误 |
-| 2 | 用法/参数错误 |
-| 3 | 资源不存在 |
-| 10 | dry-run 预览（非错误，但表示未执行） |
+| 码  | 含义                                 |
+| --- | ------------------------------------ |
+| 0   | 成功                                 |
+| 1   | 一般错误                             |
+| 2   | 用法/参数错误                        |
+| 3   | 资源不存在                           |
+| 10  | dry-run 预览（非错误，但表示未执行） |
 
 ### 6.4 SKILL.md
 
@@ -239,15 +239,15 @@ asset-hub export --format xlsx --out inventory.xlsx \
 
 ### 7.1 页面清单（v1）
 
-| 页面 | 路径 | 关键能力 |
-|---|---|---|
-| 资产列表（首页） | `/` | TanStack Table；多维筛选（类型/状态/保管人/位置/关键词）；列显隐；排序；分页；导出按钮使用当前筛选 |
-| 资产详情 | `/assets/:id` | 字段分组（通用/类型字段）；附件缩略图 + lightbox；流转时间线；派发/归还/编辑入口 |
-| 登记表单 | `/assets/new` | 选择 type 后动态渲染 `custom_fields`；SN 查重；图片上传 |
-| 编辑表单 | `/assets/:id/edit` | 复用登记表单组件 |
-| 派发 / 归还对话框 | 浮层 | Shadcn Dialog，表单简洁 |
-| 看板 | `/dashboard` | 4 张 Tremor 图表 |
-| 类型一览 | `/types` | 只读展示类型与字段（v1 定义用 CLI） |
+| 页面              | 路径               | 关键能力                                                                                           |
+| ----------------- | ------------------ | -------------------------------------------------------------------------------------------------- |
+| 资产列表（首页）  | `/`                | TanStack Table；多维筛选（类型/状态/保管人/位置/关键词）；列显隐；排序；分页；导出按钮使用当前筛选 |
+| 资产详情          | `/assets/:id`      | 字段分组（通用/类型字段）；附件缩略图 + lightbox；流转时间线；派发/归还/编辑入口                   |
+| 登记表单          | `/assets/new`      | 选择 type 后动态渲染 `custom_fields`；SN 查重；图片上传                                            |
+| 编辑表单          | `/assets/:id/edit` | 复用登记表单组件                                                                                   |
+| 派发 / 归还对话框 | 浮层               | Shadcn Dialog，表单简洁                                                                            |
+| 看板              | `/dashboard`       | 4 张 Tremor 图表                                                                                   |
+| 类型一览          | `/types`           | 只读展示类型与字段（v1 定义用 CLI）                                                                |
 
 ### 7.2 设计原则
 
@@ -266,11 +266,11 @@ asset-hub export --format xlsx --out inventory.xlsx \
 
 **固定 4 张图**，不做可配置化，使用 **shadcn/ui charts（基于 Recharts）**：
 
-| 图表 | 类型 | 数据 |
-|---|---|---|
-| 类型分布 | 甜甜圈 | `count by type` |
-| 状态分布 | 堆叠条形图 | `count by status`（全局） |
-| 按保管人 Top N | 横向条形图 | `count by holder`，N = 10 |
+| 图表           | 类型         | 数据                                                 |
+| -------------- | ------------ | ---------------------------------------------------- |
+| 类型分布       | 甜甜圈       | `count by type`                                      |
+| 状态分布       | 堆叠条形图   | `count by status`（全局）                            |
+| 按保管人 Top N | 横向条形图   | `count by holder`，N = 10                            |
 | 闲置时长 Top N | 列表式条形图 | 取 `status = IDLE` 的资产，按 `updated_at` 倒序取 10 |
 
 后端提供单一端点 `GET /api/stats`，返回四段聚合数据。
@@ -351,12 +351,12 @@ asset-hub/
 
 ## 11. 路线图
 
-| 里程碑 | 版本 | 目标 | 主要产出 |
-|---|---|---|---|
-| **M1 · 骨架** | v0.1 | 可跑通的最小闭环 | 项目初始化；SQLModel 模型 + 首次迁移；service/repo 抽象；CLI `type define / asset register / list / show` 带 `--json`；FastAPI 最小端点；前端脚手架 |
-| **M2 · 核心流程** | v0.5 | 资产管理真正可用 | checkout / return + history；附件上传（CLI + API + FS 存储）；Web 资产列表 / 详情 / 动态表单 / 派发归还对话框 |
-| **M3 · 特性完整** | v1.0 | MVP 全量 | 看板 4 图 + `/api/stats`；CSV/XLSX 导出（前后端）；SKILL.md 完善；基础测试覆盖；README + 部署文档 |
-| **M4 · UI 打磨** | v1.x | 达到 `frontend-design` 审美标准 | 配色/间距/字体/微动效；空状态、错误态、加载态的设计；键盘快捷键；响应式基础 |
+| 里程碑            | 版本 | 目标                            | 主要产出                                                                                                                                            |
+| ----------------- | ---- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M1 · 骨架**     | v0.1 | 可跑通的最小闭环                | 项目初始化；SQLModel 模型 + 首次迁移；service/repo 抽象；CLI `type define / asset register / list / show` 带 `--json`；FastAPI 最小端点；前端脚手架 |
+| **M2 · 核心流程** | v0.5 | 资产管理真正可用                | checkout / return + history；附件上传（CLI + API + FS 存储）；Web 资产列表 / 详情 / 动态表单 / 派发归还对话框                                       |
+| **M3 · 特性完整** | v1.0 | MVP 全量                        | 看板 4 图 + `/api/stats`；CSV/XLSX 导出（前后端）；SKILL.md 完善；基础测试覆盖；README + 部署文档                                                   |
+| **M4 · UI 打磨**  | v1.x | 达到 `frontend-design` 审美标准 | 配色/间距/字体/微动效；空状态、错误态、加载态的设计；键盘快捷键；响应式基础                                                                         |
 
 ## 12. 未决事项（供 Plan 阶段解决）
 
