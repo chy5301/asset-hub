@@ -1,0 +1,11 @@
+{
+  "name": "笔记本电脑",
+  "description": "便携计算机",
+  "custom_fields": [
+    {"key": "brand", "label": "品牌", "type": "string", "required": true},
+    {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},
+    {"key": "cpu_arch", "label": "处理器架构", "type": "enum", "options": ["x86_64", "arm64"]},
+    {"key": "cpu", "label": "处理器", "type": "string"},
+    {"key": "ram_gb", "label": "内存(GB)", "type": "int"}
+  ]
+}
