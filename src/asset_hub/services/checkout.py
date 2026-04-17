@@ -3,18 +3,18 @@ from datetime import UTC, datetime
 
 from sqlmodel import Session
 
-from asset_hub.errors import NotFoundError, StateError
+from asset_hub.errors import StateError
 from asset_hub.models.asset import AssetStatus
 from asset_hub.models.checkout import CheckoutRecord
-from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.checkout import CheckoutRepository
+from asset_hub.services.asset import AssetService
 
 
 class CheckoutService:
     def __init__(self, session: Session):
         self.session = session
         self.repo = CheckoutRepository(session)
-        self.asset_repo = AssetRepository(session)
+        self.asset_svc = AssetService(session)
 
     def checkout(
         self,
@@ -23,9 +23,7 @@ class CheckoutService:
         location: str | None = None,
         note: str | None = None,
     ) -> CheckoutRecord:
-        asset = self.asset_repo.get(asset_id)
-        if asset is None:
-            raise NotFoundError(f"资产不存在: {asset_id}")
+        asset = self.asset_svc.get_asset(asset_id)
 
         if asset.status == AssetStatus.IN_USE:
             raise StateError(f"资产已派发，请先归还: {asset_id}")
@@ -34,6 +32,7 @@ class CheckoutService:
                 f"资产状态 {asset.status.value} 不允许派发: {asset_id}"
             )
 
+        now = datetime.now(UTC)
         record = CheckoutRecord(
             asset_id=asset_id,
             holder=holder,
@@ -45,7 +44,7 @@ class CheckoutService:
         asset.status = AssetStatus.IN_USE
         asset.holder = holder
         asset.location = location
-        asset.updated_at = datetime.now(UTC)
+        asset.updated_at = now
 
         self.session.commit()
         self.session.refresh(record)
@@ -56,28 +55,25 @@ class CheckoutService:
         asset_id: uuid.UUID,
         note: str | None = None,
     ) -> CheckoutRecord:
-        asset = self.asset_repo.get(asset_id)
-        if asset is None:
-            raise NotFoundError(f"资产不存在: {asset_id}")
+        asset = self.asset_svc.get_asset(asset_id)
 
         record = self.repo.find_open_by_asset(asset_id)
         if record is None:
             raise StateError(f"资产无未归还记录: {asset_id}")
 
-        record.returned_at = datetime.now(UTC)
+        now = datetime.now(UTC)
+        record.returned_at = now
         record.return_note = note
 
         asset.status = AssetStatus.IDLE
         asset.holder = None
         asset.location = None
-        asset.updated_at = datetime.now(UTC)
+        asset.updated_at = now
 
         self.session.commit()
         self.session.refresh(record)
         return record
 
     def history(self, asset_id: uuid.UUID) -> list[CheckoutRecord]:
-        asset = self.asset_repo.get(asset_id)
-        if asset is None:
-            raise NotFoundError(f"资产不存在: {asset_id}")
+        self.asset_svc.get_asset(asset_id)
         return self.repo.list_by_asset(asset_id)
