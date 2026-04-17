@@ -67,3 +67,38 @@ class TestAssetCheckout:
             "--to", "张三", "--json",
         ])
         assert result.exit_code == 2
+
+
+class TestAssetReturn:
+    def test_return_closes_checkout(self):
+        _, asset_id = _define_type_and_asset()
+        runner.invoke(app, [
+            "asset", "checkout", asset_id, "--to", "张三", "--json",
+        ])
+        result = runner.invoke(app, [
+            "asset", "return", asset_id, "--note", "完好", "--json",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["data"]["returned_at"] is not None
+        assert data["data"]["return_note"] == "完好"
+
+        r = runner.invoke(app, ["asset", "show", asset_id, "--json"])
+        shown = json.loads(r.stdout)["data"]
+        assert shown["status"] == "IDLE"
+        assert shown["holder"] is None
+
+    def test_return_without_open_exits_1(self):
+        _, asset_id = _define_type_and_asset()
+        result = runner.invoke(app, [
+            "asset", "return", asset_id, "--json",
+        ])
+        assert result.exit_code == 1
+        data = json.loads(result.stdout)
+        assert "无未归还" in data["error"]
+
+    def test_return_nonexistent_exits_3(self):
+        result = runner.invoke(app, [
+            "asset", "return", str(uuid4()), "--json",
+        ])
+        assert result.exit_code == 3
