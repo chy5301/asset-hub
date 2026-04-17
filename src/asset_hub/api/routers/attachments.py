@@ -73,12 +73,14 @@ def download_attachment(
     attachment_id: uuid.UUID,
     svc: Annotated[AttachmentService, Depends(get_attachment_service)],
 ):
-    att = svc.get(attachment_id)
-    fh = svc.storage.open(att.storage_path)
+    att, fh = svc.open_stream(attachment_id)
     media_type = att.mime_type or (
         mimetypes.guess_type(att.original_name)[0] or "application/octet-stream"
     )
-    return StreamingResponse(_iter_file(fh), media_type=media_type)
+    headers = {
+        "Content-Disposition": f'attachment; filename="{att.original_name}"'
+    }
+    return StreamingResponse(_iter_file(fh), media_type=media_type, headers=headers)
 
 
 @router.delete(

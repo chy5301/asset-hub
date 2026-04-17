@@ -94,6 +94,8 @@ class TestDownloadEndpoint:
         assert resp.status_code == 200
         assert resp.content == content
         assert resp.headers["content-type"].startswith("image/jpeg")
+        assert "attachment" in resp.headers["content-disposition"]
+        assert "a.jpg" in resp.headers["content-disposition"]
 
     def test_download_missing_404(self, client: TestClient):
         resp = client.get(f"/api/attachments/{uuid4()}/content")

@@ -72,6 +72,14 @@ class AttachmentService:
             raise NotFoundError(f"附件不存在: {attachment_id}")
         return att
 
+    def open_stream(self, attachment_id: uuid.UUID) -> tuple["Attachment", "BinaryIO"]:
+        """取附件元数据并返回其文件内容流。
+
+        调用方负责关闭流（推荐用 `with`）。
+        """
+        att = self.get(attachment_id)
+        return att, self.storage.open(att.storage_path)
+
     def delete(self, attachment_id: uuid.UUID) -> None:
         att = self.get(attachment_id)
         sha256 = att.sha256

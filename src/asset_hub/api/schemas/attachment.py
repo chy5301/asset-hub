@@ -12,7 +12,6 @@ class AttachmentRead(BaseModel):
     id: UUID
     asset_id: UUID
     kind: AttachmentKind
-    storage_path: str
     sha256: str
     size: int
     mime_type: str
