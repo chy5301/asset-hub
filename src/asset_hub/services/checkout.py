@@ -75,3 +75,9 @@ class CheckoutService:
         self.session.commit()
         self.session.refresh(record)
         return record
+
+    def history(self, asset_id: uuid.UUID) -> list[CheckoutRecord]:
+        asset = self.asset_repo.get(asset_id)
+        if asset is None:
+            raise NotFoundError(f"资产不存在: {asset_id}")
+        return self.repo.list_by_asset(asset_id)

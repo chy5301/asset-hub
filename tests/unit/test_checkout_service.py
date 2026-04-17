@@ -144,3 +144,33 @@ class TestReturn:
         checkout_svc.return_(asset_id=idle_asset.id)
         rec = checkout_svc.checkout(asset_id=idle_asset.id, holder="李四")
         assert rec.holder == "李四"
+
+
+class TestHistory:
+    def test_history_empty(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        assert checkout_svc.history(asset_id=idle_asset.id) == []
+
+    def test_history_lists_all_records_newest_first(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        first = checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+        checkout_svc.return_(asset_id=idle_asset.id)
+        second = checkout_svc.checkout(asset_id=idle_asset.id, holder="李四")
+
+        records = checkout_svc.history(asset_id=idle_asset.id)
+
+        assert [r.id for r in records] == [second.id, first.id]
+        assert records[0].returned_at is None
+        assert records[1].returned_at is not None
+
+    def test_history_nonexistent_asset_raises(
+        self, checkout_svc: CheckoutService
+    ):
+        with pytest.raises(NotFoundError):
+            checkout_svc.history(asset_id=uuid4())
