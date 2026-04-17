@@ -1,0 +1,103 @@
+from uuid import uuid4
+
+import pytest
+from sqlmodel import Session
+
+from asset_hub.errors import NotFoundError, StateError
+from asset_hub.models.asset import AssetStatus
+from asset_hub.services.asset import AssetService
+from asset_hub.services.asset_type import TypeService
+from asset_hub.services.checkout import CheckoutService
+
+
+@pytest.fixture()
+def type_svc(session: Session) -> TypeService:
+    return TypeService(session)
+
+
+@pytest.fixture()
+def asset_svc(session: Session) -> AssetService:
+    return AssetService(session)
+
+
+@pytest.fixture()
+def checkout_svc(session: Session) -> CheckoutService:
+    return CheckoutService(session)
+
+
+@pytest.fixture()
+def simple_type(type_svc: TypeService):
+    return type_svc.create_type(name="笔记本", custom_fields=[])
+
+
+@pytest.fixture()
+def idle_asset(asset_svc: AssetService, simple_type):
+    return asset_svc.register(name="X1", type_id=simple_type.id, custom_data={})
+
+
+class TestCheckout:
+    def test_checkout_idle_asset(
+        self,
+        checkout_svc: CheckoutService,
+        asset_svc: AssetService,
+        idle_asset,
+    ):
+        rec = checkout_svc.checkout(
+            asset_id=idle_asset.id,
+            holder="张三",
+            location="工位 5",
+            note="借用一周",
+        )
+
+        assert rec.asset_id == idle_asset.id
+        assert rec.holder == "张三"
+        assert rec.location == "工位 5"
+        assert rec.checkout_note == "借用一周"
+        assert rec.returned_at is None
+
+        updated = asset_svc.get_asset(idle_asset.id)
+        assert updated.status == AssetStatus.IN_USE
+        assert updated.holder == "张三"
+        assert updated.location == "工位 5"
+
+    def test_checkout_nonexistent_raises(self, checkout_svc: CheckoutService):
+        with pytest.raises(NotFoundError):
+            checkout_svc.checkout(asset_id=uuid4(), holder="张三")
+
+    def test_checkout_already_in_use_raises(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+        with pytest.raises(StateError, match="已派发"):
+            checkout_svc.checkout(asset_id=idle_asset.id, holder="李四")
+
+    def test_checkout_retired_raises(
+        self,
+        checkout_svc: CheckoutService,
+        asset_svc: AssetService,
+        idle_asset,
+    ):
+        asset_svc.update_asset(idle_asset.id, status=AssetStatus.RETIRED)
+        with pytest.raises(StateError, match="RETIRED"):
+            checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+
+    def test_checkout_maintenance_raises(
+        self,
+        checkout_svc: CheckoutService,
+        asset_svc: AssetService,
+        idle_asset,
+    ):
+        asset_svc.update_asset(idle_asset.id, status=AssetStatus.MAINTENANCE)
+        with pytest.raises(StateError, match="MAINTENANCE"):
+            checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+
+    def test_checkout_location_optional(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        rec = checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+        assert rec.location is None
+        assert rec.checkout_note is None
