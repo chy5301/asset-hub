@@ -101,3 +101,46 @@ class TestCheckout:
         rec = checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
         assert rec.location is None
         assert rec.checkout_note is None
+
+
+class TestReturn:
+    def test_return_closes_record(
+        self,
+        checkout_svc: CheckoutService,
+        asset_svc: AssetService,
+        idle_asset,
+    ):
+        checkout_svc.checkout(
+            asset_id=idle_asset.id, holder="张三", location="工位 5"
+        )
+        rec = checkout_svc.return_(asset_id=idle_asset.id, note="完好")
+
+        assert rec.returned_at is not None
+        assert rec.return_note == "完好"
+
+        updated = asset_svc.get_asset(idle_asset.id)
+        assert updated.status == AssetStatus.IDLE
+        assert updated.holder is None
+        assert updated.location is None
+
+    def test_return_without_open_checkout_raises(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        with pytest.raises(StateError, match="无未归还"):
+            checkout_svc.return_(asset_id=idle_asset.id)
+
+    def test_return_nonexistent_raises(self, checkout_svc: CheckoutService):
+        with pytest.raises(NotFoundError):
+            checkout_svc.return_(asset_id=uuid4())
+
+    def test_return_allows_recheckout(
+        self,
+        checkout_svc: CheckoutService,
+        idle_asset,
+    ):
+        checkout_svc.checkout(asset_id=idle_asset.id, holder="张三")
+        checkout_svc.return_(asset_id=idle_asset.id)
+        rec = checkout_svc.checkout(asset_id=idle_asset.id, holder="李四")
+        assert rec.holder == "李四"

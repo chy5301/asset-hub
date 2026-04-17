@@ -50,3 +50,28 @@ class CheckoutService:
         self.session.commit()
         self.session.refresh(record)
         return record
+
+    def return_(
+        self,
+        asset_id: uuid.UUID,
+        note: str | None = None,
+    ) -> CheckoutRecord:
+        asset = self.asset_repo.get(asset_id)
+        if asset is None:
+            raise NotFoundError(f"资产不存在: {asset_id}")
+
+        record = self.repo.find_open_by_asset(asset_id)
+        if record is None:
+            raise StateError(f"资产无未归还记录: {asset_id}")
+
+        record.returned_at = datetime.now(UTC)
+        record.return_note = note
+
+        asset.status = AssetStatus.IDLE
+        asset.holder = None
+        asset.location = None
+        asset.updated_at = datetime.now(UTC)
+
+        self.session.commit()
+        self.session.refresh(record)
+        return record
