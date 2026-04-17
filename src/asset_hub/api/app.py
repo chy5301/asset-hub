@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from asset_hub.api.routers import assets, types
-from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
+from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
 
 
 def create_app() -> FastAPI:
@@ -17,6 +17,10 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(DuplicateError)
     async def duplicate_handler(request: Request, exc: DuplicateError):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(StateError)
+    async def state_handler(request: Request, exc: StateError):
         return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     @app.exception_handler(ValidationError)
