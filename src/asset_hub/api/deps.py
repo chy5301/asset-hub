@@ -17,7 +17,7 @@ def get_session() -> Generator[Session, None, None]:
 
 
 def get_storage() -> StorageAdapter:
-    return LocalFSStorage(root=Settings().data_dir / "attachments")
+    return LocalFSStorage(root=Settings().attachments_dir)
 
 
 def get_attachment_service(

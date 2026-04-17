@@ -1,7 +1,7 @@
-import mimetypes
 import uuid
 from collections.abc import Iterator
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from fastapi.responses import StreamingResponse
@@ -74,13 +74,11 @@ def download_attachment(
     svc: Annotated[AttachmentService, Depends(get_attachment_service)],
 ):
     att, fh = svc.open_stream(attachment_id)
-    media_type = att.mime_type or (
-        mimetypes.guess_type(att.original_name)[0] or "application/octet-stream"
-    )
+    # RFC 5987：支持非 ASCII 文件名（中文等），避免 latin-1 头部报错
     headers = {
-        "Content-Disposition": f'attachment; filename="{att.original_name}"'
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(att.original_name)}"
     }
-    return StreamingResponse(_iter_file(fh), media_type=media_type, headers=headers)
+    return StreamingResponse(_iter_file(fh), media_type=att.mime_type, headers=headers)
 
 
 @router.delete(

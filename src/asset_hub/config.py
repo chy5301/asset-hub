@@ -12,3 +12,7 @@ class Settings(BaseSettings):
     @property
     def db_url(self) -> str:
         return f"sqlite:///{self.data_dir / 'asset_hub.db'}"
+
+    @property
+    def attachments_dir(self) -> Path:
+        return self.data_dir / "attachments"

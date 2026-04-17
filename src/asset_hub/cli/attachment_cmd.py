@@ -10,6 +10,7 @@ from asset_hub.config import Settings
 from asset_hub.errors import DuplicateError, NotFoundError
 from asset_hub.models.attachment import AttachmentKind
 from asset_hub.services.attachment import AttachmentService
+from asset_hub.storage.base import StorageAdapter
 from asset_hub.storage.local_fs import LocalFSStorage
 
 attachment_app = typer.Typer(
@@ -21,8 +22,8 @@ def _att_to_dict(att) -> dict:
     return AttachmentRead.model_validate(att).model_dump(mode="json")
 
 
-def _get_storage() -> LocalFSStorage:
-    return LocalFSStorage(root=Settings().data_dir / "attachments")
+def _get_storage() -> StorageAdapter:
+    return LocalFSStorage(root=Settings().attachments_dir)
 
 
 @attachment_app.command("add")

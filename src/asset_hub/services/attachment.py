@@ -28,14 +28,12 @@ class AttachmentService:
         stream: BinaryIO,
         mime_type: str | None = None,
     ) -> Attachment:
-        # 1. 资产存在性（NotFoundError 会自然冒泡）
         self.asset_svc.get_asset(asset_id)
 
-        # 2. 落盘（边写边算 sha256）
         ext = Path(original_name).suffix.lower()
         stored = self.storage.save(stream, original_ext=ext)
 
-        # 3. 同资产同内容去重（UniqueConstraint 已兜底，此处给出更友好的错误）
+        # UniqueConstraint 已兜底，此处提前检测以给出带现有 id 的友好错误
         existing = self.repo.find_by_asset_and_sha256(asset_id, stored.sha256)
         if existing is not None:
             raise DuplicateError(
@@ -43,7 +41,6 @@ class AttachmentService:
                 f"的附件（id={existing.id}）"
             )
 
-        # 4. MIME 兜底
         if not mime_type:
             guessed, _ = mimetypes.guess_type(original_name)
             mime_type = guessed or "application/octet-stream"

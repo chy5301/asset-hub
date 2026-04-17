@@ -32,6 +32,7 @@ class AttachmentRepository:
             select(Attachment)
             .where(Attachment.asset_id == asset_id)
             .where(Attachment.sha256 == sha256)
+            .limit(1)
         )
         return self.session.exec(stmt).first()
 
