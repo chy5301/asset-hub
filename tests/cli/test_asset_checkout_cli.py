@@ -102,3 +102,33 @@ class TestAssetReturn:
             "asset", "return", str(uuid4()), "--json",
         ])
         assert result.exit_code == 3
+
+
+class TestAssetHistory:
+    def test_history_empty(self):
+        _, asset_id = _define_type_and_asset()
+        result = runner.invoke(app, [
+            "asset", "history", asset_id, "--json",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["data"] == []
+        assert data["metadata"]["count"] == 0
+
+    def test_history_lists_records(self):
+        _, asset_id = _define_type_and_asset()
+        runner.invoke(app, ["asset", "checkout", asset_id, "--to", "张三", "--json"])
+        runner.invoke(app, ["asset", "return", asset_id, "--json"])
+        runner.invoke(app, ["asset", "checkout", asset_id, "--to", "李四", "--json"])
+
+        result = runner.invoke(app, ["asset", "history", asset_id, "--json"])
+        data = json.loads(result.stdout)
+        assert data["metadata"]["count"] == 2
+        assert data["data"][0]["holder"] == "李四"
+        assert data["data"][1]["holder"] == "张三"
+
+    def test_history_nonexistent_exits_3(self):
+        result = runner.invoke(app, [
+            "asset", "history", str(uuid4()), "--json",
+        ])
+        assert result.exit_code == 3

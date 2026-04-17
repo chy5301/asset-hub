@@ -161,27 +161,6 @@ def asset_delete(
     print_result({"deleted": str(uid)}, json_output)
 
 
-@asset_app.command("return")
-def asset_return(
-    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
-    note: Annotated[str | None, typer.Option(help="归还备注")] = None,
-    json_output: Annotated[bool, typer.Option("--json")] = False,
-) -> None:
-    """归还资产。"""
-    uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session:
-        svc = CheckoutService(session)
-        try:
-            rec = svc.return_(asset_id=uid, note=note)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-        except StateError as e:
-            print_error(str(e), json_output, exit_code=1)
-            return
-    print_result(_checkout_to_dict(rec), json_output)
-
-
 @asset_app.command("checkout")
 def asset_checkout(
     asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
@@ -203,3 +182,42 @@ def asset_checkout(
             print_error(str(e), json_output, exit_code=1)
             return
     print_result(_checkout_to_dict(rec), json_output)
+
+
+@asset_app.command("return")
+def asset_return(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    note: Annotated[str | None, typer.Option(help="归还备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """归还资产。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session:
+        svc = CheckoutService(session)
+        try:
+            rec = svc.return_(asset_id=uid, note=note)
+        except NotFoundError as e:
+            print_error(str(e), json_output, exit_code=3)
+            return
+        except StateError as e:
+            print_error(str(e), json_output, exit_code=1)
+            return
+    print_result(_checkout_to_dict(rec), json_output)
+
+
+@asset_app.command("history")
+def asset_history(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """查看资产流转历史。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session:
+        svc = CheckoutService(session)
+        try:
+            records = svc.history(asset_id=uid)
+        except NotFoundError as e:
+            print_error(str(e), json_output, exit_code=3)
+            return
+    data = [_checkout_to_dict(r) for r in records]
+    print_result(data, json_output, count=len(data))
