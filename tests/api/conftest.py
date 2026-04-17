@@ -3,7 +3,9 @@ from sqlmodel import Session, SQLModel, create_engine
 
 
 @pytest.fixture()
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSET_HUB_DATA_DIR", str(tmp_path))
+
     from fastapi.testclient import TestClient
 
     from asset_hub.api.app import create_app
