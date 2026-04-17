@@ -4,17 +4,23 @@ from typing import Annotated
 import typer
 
 from asset_hub.api.schemas.asset import AssetRead
+from asset_hub.api.schemas.checkout import CheckoutRead
 from asset_hub.cli.deps import cli_session, parse_uuid
 from asset_hub.cli.envelope import print_error, print_result
-from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
+from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
 from asset_hub.models.asset import AssetStatus
 from asset_hub.services.asset import AssetService
+from asset_hub.services.checkout import CheckoutService
 
 asset_app = typer.Typer(name="asset", help="资产管理", no_args_is_help=True)
 
 
 def _asset_to_dict(a) -> dict:
     return AssetRead.model_validate(a).model_dump(mode="json")
+
+
+def _checkout_to_dict(r) -> dict:
+    return CheckoutRead.model_validate(r).model_dump(mode="json")
 
 
 @asset_app.command("register")
@@ -153,3 +159,26 @@ def asset_delete(
 
         svc.delete_asset(uid)
     print_result({"deleted": str(uid)}, json_output)
+
+
+@asset_app.command("checkout")
+def asset_checkout(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    to: Annotated[str, typer.Option("--to", help="派发给谁（保管人）")],
+    location: Annotated[str | None, typer.Option(help="位置")] = None,
+    note: Annotated[str | None, typer.Option(help="派发备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """派发资产给某人。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session:
+        svc = CheckoutService(session)
+        try:
+            rec = svc.checkout(asset_id=uid, holder=to, location=location, note=note)
+        except NotFoundError as e:
+            print_error(str(e), json_output, exit_code=3)
+            return
+        except StateError as e:
+            print_error(str(e), json_output, exit_code=1)
+            return
+    print_result(_checkout_to_dict(rec), json_output)
