@@ -5,7 +5,7 @@ from typing import BinaryIO
 
 from sqlmodel import Session
 
-from asset_hub.errors import DuplicateError
+from asset_hub.errors import DuplicateError, NotFoundError
 from asset_hub.models.attachment import Attachment, AttachmentKind
 from asset_hub.repositories.attachment import AttachmentRepository
 from asset_hub.services.asset import AssetService
@@ -61,3 +61,25 @@ class AttachmentService:
         self.session.commit()
         self.session.refresh(att)
         return att
+
+    def list(self, asset_id: uuid.UUID) -> list[Attachment]:
+        self.asset_svc.get_asset(asset_id)
+        return self.repo.list_by_asset(asset_id)
+
+    def get(self, attachment_id: uuid.UUID) -> Attachment:
+        att = self.repo.get(attachment_id)
+        if att is None:
+            raise NotFoundError(f"附件不存在: {attachment_id}")
+        return att
+
+    def delete(self, attachment_id: uuid.UUID) -> None:
+        att = self.get(attachment_id)
+        sha256 = att.sha256
+        storage_path = att.storage_path
+
+        self.repo.delete(att)
+        self.session.commit()
+
+        # 仅当没有其他 Attachment 引用同 sha256 时才删物理文件
+        if not self.repo.any_with_sha256(sha256):
+            self.storage.delete(storage_path)

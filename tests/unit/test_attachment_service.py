@@ -141,3 +141,100 @@ class TestAdd:
         assert first.sha256 == second.sha256
         assert first.storage_path == second.storage_path
         assert first.id != second.id
+
+
+class TestList:
+    def test_list_empty(self, att_svc: AttachmentService, asset):
+        assert att_svc.list(asset_id=asset.id) == []
+
+    def test_list_newest_first(self, att_svc: AttachmentService, asset):
+        first = att_svc.add(
+            asset_id=asset.id,
+            kind=AttachmentKind.PHOTO,
+            original_name="a.jpg",
+            stream=io.BytesIO(b"a"),
+        )
+        second = att_svc.add(
+            asset_id=asset.id,
+            kind=AttachmentKind.PHOTO,
+            original_name="b.jpg",
+            stream=io.BytesIO(b"b"),
+        )
+        items = att_svc.list(asset_id=asset.id)
+        assert [i.id for i in items] == [second.id, first.id]
+
+    def test_list_nonexistent_asset_raises(self, att_svc: AttachmentService):
+        with pytest.raises(NotFoundError):
+            att_svc.list(asset_id=uuid4())
+
+
+class TestGet:
+    def test_get_returns_attachment(self, att_svc: AttachmentService, asset):
+        att = att_svc.add(
+            asset_id=asset.id,
+            kind=AttachmentKind.OTHER,
+            original_name="x.bin",
+            stream=io.BytesIO(b"x"),
+        )
+        got = att_svc.get(att.id)
+        assert got.id == att.id
+
+    def test_get_missing_raises(self, att_svc: AttachmentService):
+        with pytest.raises(NotFoundError):
+            att_svc.get(uuid4())
+
+
+class TestDelete:
+    def test_delete_removes_db_row_and_file(
+        self,
+        att_svc: AttachmentService,
+        storage: LocalFSStorage,
+        asset,
+    ):
+        att = att_svc.add(
+            asset_id=asset.id,
+            kind=AttachmentKind.PHOTO,
+            original_name="a.jpg",
+            stream=io.BytesIO(b"a"),
+        )
+        full = storage.root / att.storage_path
+        assert full.exists()
+
+        att_svc.delete(att.id)
+
+        assert (storage.root / att.storage_path).exists() is False
+        with pytest.raises(NotFoundError):
+            att_svc.get(att.id)
+
+    def test_delete_keeps_file_if_shared_with_other_asset(
+        self,
+        att_svc: AttachmentService,
+        asset_svc: AssetService,
+        storage: LocalFSStorage,
+        asset,
+        simple_type,
+    ):
+        other = asset_svc.register(name="X2", type_id=simple_type.id, custom_data={})
+
+        a = att_svc.add(
+            asset_id=asset.id,
+            kind=AttachmentKind.DOC,
+            original_name="s.pdf",
+            stream=io.BytesIO(b"shared"),
+        )
+        b = att_svc.add(
+            asset_id=other.id,
+            kind=AttachmentKind.DOC,
+            original_name="s.pdf",
+            stream=io.BytesIO(b"shared"),
+        )
+        shared_path = storage.root / a.storage_path
+
+        att_svc.delete(a.id)
+
+        assert shared_path.exists(), "文件仍被 other 资产引用，不应被删除"
+        assert att_svc.get(b.id).id == b.id
+
+    def test_delete_missing_raises(self, att_svc: AttachmentService):
+        with pytest.raises(NotFoundError):
+            att_svc.delete(uuid4())

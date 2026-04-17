@@ -21,7 +21,7 @@ class AttachmentRepository:
         stmt = (
             select(Attachment)
             .where(Attachment.asset_id == asset_id)
-            .order_by(Attachment.uploaded_at.desc())
+            .order_by(Attachment.uploaded_at.desc(), Attachment.id.desc())
         )
         return list(self.session.exec(stmt).all())
 
