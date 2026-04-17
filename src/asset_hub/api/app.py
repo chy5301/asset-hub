@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
-from asset_hub.api.routers import assets, types
+from asset_hub.api.routers import assets, checkouts, types
 from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
 
 
@@ -10,6 +10,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="asset-hub", version="0.1.0")
     app.include_router(types.router, prefix="/api/types", tags=["types"])
     app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
+    app.include_router(checkouts.router, prefix="/api/assets", tags=["checkouts"])
 
     @app.exception_handler(NotFoundError)
     async def not_found_handler(request: Request, exc: NotFoundError):
