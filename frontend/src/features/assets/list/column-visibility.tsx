@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export type ColumnKey =
-  | "asset_code"
+  | "code"
   | "name"
   | "type"
   | "status"
@@ -20,7 +20,7 @@ export type ColumnKey =
   | "updated_at";
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
-  asset_code: "编号",
+  code: "代号",
   name: "名称",
   type: "类型",
   status: "状态",
@@ -31,7 +31,7 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
 
 const STORAGE_KEY = "asset-hub.list.columns";
 const ALL_KEYS: ColumnKey[] = [
-  "asset_code",
+  "code",
   "name",
   "type",
   "status",

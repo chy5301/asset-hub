@@ -27,7 +27,6 @@ import {
 
 export interface AssetRow {
   id: string;
-  asset_code: string;
   serial_number?: string | null;
   name: string;
   type_id?: string | null;
@@ -71,11 +70,14 @@ export function AssetsTable({
   const columns = useMemo<ColumnDef<AssetRow>[]>(
     () => [
       {
-        id: "asset_code",
-        accessorKey: "asset_code",
-        header: COLUMN_LABELS.asset_code,
+        id: "code",
+        // 排序键：serial_number（静态识别符，缺失时回落到 id 前 8 位）
+        accessorFn: (r) => r.serial_number ?? r.id.slice(0, 8),
+        header: COLUMN_LABELS.code,
         cell: ({ row }) => (
-          <span className="font-code text-xs">{row.original.asset_code}</span>
+          <span className="font-code text-xs">
+            {row.original.serial_number ?? row.original.id.slice(0, 8)}
+          </span>
         ),
       },
       {
@@ -135,7 +137,7 @@ export function AssetsTable({
 
   const columnVisibility = useMemo(
     () => ({
-      asset_code: visible.asset_code,
+      code: visible.code,
       name: visible.name,
       type: visible.type,
       status: visible.status,
