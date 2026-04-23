@@ -884,6 +884,26 @@ pnpm --dir frontend dev
 
 关掉 dev server。
 
+- [ ] **Step 3.5：Dark 模式状态色对比度提前自验**
+
+切到 dark 模式（可临时手工在 html 上加 `class="dark"` 测试），用 Chrome DevTools → Rendering → "Emulate CSS media feature prefers-color-scheme: dark" 进入 dark。
+
+在 Elements 面板选中一个 StatusBadge 样例（可暂时手写一个 demo span 测试 4 态色对），DevTools → Accessibility → Contrast：每对 `(--status-*, --status-*-fg)` 必须 ≥ 4.5:1。
+
+**4 态需各自验证**（light + dark 共 8 组）：
+
+| 组合 | 期望 |
+|---|---|
+| `--status-in-use` bg × `--status-in-use-fg` fg（light） | ≥4.5:1 |
+| `--status-idle` bg × `--status-idle-fg` fg（light） | ≥4.5:1 |
+| `--status-maintenance` × `--status-maintenance-fg`（light） | ≥4.5:1 |
+| `--status-retired` × `--status-retired-fg`（light） | ≥4.5:1 |
+| 以上 4 组在 `.dark` 下各自 | ≥4.5:1 |
+
+**如有不达标**：调对应 oklch 的 L 值（前景更深/背景更浅）后重新验证；**不达标不得进入 Step 4 commit**。
+
+（Task 20 的 Lighthouse 烟测是最终兜底；此处是"早改早省"。）
+
 - [ ] **Step 4：commit**
 
 ```bash
@@ -1373,6 +1393,20 @@ git commit -m "feat(frontend): StatusBadge + STATUS_META（Lucide 图标，trans
 - Modify: `frontend/src/components/ui/badge.tsx`
 
 **§3.5 约束引用：** §3.5.7（每个首次 add 的组件必须同 PR 完成 variant 审查）、§3.5.4（dominant+accent 结构）、§3.5.2（focus ring 显眼方块——由 globals.css 的 `*:focus-visible` 统一处理，本 Task 只需确保组件不覆盖该规则）、§3.5.5（禁 hover `transform: scale`）。
+
+- [ ] **Step 0：快速扫描已 scaffold 组件里的 `transform: scale` 蛛丝马迹**
+
+```bash
+grep -rn "scale-\|transform:\s*scale\|active:scale" frontend/src/components/ui/ || echo "✓ no scale transforms"
+```
+
+Expected：空（或 `✓ no scale transforms`）。如有匹配，逐处删除或替换为色变。
+
+```bash
+grep -rn "transition-transform\|animate-spin" frontend/src/components/ui/ || echo "✓ no transform transitions / no spinners"
+```
+
+Expected：空。有匹配则删。
 
 - [ ] **Step 1：Button variant 审查**
 
