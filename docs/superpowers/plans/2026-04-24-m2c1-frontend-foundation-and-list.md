@@ -94,6 +94,8 @@ frontend/
 
 > **字体包命名说明（2026-04-24 实施期纠正）**：Fira Sans 在 Google Fonts 上**没有 variable 字体发布**（`@fontsource-variable/fira-sans` 在 npm 上 404）；只有 Fira Code 有 variable（`@fontsource-variable/fira-code@5.2.7`）。为保持两种字体的包约定一致、避免 globals.css 里混用两种 font-family 字面量，**本里程碑统一用 `@fontsource/*`（静态字体包）**。Bundle 相比理论最优 variable 版本增大 ~100KB，放到 M4 UI 打磨期再评估。spec §3.5.3 / §6.5 同步修订。
 
+> **openapi-typescript peer-dep 说明（2026-04-24）**：`openapi-typescript@7.13.0`（以及所有 7.x）声明 `peerDependencies: { typescript: "^5.x" }`，而项目 TypeScript `~6.0.2`。实施期已做冒烟测：`pnpm exec openapi-typescript --help` 在 TS 6.0.2 环境下正常加载、binary 启动无异常。peer 约束是保守 range（TS 公共 API 在 5→6 向后兼容），**不阻塞** Task 3 gen-openapi 脚本运行。如果 Task 3 实际执行时发现运行时错误，回到此处评估——upgrade openapi-typescript 到支持 TS 6.x 的版本，或临时降 TypeScript 到 5.x（风险：TanStack Router strict null checks 可能相应失效）。
+
 - [ ] **Step 2：安装依赖**
 
 ```bash
