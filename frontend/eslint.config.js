@@ -25,6 +25,7 @@ export default defineConfig([
       "src/routes/**/*.{ts,tsx}",
       "src/components/ui/**/*.{ts,tsx}",
       "src/components/theme/**/*.{ts,tsx}",
+      "src/features/**/*.{ts,tsx}",
     ],
     rules: {
       "react-refresh/only-export-components": "off",

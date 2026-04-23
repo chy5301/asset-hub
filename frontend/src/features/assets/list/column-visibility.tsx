@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,18 +9,72 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { COLUMN_KEY } from "./column-visibility-utils";
-import { ALL_KEYS, COLUMN_LABELS } from "./column-visibility-utils";
 
-interface ColumnVisibilityMenuProps {
-  visible: Record<COLUMN_KEY, boolean>;
-  onToggle: (key: COLUMN_KEY) => void;
+export type ColumnKey =
+  | "asset_code"
+  | "name"
+  | "type"
+  | "status"
+  | "holder"
+  | "location"
+  | "updated_at";
+
+export const COLUMN_LABELS: Record<ColumnKey, string> = {
+  asset_code: "编号",
+  name: "名称",
+  type: "类型",
+  status: "状态",
+  holder: "保管人",
+  location: "位置",
+  updated_at: "更新时间",
+};
+
+const STORAGE_KEY = "asset-hub.list.columns";
+const ALL_KEYS: ColumnKey[] = [
+  "asset_code",
+  "name",
+  "type",
+  "status",
+  "holder",
+  "location",
+  "updated_at",
+];
+
+export function useColumnVisibility() {
+  const [visible, setVisible] = useState<Record<ColumnKey, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>;
+        return Object.fromEntries(
+          ALL_KEYS.map((k) => [k, parsed[k] !== false]),
+        ) as Record<ColumnKey, boolean>;
+      }
+    } catch {
+      // fall through to default
+    }
+    return Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as Record<
+      ColumnKey,
+      boolean
+    >;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(visible));
+  }, [visible]);
+
+  const toggle = (key: ColumnKey) =>
+    setVisible((v) => ({ ...v, [key]: !v[key] }));
+
+  return { visible, toggle };
 }
 
-export function ColumnVisibilityMenu({
-  visible,
-  onToggle,
-}: ColumnVisibilityMenuProps) {
+interface ColumnVisibilityMenuProps {
+  visible: Record<ColumnKey, boolean>;
+  onToggle: (key: ColumnKey) => void;
+}
+
+export function ColumnVisibilityMenu({ visible, onToggle }: ColumnVisibilityMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
