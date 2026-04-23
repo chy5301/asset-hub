@@ -1,9 +1,9 @@
-type AssetListParams = Record<string, unknown>;
+import type { AssetsSearch } from "@/features/assets/list/search-schema";
 
 export const qk = {
   assets: {
     all: ["assets"] as const,
-    list: (params: AssetListParams) => ["assets", "list", params] as const,
+    list: (params: AssetsSearch) => ["assets", "list", params] as const,
     detail: (id: string) => ["assets", "detail", id] as const,
   },
   assetTypes: {

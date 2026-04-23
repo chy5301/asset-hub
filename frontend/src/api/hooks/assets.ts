@@ -4,17 +4,7 @@ import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
 import { unwrap } from "@/lib/error";
 import type { components } from "@/api/generated/schema";
-
-// TEMPORARY: will be replaced in Task 14 after search-schema.ts exists
-type AssetsSearch = {
-  type?: string;
-  status?: "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED";
-  holder?: string;
-  q?: string;
-  sort?: string;
-  page: number;
-  pageSize: number;
-};
+import type { AssetsSearch } from "@/features/assets/list/search-schema";
 
 /** 只把后端接受的 filter 参数传过去；sort/page/pageSize 是客户端语义。 */
 function toServerParams(search: AssetsSearch) {
