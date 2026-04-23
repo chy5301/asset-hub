@@ -220,7 +220,7 @@ uv run uvicorn asset_hub.api.app:app --reload --port 8000
 pnpm --dir frontend gen:api
 ```
 
-Expected：打印 `wrote .../src/api/generated/schema.d.ts (<bytes>)`。打开该文件确认包含 `/api/assets`、`/api/asset-types`、`/api/assets/{asset_id}/attachments` 等 path 定义。
+Expected：打印 `wrote .../src/api/generated/schema.d.ts (<bytes>)`。打开该文件确认包含 `/api/assets`、`/api/types`、`/api/assets/{asset_id}/attachments` 等 path 定义。
 
 - [ ] **Step 5：验证 build**
 
@@ -425,14 +425,14 @@ export function useAssetTypesQuery() {
     queryKey: qk.assetTypes.list(),
     staleTime: Infinity, // 类型字典几乎不变
     queryFn: async () => {
-      const res = await http.GET("/api/asset-types");
+      const res = await http.GET("/api/types");
       return unwrap(res);
     },
   });
 }
 ```
 
-> 如果生成的 `schema.d.ts` 里端点名不完全是 `/api/asset-types`（请以 Task 3 生成的实际值为准），调整 path 字符串。可用 Grep `"/api/` schema.d.ts 核实。
+> 如果生成的 `schema.d.ts` 里端点名不完全是 `/api/types`（请以 Task 3 生成的实际值为准），调整 path 字符串。可用 Grep `"/api/` schema.d.ts 核实。
 
 - [ ] **Step 2：验证 build**
 
