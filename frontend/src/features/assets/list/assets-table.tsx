@@ -41,6 +41,8 @@ interface AssetsTableProps {
   rows: AssetRow[];
   search: AssetsSearch;
   visible: Record<ColumnKey, boolean>;
+  /** type_id → type_name 映射（前端客户端 join，弥补后端 AssetRead 不暴露 type_name） */
+  typeNameById: Record<string, string>;
   /** 筛选 / 排序 / 翻页变更时由父组件递增，用于触发 tbody 淡切（§3.5.5 时刻 2） */
   bodyKey: string;
 }
@@ -61,6 +63,7 @@ export function AssetsTable({
   rows,
   search,
   visible,
+  typeNameById,
   bodyKey,
 }: AssetsTableProps) {
   const navigate = useNavigate({ from: "/" });
@@ -90,14 +93,18 @@ export function AssetsTable({
       },
       {
         id: "type",
-        accessorKey: "type_name",
+        accessorFn: (r) =>
+          r.type_name ?? (r.type_id ? typeNameById[r.type_id] : undefined) ?? "",
         header: COLUMN_LABELS.type,
         enableSorting: false,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {row.original.type_name ?? "—"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const name =
+            row.original.type_name ??
+            (row.original.type_id ? typeNameById[row.original.type_id] : undefined);
+          return (
+            <span className="text-sm text-muted-foreground">{name ?? "—"}</span>
+          );
+        },
       },
       {
         id: "status",

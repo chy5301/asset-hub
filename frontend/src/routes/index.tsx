@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAssetsQuery } from "@/api/hooks/assets";
+import { useAssetTypesQuery } from "@/api/hooks/types";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
@@ -23,7 +24,18 @@ export const Route = createFileRoute("/")({
 function AssetListPage() {
   const search = Route.useSearch();
   const query = useAssetsQuery(search);
+  const typesQuery = useAssetTypesQuery();
   const { visible, toggle } = useColumnVisibility();
+
+  const typeNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of typesQuery.data ?? []) {
+      if (t && typeof t === "object" && "id" in t && "name" in t) {
+        map[t.id as string] = t.name as string;
+      }
+    }
+    return map;
+  }, [typesQuery.data]);
 
   useEffect(() => {
     if (query.data && query.data.length > WARN_THRESHOLD) {
@@ -75,6 +87,7 @@ function AssetListPage() {
           rows={rows}
           search={search}
           visible={visible}
+          typeNameById={typeNameById}
           bodyKey={bodyKey}
         />
         <AssetsPagination search={search} total={rows.length} />
