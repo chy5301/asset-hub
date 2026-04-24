@@ -1,13 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource/fira-code";
+@import "@fontsource/fira-sans";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", sans-serif;
+  /* 字体（§3.5.3） */
+  --font-sans: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+  --font-heading: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+  --font-mono: "Fira Code", ui-monospace, monospace;
+
+  /* shadcn 色变量 */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,82 +44,136 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+
+  /* 状态语义色（§3.5.4 要求与 Primary/CTA 不撞脸） */
+  --color-status-in-use: var(--status-in-use);
+  --color-status-idle: var(--status-idle);
+  --color-status-maintenance: var(--status-maintenance);
+  --color-status-retired: var(--status-retired);
+  --color-status-in-use-fg: var(--status-in-use-fg);
+  --color-status-idle-fg: var(--status-idle-fg);
+  --color-status-maintenance-fg: var(--status-maintenance-fg);
+  --color-status-retired-fg: var(--status-retired-fg);
+
+  /* 半径（§3.5.1 ≤6px） */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ===== Light 模式（默认，§3.5.4 以 MASTER tokens 为锚） ===== */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.984 0.004 247);
+  --foreground: oklch(0.262 0.093 261);
+
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.262 0.093 261);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.262 0.093 261);
+
+  --primary: oklch(0.343 0.171 264);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+
+  --secondary: oklch(0.95 0.008 247);
+  --secondary-foreground: oklch(0.262 0.093 261);
+
+  --muted: oklch(0.95 0.008 247);
+  --muted-foreground: oklch(0.48 0.017 247);
+
+  --accent: oklch(0.92 0.012 247);
+  --accent-foreground: oklch(0.262 0.093 261);
+
+  --destructive: oklch(0.58 0.22 27);
+
+  --border: oklch(0.9 0.01 247);
+  --input: oklch(0.9 0.01 247);
+  --ring: oklch(0.343 0.171 264);
+
+  --cta: oklch(0.75 0.16 75);
+  --cta-foreground: oklch(0.262 0.093 261);
+
+  --status-in-use: oklch(0.92 0.08 155);
+  --status-in-use-fg: oklch(0.38 0.14 150);
+  --status-idle: oklch(0.94 0.015 247);
+  --status-idle-fg: oklch(0.45 0.03 247);
+  --status-maintenance: oklch(0.93 0.09 65);
+  --status-maintenance-fg: oklch(0.42 0.14 55);
+  --status-retired: oklch(0.93 0.005 247);
+  --status-retired-fg: oklch(0.50 0.008 247);
+
+  --chart-1: oklch(0.343 0.171 264);
+  --chart-2: oklch(0.55 0.15 255);
+  --chart-3: oklch(0.70 0.12 240);
+  --chart-4: oklch(0.80 0.08 230);
+  --chart-5: oklch(0.85 0.05 220);
+
+  --radius: 0.375rem;
+
+  --sidebar: oklch(0.984 0.004 247);
+  --sidebar-foreground: oklch(0.262 0.093 261);
+  --sidebar-primary: oklch(0.343 0.171 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.92 0.012 247);
+  --sidebar-accent-foreground: oklch(0.262 0.093 261);
+  --sidebar-border: oklch(0.9 0.01 247);
+  --sidebar-ring: oklch(0.343 0.171 264);
 }
 
+/* ===== Dark 模式（独立调，不做 light 反转，§3.5.4） ===== */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: oklch(0.14 0.02 258);
+  --foreground: oklch(0.95 0.01 247);
+
+  --card: oklch(0.18 0.025 258);
+  --card-foreground: oklch(0.95 0.01 247);
+  --popover: oklch(0.18 0.025 258);
+  --popover-foreground: oklch(0.95 0.01 247);
+
+  --primary: oklch(0.62 0.17 255);
+  --primary-foreground: oklch(0.14 0.02 258);
+
+  --secondary: oklch(0.24 0.03 258);
+  --secondary-foreground: oklch(0.95 0.01 247);
+
+  --muted: oklch(0.24 0.03 258);
+  --muted-foreground: oklch(0.70 0.02 247);
+
+  --accent: oklch(0.28 0.035 258);
+  --accent-foreground: oklch(0.95 0.01 247);
+
+  --destructive: oklch(0.68 0.20 25);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.62 0.17 255);
+
+  --cta: oklch(0.72 0.14 75);
+  --cta-foreground: oklch(0.14 0.02 258);
+
+  --status-in-use: oklch(0.28 0.08 150);
+  --status-in-use-fg: oklch(0.82 0.12 150);
+  --status-idle: oklch(0.25 0.015 247);
+  --status-idle-fg: oklch(0.75 0.02 247);
+  --status-maintenance: oklch(0.30 0.09 60);
+  --status-maintenance-fg: oklch(0.85 0.13 65);
+  --status-retired: oklch(0.22 0.005 247);
+  --status-retired-fg: oklch(0.62 0.008 247);
+
+  --chart-1: oklch(0.62 0.17 255);
+  --chart-2: oklch(0.55 0.15 255);
+  --chart-3: oklch(0.70 0.12 240);
+  --chart-4: oklch(0.55 0.08 230);
+  --chart-5: oklch(0.45 0.05 220);
+
+  --sidebar: oklch(0.18 0.025 258);
+  --sidebar-foreground: oklch(0.95 0.01 247);
+  --sidebar-primary: oklch(0.62 0.17 255);
+  --sidebar-primary-foreground: oklch(0.14 0.02 258);
+  --sidebar-accent: oklch(0.28 0.035 258);
+  --sidebar-accent-foreground: oklch(0.95 0.01 247);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.62 0.17 255);
 }
 
 @layer base {
@@ -123,8 +182,72 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* 数字等宽（§3.5.2） */
+    font-feature-settings: "tnum" 1;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+  }
+  /* 编号字段等宽字体（§3.5.2） */
+  .font-code {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+  /* focus-visible 显眼方块环（§3.5.2） */
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* ===== Motion 三时刻（§3.5.5） ===== */
+
+/* 时刻 1：首屏表格 stagger reveal */
+@layer utilities {
+  .stagger-row {
+    opacity: 0;
+    transform: translateY(4px);
+    animation: stagger-row-in 280ms ease-out forwards;
+  }
+}
+
+@keyframes stagger-row-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 时刻 2：筛选/分页变更时 tbody 淡切 */
+@layer utilities {
+  .tbody-fade {
+    animation: tbody-fade-in 140ms ease-out;
+  }
+}
+
+@keyframes tbody-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* prefers-reduced-motion 降级为无动画 */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-row,
+  .tbody-fade {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
   }
 }

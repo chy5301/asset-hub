@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>小组资产管理工具</title>
+    <script>
+      // Anti-flash for dark mode. §6.3 / D4：默认 light，仅当显式 dark 或 system+prefers-dark 才加 .dark class.
+      (function () {
+        var k = "asset-hub.theme";
+        var t = localStorage.getItem(k);
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var dark = t === "dark" || (t === "system" && prefersDark);
+        if (dark) document.documentElement.classList.add("dark");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

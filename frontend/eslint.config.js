@@ -21,9 +21,20 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/routes/**/*.{ts,tsx}"],
+    files: [
+      "src/routes/**/*.{ts,tsx}",
+      "src/components/ui/**/*.{ts,tsx}",
+      "src/components/theme/**/*.{ts,tsx}",
+      "src/features/**/*.{ts,tsx}",
+    ],
     rules: {
       "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    files: ["src/features/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 ]);
