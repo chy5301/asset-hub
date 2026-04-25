@@ -1,5 +1,4 @@
-// frontend/src/features/assets/detail/checkout-dialog.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { useCheckoutMutation } from "@/api/hooks/checkouts";
 import { toFriendlyMessage } from "@/lib/error";
 import {
@@ -37,15 +38,19 @@ export function CheckoutDialog({
 
   const mutation = useCheckoutMutation();
 
-  useEffect(() => {
-    if (!open) {
-      setHolder("");
-      setLocation("");
-      setNote("");
-      setHolderError("");
-      setSubmitError("");
-    }
-  }, [open]);
+  function reset() {
+    setHolder("");
+    setLocation("");
+    setNote("");
+    setHolderError("");
+    setSubmitError("");
+  }
+
+  function handleOpenChange(v: boolean) {
+    if (mutation.isPending) return;
+    if (!v) reset();
+    onOpenChange(v);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +69,7 @@ export function CheckoutDialog({
           note: note.trim() || null,
         },
       });
+      reset();
       onOpenChange(false);
     } catch (err) {
       setSubmitError(toFriendlyMessage(err));
@@ -71,12 +77,7 @@ export function CheckoutDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!mutation.isPending) onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{CHECKOUT_DIALOG_TITLE}</DialogTitle>
@@ -85,14 +86,7 @@ export function CheckoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {submitError && (
-          <div
-            role="alert"
-            className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            {submitError}
-          </div>
-        )}
+        {submitError && <InlineErrorBanner message={submitError} />}
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -131,13 +125,12 @@ export function CheckoutDialog({
             <label htmlFor="checkout-note" className="text-sm font-medium">
               备注
             </label>
-            <textarea
+            <Textarea
               id="checkout-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               disabled={mutation.isPending}
               rows={3}
-              className="flex w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -145,7 +138,7 @@ export function CheckoutDialog({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={mutation.isPending}
             >
               取消

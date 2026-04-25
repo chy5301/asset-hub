@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { type HttpErrorShape, unwrap } from "@/lib/error";
+import { unwrap, unwrapVoid } from "@/lib/error";
 
 export function useAttachmentsQuery(assetId: string) {
   return useQuery({
@@ -23,21 +23,12 @@ export function useDeleteAttachmentMutation() {
       const res = await http.DELETE("/api/attachments/{attachment_id}", {
         params: { path: { attachment_id: args.attachmentId } },
       });
-      // 204 返回无 body，openapi-fetch 会给 data=undefined。这里不能用 unwrap（unwrap 要求 data 存在）
-      if (res.error) {
-        const detail =
-          typeof res.error === "object" && res.error !== null
-            ? (res.error as { detail?: string }).detail
-            : undefined;
-        const err: HttpErrorShape = { status: res.response.status, detail };
-        throw err;
-      }
-      // 成功返回，无 body
+      unwrapVoid(res);
     },
     onSuccess: (_data, { assetId }) => {
       qc.invalidateQueries({ queryKey: qk.attachments.byAsset(assetId) });
       toast.success("附件已删除");
     },
-    onError: () => {},
+    // 失败由调用方（AttachmentLightbox）通过 AlertDialog 内嵌提示展示。
   });
 }

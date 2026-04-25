@@ -1,4 +1,3 @@
-// frontend/src/features/assets/detail/not-found-panel.tsx
 import { SearchX } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";

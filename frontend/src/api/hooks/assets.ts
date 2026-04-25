@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { unwrap } from "@/lib/error";
+import { toFriendlyMessage, unwrap } from "@/lib/error";
 import type { components } from "@/api/generated/schema";
 import type { AssetsSearch } from "@/features/assets/list/search-schema";
 
@@ -39,6 +39,7 @@ export function useCreateAsset() {
       qc.invalidateQueries({ queryKey: qk.assets.all });
       toast.success("资产已登记");
     },
+    onError: (err) => toast.error(toFriendlyMessage(err)),
   });
 }
 
@@ -56,6 +57,7 @@ export function useUpdateAsset(id: string) {
       qc.invalidateQueries({ queryKey: qk.assets.all });
       toast.success("资产已更新");
     },
+    onError: (err) => toast.error(toFriendlyMessage(err)),
   });
 }
 
@@ -72,6 +74,7 @@ export function useDeleteAsset() {
       qc.invalidateQueries({ queryKey: qk.assets.all });
       toast.success("资产已删除");
     },
+    onError: (err) => toast.error(toFriendlyMessage(err)),
   });
 }
 

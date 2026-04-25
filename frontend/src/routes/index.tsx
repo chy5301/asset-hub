@@ -47,9 +47,7 @@ function AssetListPage() {
   const typeNameById = useMemo(() => {
     const map: Record<string, string> = {};
     for (const t of typesQuery.data ?? []) {
-      if (t && typeof t === "object" && "id" in t && "name" in t) {
-        map[t.id as string] = t.name as string;
-      }
+      map[t.id] = t.name;
     }
     return map;
   }, [typesQuery.data]);

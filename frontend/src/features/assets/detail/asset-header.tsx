@@ -1,7 +1,6 @@
-// frontend/src/features/assets/detail/asset-header.tsx
 import { Link } from "@tanstack/react-router";
-import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/date";
 import {
   Tooltip,
   TooltipContent,
@@ -54,7 +53,7 @@ export function AssetHeader({
             {currentCheckout.location ? <> · {currentCheckout.location}</> : null}
             {" · 自 "}
             <time className="font-code">
-              {format(parseISO(currentCheckout.checked_out_at), "yyyy-MM-dd HH:mm")}
+              {formatDateTime(currentCheckout.checked_out_at)}
             </time>
           </p>
         )}

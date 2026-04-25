@@ -32,13 +32,13 @@ export function useCheckoutMutation() {
       return unwrap(res);
     },
     onSuccess: (_data, { assetId }) => {
+      // qk.assets.history(id) = ["assets", id, "history"]，是 qk.assets.all 的子集，
+      // 失效 ["assets"] 已自动级联失效 history。query-keys.ts §spec 5.1。
       qc.invalidateQueries({ queryKey: qk.assets.all });
       qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.history(assetId) });
       toast.success("派发成功");
     },
-    // 压制全局默认的 toast.error——Dialog 走 inline banner
-    onError: () => {},
+    // 失败由调用方（CheckoutDialog）通过 inline banner 展示，不走全局 toast。
   });
 }
 
@@ -58,9 +58,7 @@ export function useReturnMutation() {
     onSuccess: (_data, { assetId }) => {
       qc.invalidateQueries({ queryKey: qk.assets.all });
       qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.history(assetId) });
       toast.success("归还成功");
     },
-    onError: () => {},
   });
 }

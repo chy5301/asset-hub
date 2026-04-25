@@ -1,4 +1,3 @@
-// frontend/src/features/assets/detail/asset-detail-page.tsx
 import { useMemo, useState } from "react";
 import { useAssetDetailQuery } from "@/api/hooks/assets";
 import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
@@ -34,11 +33,8 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
     [historyQuery.data],
   );
 
-  // Dialog open state（Task 16 接线到 CheckoutDialog / ReturnDialog）
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-
-  // Lightbox state（Task 14 接线到 AttachmentLightbox）
   const [lightboxAttachment, setLightboxAttachment] = useState<
     components["schemas"]["AttachmentRead"] | null
   >(null);
@@ -53,7 +49,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
     return <NotFoundPanel />;
   }
 
-  if (assetQuery.isError) {
+  if (assetQuery.isError || !assetQuery.data) {
     return (
       <ErrorState
         error={assetQuery.error}
@@ -62,10 +58,8 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
     );
   }
 
-  if (!assetQuery.data) return <DetailSkeleton />;
-
   const asset = assetQuery.data;
-  const assetType = (typesQuery.data ?? []).find((t) => t.id === asset.type_id);
+  const assetType = typesQuery.data?.find((t) => t.id === asset.type_id);
   const typeName = assetType?.name;
 
   return (

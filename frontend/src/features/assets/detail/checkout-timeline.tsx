@@ -1,8 +1,7 @@
-// frontend/src/features/assets/detail/checkout-timeline.tsx
-import { format, parseISO } from "date-fns";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateTime } from "@/lib/date";
 import type { components } from "@/api/generated/schema";
 import type { UseQueryResult } from "@tanstack/react-query";
 
@@ -74,11 +73,11 @@ function Card({ checkout: c }: { checkout: CheckoutRead }) {
         ) : null}
       </div>
       <p className="font-code text-sm text-muted-foreground">
-        {format(parseISO(c.checked_out_at), "yyyy-MM-dd HH:mm")}{" "}
+        {formatDateTime(c.checked_out_at)}{" "}
         {ongoing ? (
           <span className="text-muted-foreground">→ —</span>
         ) : (
-          <>→ {format(parseISO(c.returned_at!), "yyyy-MM-dd HH:mm")}</>
+          <>→ {formatDateTime(c.returned_at!)}</>
         )}
       </p>
       {c.checkout_note ? (

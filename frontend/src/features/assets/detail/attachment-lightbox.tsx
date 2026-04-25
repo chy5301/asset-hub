@@ -1,7 +1,5 @@
-// frontend/src/features/assets/detail/attachment-lightbox.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Trash2, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useDeleteAttachmentMutation } from "@/api/hooks/attachments";
 import { toFriendlyMessage } from "@/lib/error";
+import { formatDateTime } from "@/lib/date";
 import { DELETE_ATTACHMENT_PENDING_TEXT } from "./checkout-actions";
 import type { components } from "@/api/generated/schema";
 
@@ -39,6 +38,11 @@ export function AttachmentLightbox({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const deleteMutation = useDeleteAttachmentMutation();
+
+  // 切换附件时清理上一条遗留的错误（也覆盖成功删除→重开 lightbox 的场景）
+  useEffect(() => {
+    setDeleteError("");
+  }, [attachment?.id]);
 
   const open = attachment !== null;
 
@@ -70,7 +74,6 @@ export function AttachmentLightbox({
         >
           <DialogTitle className="sr-only">{attachment.original_name}</DialogTitle>
 
-          {/* 右上角操作栏 */}
           <div className="absolute right-2 top-2 z-10 flex gap-1">
             <Button
               variant="ghost"
@@ -168,9 +171,7 @@ function MetadataPanel({
             {(att.size / 1024).toFixed(1)} KB
           </dd>
           <dt>上传时间</dt>
-          <dd className="text-left font-code">
-            {format(parseISO(att.uploaded_at), "yyyy-MM-dd HH:mm")}
-          </dd>
+          <dd className="text-left font-code">{formatDateTime(att.uploaded_at)}</dd>
         </dl>
       </div>
       <Button onClick={() => window.open(contentUrl, "_blank")}>

@@ -1,11 +1,6 @@
-// frontend/src/features/assets/detail/detail-skeleton.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * 详情页三态壳的 loading 骨架。
- * 不复用 M2c-1 的 SkeletonRow——那是表格行用的。
- * 模拟详情页的单列结构：Header + 通用字段行 + 附件宫格 + Timeline。
- */
+/** 详情页 loading 态骨架。结构与详情页一致：Header + 字段行 + 附件宫格 + Timeline。 */
 export function DetailSkeleton() {
   return (
     <div className="mx-auto max-w-[960px] space-y-10 px-4 py-8">

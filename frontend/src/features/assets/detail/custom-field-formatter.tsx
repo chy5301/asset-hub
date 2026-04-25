@@ -1,7 +1,6 @@
-// frontend/src/features/assets/detail/custom-field-formatter.tsx
-import { format, parseISO } from "date-fns";
 import { Check, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { formatDate } from "@/lib/date";
 
 export type CustomFieldDef = {
   key: string;
@@ -11,6 +10,8 @@ export type CustomFieldDef = {
   unique?: boolean;
   options?: string[];
 };
+
+const NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN");
 
 /**
  * 按 def.type 格式化 custom_data 的 value。
@@ -31,14 +32,11 @@ export function formatCustomFieldValue(
       case "string":
         return String(value);
       case "text":
-        return (
-          <span className="whitespace-pre-wrap">{String(value)}</span>
-        );
+        return <span className="whitespace-pre-wrap">{String(value)}</span>;
       case "int":
       case "float":
-        if (typeof value !== "number")
-          throw new Error("expected number");
-        return new Intl.NumberFormat("zh-CN").format(value);
+        if (typeof value !== "number") throw new Error("expected number");
+        return NUMBER_FORMATTER.format(value);
       case "bool":
         return value ? (
           <Check
@@ -52,13 +50,8 @@ export function formatCustomFieldValue(
           />
         );
       case "date":
-        if (typeof value !== "string")
-          throw new Error("expected ISO string");
-        return (
-          <time className="font-code">
-            {format(parseISO(value), "yyyy-MM-dd")}
-          </time>
-        );
+        if (typeof value !== "string") throw new Error("expected ISO string");
+        return <time className="font-code">{formatDate(value)}</time>;
       case "enum":
         return String(value);
       default:

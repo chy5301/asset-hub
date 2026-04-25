@@ -1,4 +1,3 @@
-// frontend/src/features/assets/detail/current-checkout.ts
 import type { components } from "@/api/generated/schema";
 
 type CheckoutRead = components["schemas"]["CheckoutRead"];

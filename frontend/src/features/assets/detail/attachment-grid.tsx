@@ -1,4 +1,3 @@
-// frontend/src/features/assets/detail/attachment-grid.tsx
 import { FileText, FileImage, File } from "lucide-react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";

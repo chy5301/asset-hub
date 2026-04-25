@@ -1,5 +1,3 @@
-// frontend/src/features/assets/detail/checkout-actions.ts
-
 /**
  * 派发 / 归还动词常量。
  *

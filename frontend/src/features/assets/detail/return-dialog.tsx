@@ -1,6 +1,4 @@
-// frontend/src/features/assets/detail/return-dialog.tsx
-import { useEffect, useState } from "react";
-import { format, parseISO } from "date-fns";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +8,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { useReturnMutation } from "@/api/hooks/checkouts";
 import { toFriendlyMessage } from "@/lib/error";
+import { formatDateTime } from "@/lib/date";
 import {
   RETURN_DIALOG_TITLE,
   RETURN_PENDING_TEXT,
@@ -38,22 +39,27 @@ export function ReturnDialog({
   const [submitError, setSubmitError] = useState("");
   const mutation = useReturnMutation();
 
-  useEffect(() => {
-    if (!open) {
-      setNote("");
-      setSubmitError("");
-    }
-  }, [open]);
+  function reset() {
+    setNote("");
+    setSubmitError("");
+  }
+
+  function handleOpenChange(v: boolean) {
+    if (mutation.isPending) return;
+    if (!v) reset();
+    onOpenChange(v);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentCheckout) return; // data race 保护：按钮 disabled，不应走到这
+    if (!currentCheckout) return; // data race 保护：按钮 disabled，正常路径不会走到
     setSubmitError("");
     try {
       await mutation.mutateAsync({
         assetId,
         body: { note: note.trim() || null },
       });
+      reset();
       onOpenChange(false);
     } catch (err) {
       setSubmitError(toFriendlyMessage(err));
@@ -61,12 +67,7 @@ export function ReturnDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!mutation.isPending) onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{RETURN_DIALOG_TITLE}</DialogTitle>
@@ -82,39 +83,26 @@ export function ReturnDialog({
             <br />
             派发于 ·{" "}
             <time className="font-code">
-              {format(parseISO(currentCheckout.checked_out_at), "yyyy-MM-dd HH:mm")}
+              {formatDateTime(currentCheckout.checked_out_at)}
             </time>
           </div>
         ) : (
-          <div
-            role="alert"
-            className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            此资产当前无派发中记录，请刷新页面。
-          </div>
+          <InlineErrorBanner message="此资产当前无派发中记录，请刷新页面。" />
         )}
 
-        {submitError && (
-          <div
-            role="alert"
-            className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            {submitError}
-          </div>
-        )}
+        {submitError && <InlineErrorBanner message={submitError} />}
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="return-note" className="text-sm font-medium">
               备注
             </label>
-            <textarea
+            <Textarea
               id="return-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               disabled={mutation.isPending || !currentCheckout}
               rows={3}
-              className="flex w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -122,7 +110,7 @@ export function ReturnDialog({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={mutation.isPending}
             >
               取消

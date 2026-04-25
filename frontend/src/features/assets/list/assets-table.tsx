@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/date";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,8 +138,7 @@ export function AssetsTable({
         id: "updated_at",
         accessorKey: "updated_at",
         header: COLUMN_LABELS.updated_at,
-        cell: ({ row }) =>
-          new Date(row.original.updated_at).toLocaleString("zh-CN"),
+        cell: ({ row }) => formatDateTime(row.original.updated_at),
       },
       {
         id: "actions",
@@ -149,20 +149,11 @@ export function AssetsTable({
         ),
       },
     ],
-    [onCheckout, onReturn],
+    [onCheckout, onReturn, typeNameById],
   );
 
   const columnVisibility = useMemo(
-    () => ({
-      code: visible.code,
-      name: visible.name,
-      type: visible.type,
-      status: visible.status,
-      holder: visible.holder,
-      location: visible.location,
-      updated_at: visible.updated_at,
-      actions: true,
-    }),
+    () => ({ ...visible, actions: true as const }),
     [visible],
   );
 
@@ -283,7 +274,7 @@ function RowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled>编辑（M2c-3 开放）</DropdownMenuItem>
+        <DropdownMenuItem disabled>编辑（即将开放）</DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onCheckout(row)}
           disabled={row.status !== "IDLE"}
@@ -296,7 +287,7 @@ function RowActions({
         >
           {RETURN_VERB}
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>删除（M2c-3 开放）</DropdownMenuItem>
+        <DropdownMenuItem disabled>删除（即将开放）</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

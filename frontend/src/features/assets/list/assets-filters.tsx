@@ -17,8 +17,6 @@ import {
 import { STATUS_META } from "@/features/assets/status-labels";
 import { debounce } from "@/lib/debounce";
 
-type NavigateFn = ReturnType<typeof useNavigate>;
-
 interface AssetsFiltersProps {
   search: AssetsSearch;
 }
@@ -30,7 +28,8 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
   const typesQuery = useAssetTypesQuery();
 
   const [qLocal, setQLocal] = useState(search.q ?? "");
-  // Syncing URL search param back to local state
+  // 拉回外部变化（重置/浏览器后退/直接改 URL）。自身 push 后 URL 与 qLocal 已经一致，
+  // setState 会被 React noop 跳过，不会丢字。
   useEffect(() => {
     setQLocal(search.q ?? "");
   }, [search.q]);
@@ -118,11 +117,7 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
         </SelectContent>
       </Select>
 
-      <HolderInput
-        initial={search.holder ?? ""}
-        onCommit={onHolderCommit}
-        navigate={navigate}
-      />
+      <HolderInput initial={search.holder ?? ""} onCommit={onHolderCommit} />
 
       <Button variant="outline" size="sm" onClick={onReset}>
         重置
@@ -131,21 +126,21 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
   );
 }
 
-function HolderInput({
-  initial,
-  onCommit,
-}: {
+interface HolderInputProps {
   initial: string;
   onCommit: (value: string) => void;
-  navigate: NavigateFn;
-}) {
+}
+
+function HolderInput({ initial, onCommit }: HolderInputProps) {
   const [v, setV] = useState(initial);
   const lastCommittedRef = useRef(initial);
 
-  // Syncing external prop to local state
+  // 仅当外部 prop 变化（重置、URL 直改、浏览器导航）且非自身 commit 触发时同步本地。
   useEffect(() => {
-    setV(initial);
-    lastCommittedRef.current = initial;
+    if (initial !== lastCommittedRef.current) {
+      lastCommittedRef.current = initial;
+      setV(initial);
+    }
   }, [initial]);
 
   const commit = () => {
