@@ -1,8 +1,12 @@
+// frontend/src/features/assets/detail/asset-detail-page.tsx
+import { useMemo, useState } from "react";
 import { useAssetDetailQuery } from "@/api/hooks/assets";
 import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
 import { useAttachmentsQuery } from "@/api/hooks/attachments";
 import { useAssetTypesQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
+import { AssetHeader } from "./asset-header";
+import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
 import { NotFoundPanel } from "./not-found-panel";
 import { isHttpError } from "@/lib/error";
@@ -16,6 +20,15 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   const historyQuery = useCheckoutHistoryQuery(id);
   const attachmentsQuery = useAttachmentsQuery(id);
   const typesQuery = useAssetTypesQuery();
+
+  const currentCheckout = useMemo(
+    () => deriveCurrentCheckout(historyQuery.data),
+    [historyQuery.data],
+  );
+
+  // Dialog open state（Task 16 接线到 CheckoutDialog / ReturnDialog）
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   if (assetQuery.isLoading) return <DetailSkeleton />;
 
@@ -40,15 +53,24 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
 
   const asset = assetQuery.data;
   const assetType = (typesQuery.data ?? []).find((t) => t.id === asset.type_id);
+  const typeName = assetType?.name;
 
   return (
     <>
       <title>{`${asset.name} · asset-hub`}</title>
       <main className="mx-auto max-w-[960px] space-y-10 px-4 py-8">
-        {/* Task 9-16 填充各区块；先占位 */}
+        <AssetHeader
+          asset={asset}
+          typeName={typeName}
+          currentCheckout={currentCheckout}
+          onCheckout={() => setCheckoutOpen(true)}
+          onReturn={() => setReturnOpen(true)}
+        />
+        {/* Task 10-16 填充其他区块 */}
         <div className="text-sm text-muted-foreground">
-          占位：{asset.name} / {asset.id}
-          {assetType ? ` / ${assetType.name}` : ""}
+          其他区块占位
+          {checkoutOpen ? " / checkout dialog would open" : ""}
+          {returnOpen ? " / return dialog would open" : ""}
           {historyQuery.isLoading ? " / history 加载中" : ""}
           {attachmentsQuery.isLoading ? " / attachments 加载中" : ""}
         </div>
