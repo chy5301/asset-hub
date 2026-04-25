@@ -6,15 +6,15 @@ import typer
 
 from asset_hub.api.schemas.asset_type import TypeRead
 from asset_hub.cli.deps import cli_session, parse_uuid
-from asset_hub.cli.envelope import print_error, print_result
-from asset_hub.errors import DuplicateError, NotFoundError
+from asset_hub.cli.envelope import (
+    handle_domain_errors,
+    print_error,
+    print_result,
+    to_json_dict,
+)
 from asset_hub.services.asset_type import TypeService
 
 type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=True)
-
-
-def _type_to_dict(t) -> dict:
-    return TypeRead.model_validate(t).model_dump(mode="json")
 
 
 @type_app.command("define")
@@ -35,16 +35,11 @@ def type_define(
         custom_fields = json.loads(fields) if fields else []
     else:
         print_error("必须提供 --name 或 --from", json_output, exit_code=2)
-        return
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
-        try:
-            t = svc.create_type(name=name, description=description, custom_fields=custom_fields)
-        except DuplicateError as e:
-            print_error(str(e), json_output, exit_code=1)
-            return
-    print_result(_type_to_dict(t), json_output)
+        t = svc.create_type(name=name, description=description, custom_fields=custom_fields)
+    print_result(to_json_dict(TypeRead, t), json_output)
 
 
 @type_app.command("list")
@@ -55,7 +50,7 @@ def type_list(
     with cli_session() as session:
         svc = TypeService(session)
         types = svc.list_types()
-    data = [_type_to_dict(t) for t in types]
+    data = [to_json_dict(TypeRead, t) for t in types]
     print_result(data, json_output, count=len(data))
 
 
@@ -67,11 +62,7 @@ def type_show(
     """查看单个资产类型详情。"""
     uid = parse_uuid(type_id, json_output)
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
-        try:
-            t = svc.get_type(uid)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-    print_result(_type_to_dict(t), json_output)
+        t = svc.get_type(uid)
+    print_result(to_json_dict(TypeRead, t), json_output)

@@ -4,11 +4,10 @@ from typing import Annotated
 from fastapi import Depends
 from sqlmodel import Session
 
-from asset_hub.config import Settings
 from asset_hub.db import get_engine
 from asset_hub.services.attachment import AttachmentService
+from asset_hub.storage import get_default_storage
 from asset_hub.storage.base import StorageAdapter
-from asset_hub.storage.local_fs import LocalFSStorage
 
 
 def get_session() -> Generator[Session, None, None]:
@@ -17,7 +16,7 @@ def get_session() -> Generator[Session, None, None]:
 
 
 def get_storage() -> StorageAdapter:
-    return LocalFSStorage(root=Settings().attachments_dir)
+    return get_default_storage()
 
 
 def get_attachment_service(

@@ -5,22 +5,18 @@ import typer
 
 from asset_hub.api.schemas.asset import AssetRead
 from asset_hub.api.schemas.checkout import CheckoutRead
-from asset_hub.cli.deps import cli_session, parse_uuid
-from asset_hub.cli.envelope import print_error, print_result
-from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
+from asset_hub.cli.deps import cli_session, parse_enum, parse_uuid
+from asset_hub.cli.envelope import (
+    handle_domain_errors,
+    print_dry_run,
+    print_result,
+    to_json_dict,
+)
 from asset_hub.models.asset import AssetStatus
 from asset_hub.services.asset import AssetService
 from asset_hub.services.checkout import CheckoutService
 
 asset_app = typer.Typer(name="asset", help="资产管理", no_args_is_help=True)
-
-
-def _asset_to_dict(a) -> dict:
-    return AssetRead.model_validate(a).model_dump(mode="json")
-
-
-def _checkout_to_dict(r) -> dict:
-    return CheckoutRead.model_validate(r).model_dump(mode="json")
 
 
 @asset_app.command("register")
@@ -36,28 +32,20 @@ def asset_register(
 ) -> None:
     """登记新资产。"""
     uid = parse_uuid(type_id, json_output)
-
     custom_data = json.loads(custom) if custom else {}
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
-        try:
-            a = svc.register(
-                name=name,
-                type_id=uid,
-                serial_number=serial_number,
-                holder=holder,
-                location=location,
-                notes=notes,
-                custom_data=custom_data,
-            )
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-        except (DuplicateError, ValidationError) as e:
-            print_error(str(e), json_output, exit_code=1)
-            return
-    print_result(_asset_to_dict(a), json_output)
+        a = svc.register(
+            name=name,
+            type_id=uid,
+            serial_number=serial_number,
+            holder=holder,
+            location=location,
+            notes=notes,
+            custom_data=custom_data,
+        )
+    print_result(to_json_dict(AssetRead, a), json_output)
 
 
 @asset_app.command("list")
@@ -69,10 +57,8 @@ def asset_list(
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """列出资产。"""
-    from uuid import UUID
-
-    parsed_type_id = UUID(type_id) if type_id else None
-    parsed_status = AssetStatus(status) if status else None
+    parsed_type_id = parse_uuid(type_id, json_output)
+    parsed_status = parse_enum(AssetStatus, status, json_output)
 
     with cli_session() as session:
         svc = AssetService(session)
@@ -82,7 +68,7 @@ def asset_list(
             holder=holder,
             q=q,
         )
-    data = [_asset_to_dict(a) for a in assets]
+    data = [to_json_dict(AssetRead, a) for a in assets]
     print_result(data, json_output, count=len(data))
 
 
@@ -94,14 +80,10 @@ def asset_show(
     """查看资产详情。"""
     uid = parse_uuid(asset_id, json_output)
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
-        try:
-            a = svc.get_asset(uid)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-    print_result(_asset_to_dict(a), json_output)
+        a = svc.get_asset(uid)
+    print_result(to_json_dict(AssetRead, a), json_output)
 
 
 @asset_app.command("update")
@@ -112,17 +94,12 @@ def asset_update(
 ) -> None:
     """更新资产字段。"""
     uid = parse_uuid(asset_id, json_output)
-
     updates = json.loads(set_data)
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
-        try:
-            a = svc.update_asset(uid, **updates)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-    print_result(_asset_to_dict(a), json_output)
+        a = svc.update_asset(uid, **updates)
+    print_result(to_json_dict(AssetRead, a), json_output)
 
 
 @asset_app.command("delete")
@@ -135,22 +112,16 @@ def asset_delete(
     """删除资产。"""
     uid = parse_uuid(asset_id, json_output)
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
-        try:
-            a = svc.get_asset(uid)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
+        a = svc.get_asset(uid)
 
         if dry_run:
-            if json_output:
-                from asset_hub.cli.envelope import success_envelope
-                print(success_envelope({"would_delete": _asset_to_dict(a)}))
-            else:
-                from rich import print as rprint
-                rprint(f"[yellow]dry-run:[/yellow] 将删除 {a.name} ({a.id})")
-            raise SystemExit(10)
+            print_dry_run(
+                {"would_delete": to_json_dict(AssetRead, a)},
+                json_output,
+                message=f"将删除 {a.name} ({a.id})",
+            )
 
         if not yes:
             confirm = typer.confirm(f"确定删除 {a.name}?")
@@ -171,17 +142,10 @@ def asset_checkout(
 ) -> None:
     """派发资产给某人。"""
     uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = CheckoutService(session)
-        try:
-            rec = svc.checkout(asset_id=uid, holder=to, location=location, note=note)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-        except StateError as e:
-            print_error(str(e), json_output, exit_code=1)
-            return
-    print_result(_checkout_to_dict(rec), json_output)
+        rec = svc.checkout(asset_id=uid, holder=to, location=location, note=note)
+    print_result(to_json_dict(CheckoutRead, rec), json_output)
 
 
 @asset_app.command("return")
@@ -192,17 +156,10 @@ def asset_return(
 ) -> None:
     """归还资产。"""
     uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = CheckoutService(session)
-        try:
-            rec = svc.return_(asset_id=uid, note=note)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-        except StateError as e:
-            print_error(str(e), json_output, exit_code=1)
-            return
-    print_result(_checkout_to_dict(rec), json_output)
+        rec = svc.return_(asset_id=uid, note=note)
+    print_result(to_json_dict(CheckoutRead, rec), json_output)
 
 
 @asset_app.command("history")
@@ -212,12 +169,8 @@ def asset_history(
 ) -> None:
     """查看资产流转历史。"""
     uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output):
         svc = CheckoutService(session)
-        try:
-            records = svc.history(asset_id=uid)
-        except NotFoundError as e:
-            print_error(str(e), json_output, exit_code=3)
-            return
-    data = [_checkout_to_dict(r) for r in records]
+        records = svc.history(asset_id=uid)
+    data = [to_json_dict(CheckoutRead, r) for r in records]
     print_result(data, json_output, count=len(data))

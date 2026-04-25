@@ -36,7 +36,7 @@ class TypeService:
             self.session.commit()
         except IntegrityError:
             self.session.rollback()
-            raise DuplicateError(f"类型名称已存在: {name}")
+            raise DuplicateError(f"类型名称已存在: {name}") from None
         self.session.refresh(asset_type)
         return asset_type
 

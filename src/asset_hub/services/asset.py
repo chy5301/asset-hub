@@ -54,7 +54,7 @@ class AssetService:
             self.session.commit()
         except IntegrityError:
             self.session.rollback()
-            raise DuplicateError(f"序列号重复: {serial_number}")
+            raise DuplicateError(f"序列号重复: {serial_number}") from None
         self.session.refresh(asset)
         return asset
 
