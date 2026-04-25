@@ -108,10 +108,21 @@ M2c-1 已生成全套设计系统产物，本里程碑**完整继承、不修改
 | §3.5.1 | fewer-but-better（密度克制） | 单列 + max-width 960px + section 之间 `space-y-8`；不用 Card 装饰；GeneralFields / CustomFields 用 `<dl>` 不用表格 |
 | §3.5.2 | 字体（Fira Sans body / Fira Code 编号） | SN / UUID / asset_id 显示用 `font-code`；其余 body 默认；timeline 时间戳用 `font-code` |
 | §3.5.3 | 状态色（4 态语义） | StatusBadge 直接复用；timeline 当前节点用 `--status-active` 同源；CTA disabled 文案的 tooltip 用 muted-foreground |
-| §3.5.4 | radius=0.375rem | shadcn Dialog / AlertDialog / DropdownMenu / Separator 自动跟 token |
+| §3.5.4 | radius=0.375rem | shadcn Dialog / AlertDialog / DropdownMenu 自动跟 token |
 | §3.5.5 | Motion 三时刻 | **时刻 1（页面入场）：详情页不做 stagger**——单实体页"摇一下"反而打扰，应静态稳重；时刻 2（交互反馈）：CTA 色变 150-300ms / 缩略图 hover ring 色变 / Dialog 默认 Radix scale-in；时刻 3（状态切换）：`prefers-reduced-motion` 全降级 |
 | §3.5.6 | 红线（禁 transform scale / animate-spin / backdrop-blur / 多层 shadow / 渐变背景） | 缩略图 hover 仅 `ring-2 ring-primary/40`；Dialog overlay `bg-black/50` 不 blur；mutation pending 不显式 spinner（按钮文字切 "派发中…"）；timeline 不用 shadow |
-| §3.5.7 | shadcn variant 审查 | 本里程碑新增 `dialog / alert-dialog / separator` 三个 shadcn 组件；引入即审：`Dialog.Overlay` 默认 `bg-black/80` 改 `bg-black/50` 不 blur；移除 Next 残留 `"use client"` 指令 |
+| §3.5.7 | shadcn variant 审查 | 本里程碑新增 `dialog / alert-dialog` 两个 shadcn 组件（separator 因放弃使用不再引入）；引入即审：`Dialog.Overlay` 默认 `bg-black/80` 改 `bg-black/50` 不 blur；移除 Next 残留 `"use client"` 指令 |
+
+### 3.4.1 MASTER override（显式）
+
+以下条目对 MASTER 的默认建议做显式覆盖；实施期纠偏回写（§3.3 闸门 ④）时一并同步到 `design-system/asset-hub/MASTER.md` 末尾"实施期纠偏（M2c-2）"区块：
+
+| MASTER 条目 | M2c-2 覆盖 | 理由 |
+| --- | --- | --- |
+| `Key Effects: data loading spinners` | mutation pending 改用 Button 文字切换（"派发中…" / "归还中…" / "删除中…"）；query loading 用骨架（`DetailSkeleton` / `GridSkeleton` / `TimelineSkeleton`） | 转圈 spinner 是 AI-slop 重灾区；文字切换 + 骨架更语义，与 §3.5.6 禁 `animate-spin` 红线自洽 |
+| `Key Effects: chart zoom on click` | N/A | M2c-2 无 chart（M2c-1 同理，已记录于 MASTER 末尾） |
+| `Modal: backdrop-filter: blur(4px)` | Dialog/AlertDialog overlay 改 `bg-black/50` 不带 blur | §3.5.6 禁 backdrop-blur；glassmorphism 是 overused AI 审美 |
+| `Card: box-shadow + translateY on hover` | M2c-2 不用 Card 装饰区块；timeline 卡片 `ring-1 ring-border/60` 无 shadow、无 hover 位移 | §3.5.1 fewer-but-better；hover 位移会造成 layout shift（MASTER anti-pattern #3 自己也禁止） |
 
 ## 4. 架构与文件结构
 
@@ -167,7 +178,7 @@ frontend/src/
 └── components/ui/                       # shadcn 按需补：dialog, alert-dialog, separator
 ```
 
-**统计**：新增 16 个文件（routes 1 + hooks 2 + features/assets/detail 13）、修改 4 个文件（query-keys + hooks/assets + routes/index + list/assets-table）、shadcn add 3 个组件。不新建 `lib/` 工具（格式化器独立放 detail 目录，符合 M2c-1 的"feature 自治"原则）。
+**统计**：新增 16 个文件（routes 1 + hooks 2 + features/assets/detail 13）、修改 4 个文件（query-keys + hooks/assets + routes/index + list/assets-table）、shadcn add 2 个组件（`dialog` + `alert-dialog`；放弃 `separator`——§7.1 决定不用 `<Separator />`）。不新建 `lib/` 工具（格式化器独立放 detail 目录，符合 M2c-1 的"feature 自治"原则）。
 
 ### 4.3 依赖
 
@@ -180,7 +191,7 @@ frontend/src/
 - `sonner`（Toast）
 - `date-fns`（M2c-1 已装，timeline 时间相对化用 `formatDistanceToNow`、custom_field date 用 `format(parseISO, 'yyyy-MM-dd')`）
 
-shadcn `dialog / alert-dialog / separator` 通过 `pnpm dlx shadcn@latest add` 引入，引入后必须在同 PR 内审查（§3.5.7）。
+shadcn `dialog / alert-dialog` 通过 `pnpm dlx shadcn@latest add` 引入，引入后必须在同 PR 内审查（§3.5.7）。
 
 ## 5. 数据层
 
@@ -321,15 +332,19 @@ routes/assets.$id.tsx
    ├─ if assetQuery.isError          → <ErrorState onRetry={assetQuery.refetch} />
    │
    └─ if assetQuery.data:
-      <main className="mx-auto max-w-[960px] py-8 px-4 space-y-8">
+      <main className="mx-auto max-w-[960px] py-8 px-4 space-y-10">
         <AssetHeader ... />
-        <Separator />
         <GeneralFields ... />
         <CustomFields ... />
         <AttachmentGrid ... />
         <CheckoutTimeline ... />
         <浮层们 ... />
       </main>
+
+**分隔策略**：区块间仅靠 `space-y-10` 节律 + 各 section 内 `<h2>` 语义标题分区，**不用 `<Separator />`**。理由：
+- 单实体详情页视觉焦点在"信息密度与层级"，横线会过度"隔间化"、让页面显得零散
+- 设计节制（fewer-but-better）是 §3.5.1 的直接体现
+- 垂直节律 `space-y-10` ≈ 40px 配合 `<h2 text-lg font-medium>` 足够形成视觉分段
 ```
 
 `<DetailSkeleton>` 是新组件（不复用 M2c-1 的 SkeletonRow，那是表格行用的）：模拟单列布局——顶部一条粗线（Header）、中间几行短线（字段）、底部一组方块（附件）+ 一组短线（timeline）。
