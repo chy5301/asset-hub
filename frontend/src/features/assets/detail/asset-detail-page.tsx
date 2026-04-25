@@ -6,6 +6,7 @@ import { useAttachmentsQuery } from "@/api/hooks/attachments";
 import { useAssetTypesQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { AssetHeader } from "./asset-header";
+import { GeneralFields } from "./general-fields";
 import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
 import { NotFoundPanel } from "./not-found-panel";
@@ -66,7 +67,8 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
           onCheckout={() => setCheckoutOpen(true)}
           onReturn={() => setReturnOpen(true)}
         />
-        {/* Task 10-16 填充其他区块 */}
+        <GeneralFields asset={asset} typeName={typeName} />
+        {/* Task 11-16 填充其他区块 */}
         <div className="text-sm text-muted-foreground">
           其他区块占位
           {checkoutOpen ? " / checkout dialog would open" : ""}
