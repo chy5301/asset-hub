@@ -14,6 +14,7 @@ export function useCheckoutHistoryQuery(assetId: string) {
       });
       return unwrap(res);
     },
+    enabled: !!assetId, // 守护：列表页菜单未触发时 assetId="" 不发请求
   });
 }
 

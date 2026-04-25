@@ -1,10 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAssetsQuery } from "@/api/hooks/assets";
+import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
 import { useAssetTypesQuery } from "@/api/hooks/types";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
+import { CheckoutDialog } from "@/features/assets/detail/checkout-dialog";
+import { deriveCurrentCheckout } from "@/features/assets/detail/current-checkout";
+import { ReturnDialog } from "@/features/assets/detail/return-dialog";
 import { AssetsFilters } from "@/features/assets/list/assets-filters";
 import { AssetsPagination } from "@/features/assets/list/assets-pagination";
 import { AssetsTable, type AssetRow } from "@/features/assets/list/assets-table";
@@ -26,6 +30,19 @@ function AssetListPage() {
   const query = useAssetsQuery(search);
   const typesQuery = useAssetTypesQuery();
   const { visible, toggle } = useColumnVisibility();
+
+  // Dialog state for ⋯ menu actions
+  const [checkoutRow, setCheckoutRow] = useState<AssetRow | null>(null);
+  const [returnRow, setReturnRow] = useState<AssetRow | null>(null);
+
+  const handleCheckout = useCallback((row: AssetRow) => setCheckoutRow(row), []);
+  const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
+
+  // 当 ReturnDialog 打开时挂 history query 以推导 currentCheckout
+  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id ?? "");
+  const currentCheckoutForReturn = deriveCurrentCheckout(
+    returnRow ? returnHistoryQuery.data : undefined,
+  );
 
   const typeNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -51,14 +68,28 @@ function AssetListPage() {
   );
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <AssetsFilters search={search} />
-        <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
-      </div>
+    <>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <AssetsFilters search={search} />
+          <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+        </div>
 
-      {renderBody()}
-    </section>
+        {renderBody()}
+      </section>
+
+      <CheckoutDialog
+        open={!!checkoutRow}
+        onOpenChange={(v) => !v && setCheckoutRow(null)}
+        assetId={checkoutRow?.id ?? ""}
+      />
+      <ReturnDialog
+        open={!!returnRow}
+        onOpenChange={(v) => !v && setReturnRow(null)}
+        assetId={returnRow?.id ?? ""}
+        currentCheckout={currentCheckoutForReturn}
+      />
+    </>
   );
 
   function renderBody() {
@@ -89,6 +120,8 @@ function AssetListPage() {
           visible={visible}
           typeNameById={typeNameById}
           bodyKey={bodyKey}
+          onCheckout={handleCheckout}
+          onReturn={handleReturn}
         />
         <AssetsPagination search={search} total={rows.length} />
       </>

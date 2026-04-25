@@ -45,6 +45,8 @@ interface AssetsTableProps {
   typeNameById: Record<string, string>;
   /** 筛选 / 排序 / 翻页变更时由父组件递增，用于触发 tbody 淡切（§3.5.5 时刻 2） */
   bodyKey: string;
+  onCheckout: (row: AssetRow) => void;
+  onReturn: (row: AssetRow) => void;
 }
 
 function urlSortToState(sort?: string): SortingState {
@@ -65,6 +67,8 @@ export function AssetsTable({
   visible,
   typeNameById,
   bodyKey,
+  onCheckout,
+  onReturn,
 }: AssetsTableProps) {
   const navigate = useNavigate({ from: "/" });
 
@@ -136,10 +140,12 @@ export function AssetsTable({
         id: "actions",
         header: "",
         enableSorting: false,
-        cell: ({ row }) => <RowActions id={row.original.id} />,
+        cell: ({ row }) => (
+          <RowActions row={row.original} onCheckout={onCheckout} onReturn={onReturn} />
+        ),
       },
     ],
-    [],
+    [onCheckout, onReturn],
   );
 
   const columnVisibility = useMemo(
@@ -251,8 +257,15 @@ export function AssetsTable({
   );
 }
 
-function RowActions({ id }: { id: string }) {
-  // M2c-1: 菜单项全部 disabled；id 作为 data-* 留给后续接线 + 调试可见
+function RowActions({
+  row,
+  onCheckout,
+  onReturn,
+}: {
+  row: AssetRow;
+  onCheckout: (row: AssetRow) => void;
+  onReturn: (row: AssetRow) => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -260,15 +273,25 @@ function RowActions({ id }: { id: string }) {
           variant="ghost"
           size="icon"
           aria-label="更多操作"
-          data-asset-id={id}
+          data-asset-id={row.id}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem disabled>编辑（M2c-3 开放）</DropdownMenuItem>
-        <DropdownMenuItem disabled>派发（M2c-2 开放）</DropdownMenuItem>
-        <DropdownMenuItem disabled>归还（M2c-2 开放）</DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onCheckout(row)}
+          disabled={row.status !== "IDLE"}
+        >
+          派发
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onReturn(row)}
+          disabled={row.status !== "IN_USE"}
+        >
+          归还
+        </DropdownMenuItem>
         <DropdownMenuItem disabled>删除（M2c-3 开放）</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
