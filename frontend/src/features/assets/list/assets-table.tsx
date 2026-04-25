@@ -24,6 +24,10 @@ import {
   COLUMN_LABELS,
   type ColumnKey,
 } from "@/features/assets/list/column-visibility";
+import {
+  CHECKOUT_VERB,
+  RETURN_VERB,
+} from "@/features/assets/detail/checkout-actions";
 
 export interface AssetRow {
   id: string;
@@ -284,13 +288,13 @@ function RowActions({
           onSelect={() => onCheckout(row)}
           disabled={row.status !== "IDLE"}
         >
-          派发
+          {CHECKOUT_VERB}
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onReturn(row)}
           disabled={row.status !== "IN_USE"}
         >
-          归还
+          {RETURN_VERB}
         </DropdownMenuItem>
         <DropdownMenuItem disabled>删除（M2c-3 开放）</DropdownMenuItem>
       </DropdownMenuContent>
