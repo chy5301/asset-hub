@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { AssetDetailPage } from "@/features/assets/detail/asset-detail-page";
+import { NotFoundPanel } from "@/features/assets/detail/not-found-panel";
 
 export const Route = createFileRoute("/assets/$id")({
-  component: PlaceholderPage,
+  parseParams: ({ id }) => ({ id: z.string().uuid().parse(id) }),
+  component: RouteComponent,
+  errorComponent: NotFoundPanel,
 });
 
-function PlaceholderPage() {
-  return (
-    <div className="py-12 text-center text-sm text-muted-foreground">
-      资产详情 —— 将在 M2c-2 开放
-    </div>
-  );
+function RouteComponent() {
+  const { id } = Route.useParams();
+  return <AssetDetailPage id={id} />;
 }
