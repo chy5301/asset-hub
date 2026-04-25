@@ -172,13 +172,14 @@ frontend/src/
 │   │   ├── checkout-dialog.tsx          # 新
 │   │   ├── return-dialog.tsx            # 新
 │   │   ├── checkout-actions.ts          # 新：CTA 动词常量（M3 派出类型扩展落点）
-│   │   └── not-found-panel.tsx          # 新
+│   │   ├── not-found-panel.tsx          # 新
+│   │   └── detail-skeleton.tsx          # 新：详情页 loading 态骨架
 │   └── list/
 │       └── assets-table.tsx             # 修：行点击接通 + ⋯ 菜单派发/归还接线
-└── components/ui/                       # shadcn 按需补：dialog, alert-dialog, separator
+└── components/ui/                       # shadcn 按需补：dialog, alert-dialog
 ```
 
-**统计**：新增 16 个文件（routes 1 + hooks 2 + features/assets/detail 13）、修改 4 个文件（query-keys + hooks/assets + routes/index + list/assets-table）、shadcn add 2 个组件（`dialog` + `alert-dialog`；放弃 `separator`——§7.1 决定不用 `<Separator />`）。不新建 `lib/` 工具（格式化器独立放 detail 目录，符合 M2c-1 的"feature 自治"原则）。
+**统计**：新增 17 个文件（routes 1 + hooks 2 + features/assets/detail 14）、修改 4 个文件（query-keys + hooks/assets + routes/index + list/assets-table）、shadcn add 2 个组件（`dialog` + `alert-dialog`；放弃 `separator`——§7.1 决定不用 `<Separator />`）。不新建 `lib/` 工具（格式化器独立放 detail 目录，符合 M2c-1 的"feature 自治"原则）。
 
 ### 4.3 依赖
 
@@ -753,7 +754,7 @@ M2c-3 plan 起草时，把"迁移 M2c-2 两个 Dialog 到 RHF"明写为一个独
 - [ ] `pnpm --dir frontend lint` 全绿
 - [ ] `pnpm --dir frontend run gen:openapi` 后无 schema diff（后端 API 形状未漂移）
 - [ ] 附录 A 手工烟测 12 项全部通过
-- [ ] §3.5 红线扫描（grep `scale-` / `animate-spin` / `backdrop-blur` / `gradient` 在 M2c-2 新增 16 个文件内 0 命中）
+- [ ] §3.5 红线扫描（grep `scale-` / `animate-spin` / `backdrop-blur` / `gradient` 在 M2c-2 新增 17 个文件内 0 命中）
 - [ ] frontend-design skill 合并前 review 通过
 - [ ] 主 doc `2026-04-15-asset-hub-design.md` §2.1 第 3 条括注追加完成（M3 借出类型一句话）
 - [ ] `design-system/asset-hub/MASTER.md` 末尾"实施期纠偏（M2c-2）"区块写完（包含 timeline M3 重构清单的提醒）
