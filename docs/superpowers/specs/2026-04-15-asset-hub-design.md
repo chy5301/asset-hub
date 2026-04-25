@@ -461,7 +461,38 @@ asset-hub/
 
 详见 M2c-2 spec §10.2。
 
-### 14.9 资产入账时间字段（与 14.5/§K 后端字段补齐同周期）
+### 14.9 CLI 接管 web 服务生命周期（拟 M2d 独立子里程碑）
+
+**痛点驱动**：当前开发期 dev 服务靠 `./scripts/dev.sh` 起，关闭靠各端 Ctrl+C；停了没停透、PID 假死、跨终端杀不掉这些问题在 Windows 上尤其频繁（M2c-2 实施期已踩过一次）。生产部署目前根本没启动姿势文档。把这件事统一收到 CLI 里——贴合本项目"Agent-Native CLI 一等公民"的定位，且 Agent 也能直接管理服务（健康检查、自动重启）。
+
+**CLI 草案**：
+
+```bash
+asset-hub serve start [--mode dev|prod]   # 起前后端，PID 写文件，stdout 重定向到日志
+asset-hub serve stop                       # 读 PID 文件，跨平台干净杀（含整个进程树）
+asset-hub serve status                     # PID 活性 + HTTP 健康检查 + 端口占用 + 模式
+asset-hub serve restart                    # stop + start
+asset-hub serve logs [--follow] [--lines N]  # tail 后端/前端日志
+```
+
+**关键技术点**：
+- **进程管理**：用 `psutil`（跨平台，Windows / Linux / macOS 行为一致；这是新增的唯一一个 Python 依赖）
+- **PID 文件**：`data/pids/backend.pid` / `data/pids/frontend.pid`
+- **日志重定向**：`data/logs/backend.log` / `data/logs/frontend.log`
+- **健康检查**：`status` 子命令实际 `GET /api/assets` + 检查 5173 端口
+- **跨平台进程清理**：psutil 的 `parent.children(recursive=True)` 杀整个进程树，避免 uvicorn `--reload` 的 watcher/worker 分离踩坑
+- **dev vs prod 模式**：dev = `uvicorn --reload` + `pnpm dev`；prod = `uvicorn`（多 worker）+ FastAPI 托管 `frontend/dist` 静态文件
+- **Agent 收益**：可写进 SKILL.md，让 Claude Code 自查"后端是不是在跑"、自动重启等
+
+**时机建议**：拟 **M2d 独立子里程碑**（M2c 完结之后、M3 之前），独立 spec + plan，timebox 一周。理由：
+- 与 M2c-3（表单/附件/Vitest）解耦——避免冲掉 TDD 节奏
+- 与 M3（看板 + 导出 + 后端字段补齐 + 派出类型扩展 + audit 化）解耦——M3 范围已经满
+- 独立成段后 spec/plan 清爽不混
+- daily workflow 收益越早越受用
+
+替代方案：作为 M2c-3 顺手做（更省一次 spec/plan 开销，但风险是冲掉 M2c-3 主线节奏）。M2d 启动 brainstorm 时再决定。
+
+### 14.10 资产入账时间字段（与 14.5/§K 后端字段补齐同周期）
 
 **M3 候选**。当前 `Asset.created_at` 是 DB 写入时间——但实际入账时间可能是过去的某个日期（旧设备补录、跨财年录入等）。两者语义不同：
 
