@@ -14,6 +14,8 @@ import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
 import { NotFoundPanel } from "./not-found-panel";
 import { AttachmentLightbox } from "./attachment-lightbox";
+import { CheckoutDialog } from "./checkout-dialog";
+import { ReturnDialog } from "./return-dialog";
 import { isHttpError } from "@/lib/error";
 import type { components } from "@/api/generated/schema";
 
@@ -34,9 +36,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
 
   // Dialog open state（Task 16 接线到 CheckoutDialog / ReturnDialog）
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  void checkoutOpen; // consumed by Task 16
   const [returnOpen, setReturnOpen] = useState(false);
-  void returnOpen; // consumed by Task 16
 
   // Lightbox state（Task 14 接线到 AttachmentLightbox）
   const [lightboxAttachment, setLightboxAttachment] = useState<
@@ -91,6 +91,17 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
         attachment={lightboxAttachment}
         assetId={id}
         onClose={() => setLightboxAttachment(null)}
+      />
+      <CheckoutDialog
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        assetId={id}
+      />
+      <ReturnDialog
+        open={returnOpen}
+        onOpenChange={setReturnOpen}
+        assetId={id}
+        currentCheckout={currentCheckout}
       />
     </>
   );
