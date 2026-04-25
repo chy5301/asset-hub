@@ -13,6 +13,7 @@ import { CheckoutTimeline } from "./checkout-timeline";
 import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
 import { NotFoundPanel } from "./not-found-panel";
+import { AttachmentLightbox } from "./attachment-lightbox";
 import { isHttpError } from "@/lib/error";
 import type { components } from "@/api/generated/schema";
 
@@ -41,7 +42,6 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   const [lightboxAttachment, setLightboxAttachment] = useState<
     components["schemas"]["AttachmentRead"] | null
   >(null);
-  void lightboxAttachment; // consumed by Task 14
 
   if (assetQuery.isLoading) return <DetailSkeleton />;
 
@@ -87,6 +87,11 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
         />
         <CheckoutTimeline query={historyQuery} />
       </main>
+      <AttachmentLightbox
+        attachment={lightboxAttachment}
+        assetId={id}
+        onClose={() => setLightboxAttachment(null)}
+      />
     </>
   );
 }
