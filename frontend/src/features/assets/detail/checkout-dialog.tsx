@@ -117,7 +117,7 @@ export function CheckoutDialog({
 
           <div className="space-y-1.5">
             <label htmlFor="checkout-location" className="text-sm font-medium">
-              位置（可选）
+              位置
             </label>
             <Input
               id="checkout-location"
@@ -129,7 +129,7 @@ export function CheckoutDialog({
 
           <div className="space-y-1.5">
             <label htmlFor="checkout-note" className="text-sm font-medium">
-              备注（可选）
+              备注
             </label>
             <textarea
               id="checkout-note"

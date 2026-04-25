@@ -106,7 +106,7 @@ export function ReturnDialog({
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="return-note" className="text-sm font-medium">
-              备注（可选）
+              备注
             </label>
             <textarea
               id="return-note"
