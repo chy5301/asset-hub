@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { unwrap } from "@/lib/error";
+import { type HttpErrorShape, unwrap } from "@/lib/error";
 
 export function useAttachmentsQuery(assetId: string) {
   return useQuery({
@@ -29,7 +29,8 @@ export function useDeleteAttachmentMutation() {
           typeof res.error === "object" && res.error !== null
             ? (res.error as { detail?: string }).detail
             : undefined;
-        throw { status: res.response.status, detail };
+        const err: HttpErrorShape = { status: res.response.status, detail };
+        throw err;
       }
       // 成功返回，无 body
     },
