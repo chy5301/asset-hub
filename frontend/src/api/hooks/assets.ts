@@ -74,3 +74,16 @@ export function useDeleteAsset() {
     },
   });
 }
+
+export function useAssetDetailQuery(id: string) {
+  return useQuery({
+    queryKey: qk.assets.detail(id),
+    queryFn: async () => {
+      const res = await http.GET("/api/assets/{asset_id}", {
+        params: { path: { asset_id: id } },
+      });
+      return unwrap(res);
+    },
+    // 404 靠 errorComponent / isError 分支处理，不在此重试
+  });
+}
