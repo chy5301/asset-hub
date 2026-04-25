@@ -19,10 +19,14 @@ export function GeneralFields({ asset, typeName }: GeneralFieldsProps) {
       <h2 className="mb-3 text-lg font-medium">通用字段</h2>
       <dl className="divide-y divide-border/50">
         <Row label="编号（SN）">
-          <span className="font-code">{asset.serial_number ?? "—"}</span>
+          {asset.serial_number ? (
+            <CopyableText value={asset.serial_number} toastLabel="编号" />
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
         </Row>
         <Row label="资产 ID">
-          <CopyableId id={asset.id} />
+          <CopyableText value={asset.id} toastLabel="资产 ID" />
         </Row>
         <Row label="类型">{typeName ?? "—"}</Row>
         <Row label="当前持有人">{asset.holder ?? "—"}</Row>
@@ -60,20 +64,32 @@ function Row({
   );
 }
 
-function CopyableId({ id }: { id: string }) {
+/**
+ * 标识符类长字符串字段的复制 UI（SN / 资产 ID / 未来 asset_code 等）。
+ * - value 等宽渲染（font-code）
+ * - 右侧 ghost icon 按钮，点击 navigator.clipboard.writeText(value) + toast
+ * - 复制成功后 1500ms 内 icon 暂态切换为 Check 反馈
+ */
+function CopyableText({
+  value,
+  toastLabel,
+}: {
+  value: string;
+  toastLabel: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="font-code">{id}</span>
+      <span className="font-code">{value}</span>
       <Button
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        aria-label="复制资产 ID"
+        aria-label={`复制${toastLabel}`}
         onClick={async () => {
-          await navigator.clipboard.writeText(id);
+          await navigator.clipboard.writeText(value);
           setCopied(true);
-          toast.success("资产 ID 已复制");
+          toast.success(`${toastLabel}已复制`);
           setTimeout(() => setCopied(false), 1500);
         }}
       >
