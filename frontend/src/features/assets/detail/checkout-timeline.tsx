@@ -23,14 +23,9 @@ export function CheckoutTimeline({ query }: CheckoutTimelineProps) {
       ) : (query.data ?? []).length === 0 ? (
         <EmptyState title="暂无流转记录" description="派发后会在此出现记录。" />
       ) : (
-        <ol className="relative pl-6">
-          <div
-            aria-hidden
-            className="absolute left-[7px] top-2 bottom-2 w-px bg-border"
-          />
+        <ol className="space-y-3">
           {(query.data ?? []).map((c) => (
-            <li key={c.id} className="relative pb-6 last:pb-0">
-              <Node isCurrent={c.returned_at === null} />
+            <li key={c.id}>
               <Card checkout={c} />
             </li>
           ))}
@@ -40,25 +35,31 @@ export function CheckoutTimeline({ query }: CheckoutTimelineProps) {
   );
 }
 
-function Node({ isCurrent }: { isCurrent: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={
-        isCurrent
-          ? "absolute left-0 top-1.5 block h-4 w-4 rounded-full bg-[var(--status-active,#16a34a)]"
-          : "absolute left-0.5 top-2 block h-3 w-3 rounded-full border-2 border-muted-foreground bg-background"
-      }
-    />
-  );
+/**
+ * 派发状态分桶。M2c-2 当前只有"组内派发"一种 kind；M3 §14.1 接入"向外出借"后，
+ * 进行中的状态会自然分化为 "派发中" / "出借中"，已归还的卡通过 ring 边框色（蓝/琥珀）保留类型线索。
+ * 此处单独抽函数为 M3 落地的修改面缩到一个点。
+ */
+function formatCheckoutStatus(c: CheckoutRead): { label: string; tone: "active" | "muted" } | null {
+  // 已归还：不显示 pill，整卡 muted 调性表达"过去了"
+  if (c.returned_at !== null) return null;
+  // 进行中：M2c-2 只有 internal，固定显示"派发中"；M3 加 kind 后改 c.kind === 'external' ? '出借中' : '派发中'
+  return { label: "派发中", tone: "active" };
 }
 
 function Card({ checkout: c }: { checkout: CheckoutRead }) {
   const ongoing = c.returned_at === null;
+  const status = formatCheckoutStatus(c);
   return (
-    <div className="rounded-md ring-1 ring-border/60 p-3 space-y-1">
-      <div className="flex items-center justify-between">
-        <p className="font-medium">
+    <div
+      className={
+        ongoing
+          ? "rounded-md ring-1 ring-border/60 p-3 space-y-1"
+          : "rounded-md ring-1 ring-border/40 p-3 space-y-1 text-muted-foreground"
+      }
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className={ongoing ? "font-medium" : "font-medium text-foreground/80"}>
           {c.holder}
           {c.location ? (
             <span className="ml-2 text-sm text-muted-foreground">
@@ -66,11 +67,11 @@ function Card({ checkout: c }: { checkout: CheckoutRead }) {
             </span>
           ) : null}
         </p>
-        {ongoing && (
-          <span className="rounded-sm bg-[var(--status-active,#16a34a)]/10 px-2 py-0.5 text-xs font-medium text-[var(--status-active,#16a34a)]">
-            进行中
+        {status ? (
+          <span className="shrink-0 rounded-sm bg-[var(--status-active,#16a34a)]/10 px-2 py-0.5 text-xs font-medium text-[var(--status-active,#16a34a)]">
+            {status.label}
           </span>
-        )}
+        ) : null}
       </div>
       <p className="font-code text-sm text-muted-foreground">
         {format(parseISO(c.checked_out_at), "yyyy-MM-dd HH:mm")}{" "}
@@ -96,15 +97,9 @@ function Card({ checkout: c }: { checkout: CheckoutRead }) {
 
 function TimelineSkeleton() {
   return (
-    <div className="relative pl-6 space-y-4">
+    <div className="space-y-3">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex gap-4">
-          <Skeleton className="h-3 w-3 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-48" />
-          </div>
-        </div>
+        <Skeleton key={i} className="h-20 w-full rounded-md" />
       ))}
     </div>
   );

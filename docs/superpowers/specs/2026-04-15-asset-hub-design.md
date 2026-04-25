@@ -379,6 +379,8 @@ asset-hub/
 
 **未列入 M3，但已纳入候选**。每条都有明确触发场景，未到时不做。
 
+> ⚠️ **M3 启动 brainstorm 时必先讨论**：**资产状态枚举（§14.7）+ 状态切换操作的 audit 化（§14.6）**。当前 4 态 enum + 派发/归还独占审计的不对称架构会随 §14.5 web 入口补齐而暴露问题，必须趁 M3 重新统一设计而不是再补丁式打补丁。状态文案统一用 **"退役"**（与 enum RETIRED 对齐；不用"报废"——那个偏向损坏到无法使用）。
+
 ### 14.1 派出类型扩展（"向外出借"）
 
 **M3 候选**。v1 仅"组内派发"；M3 增加"向外出借"作为派出动作的第二种类型，归还语义统一。
@@ -412,3 +414,43 @@ asset-hub/
 - 现有数据 migration（按 holder 字符串去重 + 自动建 People）
 
 工程量大；放在派出类型扩展（14.1）之后做较合适——14.1 升级了 CheckoutRecord 的 schema，恰好可以同周期顺势引入 person_id。或视情况提前到 M3 后期作为扁平段。
+
+### 14.5 状态切换 web 入口（M2c-3 顺手）
+
+**M2c-3 候选**。当前 web 仅有派发/归还两个状态切换动作；其他状态（`MAINTENANCE` / `RETIRED`）切换只能走 CLI `asset update --status` 或后端 PATCH。这造成"修好的设备没法在 web 上回 IDLE、坏掉的设备没法在 web 上标 MAINTENANCE"。
+
+**改造点（轻量版，无 audit）**：
+- 列表页 ⋯ 菜单 + 详情页扩 4 个动作：「**送修**」（→MAINTENANCE）/「**修好回库**」（→IDLE）/「**退役**」（→RETIRED）/「**重新启用**」（→IDLE，从 RETIRED 复活，谨慎）
+- 实现：调 `PATCH /api/assets/{id}` 直接改 `status` 字段，不创建独立 Record
+- 派发动作仍只对 IDLE 资产显示；其他动作按当前 status 决定显隐
+
+**与 14.6 的关系**：14.5 是轻量 PATCH 路径，落在 M2c-3。14.6 是 audit 化重型路径，落在 M3+。两条不冲突——14.5 先把 web 入口补齐解决用户痛点，14.6 把数据模型升级。
+
+### 14.6 状态转换 audit 化（M3+）
+
+**M3+ 候选，与 14.1 派出类型扩展同周期**。当前架构有割裂：派发/归还是 CheckoutRecord 审计化的"动作"，其他状态切换是 PATCH 字段无审计。
+
+**改造方案**：
+- 抽通用 `StateTransitionRecord` 模型：`asset_id` / `from_status` / `to_status` / `kind` / `actor` / `note` / `at`
+- 现有 CheckoutRecord 可保留（语义专用于派发/归还）或合并入 StateTransitionRecord（更激进）
+- 所有状态切换走 audit 化 service 方法：`asset_service.send_to_maintenance(asset_id, note)` 等
+- 详情页 timeline 接管所有动作展示（不只是派发/归还）
+
+时机：14.1 派出类型扩展时反正要改 CheckoutRecord schema，可以同 PR 一并演进为 StateTransitionRecord，边际成本最低。
+
+### 14.7 状态枚举完善（M3 业务驱动）
+
+**M3 业务讨论**。当前 4 态 `IN_USE / IDLE / MAINTENANCE / RETIRED` 实际跑下来可能不够用：
+- "故障未送修" 该归哪态？IDLE 不对（不可派发），MAINTENANCE 偏硬（还没真送修），RETIRED 错（还没决定）
+- 候选方案：加 `BROKEN` 状态（5 态），或拆分 MAINTENANCE 子类型（pending_send / in_progress / awaiting_parts）
+
+时机：v1 4 态先跑一段，等实际业务遇到"咦这个该归哪态"的真实痛点再决定，避免拍脑袋设计。
+
+### 14.8 流转 timeline 视觉重构（M3 与 14.1 联动）
+
+**M3 候选**，已部分前置在 M2c-2 polish（去节点 + 状态 pill 文字化）。M3 完整重构包含：
+- 时间近远渐隐：旧记录卡 opacity 分级（≤90d 100% / ≤180d 80% / 更早 60%）
+- **派出类型染色**（与 14.1 联动）：进行中卡片 pill 文字 "派发中" / "出借中" 自然分化；已归还卡通过 ring 边框色（蓝/琥珀）保留派出类型线索
+- 超长派发预警：> 90 天未归还节点加 `Clock` icon + `text-destructive` 警示色 + 卡片标 "派发 {n} 天"
+
+详见 M2c-2 spec §10.2。

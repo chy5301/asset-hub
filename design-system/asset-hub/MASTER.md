@@ -298,15 +298,23 @@ Before delivering any UI code, verify:
 - **`Card: box-shadow + hover translateY` → 详情页不用 Card 装饰**：所有区块用 `<dl>` / `<ol>` / 自绘 timeline；timeline 卡片仅 `ring-1 ring-border/60` 无 shadow、无 hover 位移。fewer-but-better；hover 位移与 MASTER 自己的 anti-pattern #3 矛盾。
 - **`<Separator>` 未使用**：spec §7.1 决定 `space-y-10` + 各 section `<h2>` 语义分区即可。
 
-### 2. Timeline 视觉当前保留最简 2 节点形态
+### 2. Timeline 视觉：合并前 polish 去节点 + status pill 文字化
 
-本里程碑 timeline 节点视觉只区分「当前派发 = 实心高亮圆点（`bg-status-active` token） + 进行中文字标 / 历史 = 空心 muted 圆点」。M3 候选增强清单见 spec §10.2：
+**原方案**：左侧 vertical line + 圆点节点（实心绿当前 / 空心 muted 历史）+ 右上 "进行中" pill。
+
+**polish 后（A Hybrid 形态，提交于 M2c-2 合并 buffer 期）**：
+- 删除 vertical line + 圆点节点（与详情页其他区块的 dl/section 视觉调性不一；状态信息已由 pill 表达，圆点为冗余——违反 §3.5.1 fewer-but-better）
+- 卡片改 flat-stack `space-y-3`
+- 进行中卡右上角 pill `[派发中]`（`bg-status-active/10 text-status-active`）；已归还卡**不显示 pill**（整卡 muted 色调表达"过去了"，避免重复信息）
+- 抽 `formatCheckoutStatus(checkout)` 纯函数，把 M3 派出类型分化点收敛到一处
+
+**M3 仍待做的清单**（与主 doc §14.8 + spec §10.2 同源）：
 
 - 时间近远渐隐（opacity 分级 ≤90d / ≤180d / 更早）
-- 派出类型染色（与"向外出借"派出类型扩展联动）
-- 超长派发预警（> 90 天未归还，节点加 `Clock` + 警示色）
+- 派出类型染色（与 §14.1 "向外出借"扩展联动；进行中卡片 pill 文字 "派发中" / "出借中"，已归还卡通过 ring 边框色保留派出类型线索）
+- 超长派发预警（> 90 天未归还，节点加 `Clock` + `text-destructive`）
 
-M3 启动时按此清单重构，不要重新讨论。
+M3 启动时按此清单继续重构，不要重新讨论。
 
 ### 3. Dialog 表单用纯 React state（M2c-3 迁 RHF）
 

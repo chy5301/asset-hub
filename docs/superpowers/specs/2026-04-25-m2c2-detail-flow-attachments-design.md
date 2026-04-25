@@ -522,11 +522,9 @@ function CustomFields({ asset, assetType }) {
   {historyQuery.isLoading ? <TimelineSkeleton /> :
    historyQuery.isError ? <ErrorState compact onRetry={...} /> :
    history.length === 0 ? <EmptyState title="暂无流转记录" /> :
-   <ol className="relative pl-6">
-     <div className="absolute left-2 top-2 bottom-2 w-px bg-border" />
+   <ol className="space-y-3">
      {history.map(c => (
-       <li key={c.id} className="relative pb-6 last:pb-0">
-         <Node isCurrent={c.returned_at === null} />
+       <li key={c.id}>
          <Card checkout={c} />
        </li>
      ))}
@@ -535,17 +533,24 @@ function CustomFields({ asset, assetType }) {
 </section>
 ```
 
-**Node 视觉**：
-- 当前派发（`returned_at === null`）：实心圆点，`bg-status-active` (= CTA amber)，`absolute left-1 top-1.5 w-3 h-3 rounded-full`
-- 历史派发：空心圆点，`border-2 border-muted-foreground bg-background`
+**视觉决策（M2c-2 实施期 polish）**：放弃左侧 vertical line + 圆点节点的 timeline 装饰，改纯 flat-stack 卡片。理由：
+1. 详情页其他区块（GeneralFields / CustomFields / AttachmentGrid）都不用此类装饰，单 timeline 用 absolute 定位画线 + 点视觉调性不统一
+2. 圆点的状态分化（实心 vs 空心）与卡片右上角 status pill **重复表达同一件事**——§3.5.1 fewer-but-better 红线
+3. 单资产流转记录典型 1–10 条，"timeline 串联"的视觉语言对小数据集收益不明显
 
-**Card 视觉**：
-- 容器：`rounded-md ring-1 ring-border/60 p-3 space-y-1`，无 shadow
-- 第一行：`<span className="font-medium">{c.holder}</span>` + 若 `c.location` 跟空格分隔显示
-- 第二行：`<time className="font-code text-sm">{formatDate(c.checked_out_at)} → {c.returned_at ? formatDate(c.returned_at) : <Badge variant="outline" className="text-status-active">进行中</Badge>}</time>`
-- 第三行（条件）：`c.checkout_note` 渲染为小字 muted "派发备注：..."；`c.return_note` 渲染为 "归还备注：..."（仅已归还时显示）
+**Card 视觉（A Hybrid 形态）**：
+- 容器：`rounded-md ring-1 ring-border/60 p-3 space-y-1`（进行中）/ `ring-border/40 text-muted-foreground`（已归还，整卡 muted 调性）
+- **进行中卡**右上角 pill `[派发中]`（`bg-status-active/10 text-status-active`）；**已归还卡不显示 pill**——靠卡片整体 muted 色调表达"过去了"，避免重复信息（§3.5.1）
+- 第一行：`<p className="font-medium">{c.holder} <span text-muted>@ {c.location}</span></p>` + 右上 pill
+- 第二行：`<p className="font-code">checked_out → returned_at | —</p>`
+- 第三行（条件）：`派发备注 / 归还备注`
 
-**M3 重构清单**（§10 详述）：本里程碑只做 2 节点形态 + 1 文字标的最简版。
+**`formatCheckoutStatus(checkout)` 纯函数**（位于 `checkout-timeline.tsx`）：
+- 已归还 → `null`（不显示 pill）
+- 进行中 + M2c-2 (kind 字段未引入) → `{ label: "派发中", tone: "active" }`
+- M3 §14.1 接入 kind 字段后单点修改：`c.kind === 'external' ? '出借中' : '派发中'`；已归还卡的派出类型差异通过 ring 边框色保留（M3 详见主 doc §14.8）
+
+**M3 重构清单**（§10.2 + 主 doc §14.8）：本里程碑做了"去节点 + status pill 文字化"两条；剩余的"时间近远渐隐 / 派出类型染色 / 超长派发预警"留 M3。
 
 ### 7.7 CheckoutDialog / ReturnDialog
 

@@ -29,7 +29,7 @@ export const STATUS_META: Record<AssetStatus, StatusMeta> = {
     Icon: Wrench,
   },
   RETIRED: {
-    label: "报废",
+    label: "退役",
     bgVar: "--status-retired",
     fgVar: "--status-retired-fg",
     Icon: MinusCircle,
