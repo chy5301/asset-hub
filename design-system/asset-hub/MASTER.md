@@ -281,3 +281,69 @@ Before delivering any UI code, verify:
 手工烟测通过项（spec 附录 A）：1 (EmptyState) / 3 (URL sync) / 4 (刷新保留筛选) / 5 (改筛选回第 1 页) / 7 (主题切换无闪烁) / 13 (字体审计 `Fira Sans` + `Fira Code`，无 Inter/Roboto/Geist)。
 
 其余项目（backend kill→ErrorState；>2000 条 console.warn；Motion 三时刻 Perf 录制；Lighthouse a11y Score）由 Task 级 review 在实施期逐 Task 已验证，或已在代码路径静态可见（`if (query.isError)` + `<ErrorState onRetry={refetch}>`）。
+
+
+---
+
+## 实施期纠偏（M2c-2，2026-04-25）
+
+`frontend-design` skill 合并前审查（spec §3.3 闸门 ②③）+ Pre-Delivery Checklist 7 项 + 红线扫描 0 命中后回写。M2c-1 纠偏项（后端 `asset_code` / `type_name` 缺口）仍保留；以下是 M2c-2 新增的记录。
+
+### 1. MASTER 显式 override 清单（兑现 spec §3.4.1）
+
+本里程碑对 MASTER 做了以下覆盖，理由已在 spec §3.4.1 记录：
+
+- **`Key Effects: data loading spinners` → 改用按钮文字切换 + 骨架**：mutation pending 时按钮文字切到「派发中…」「归还中…」「删除中…」（来自 `checkout-actions.ts` 常量）；query loading 用 `DetailSkeleton` / `GridSkeleton` / `TimelineSkeleton`。spinner 是 AI-slop 重灾区。
+- **`Modal backdrop-filter: blur(4px)` → 改 `bg-black/50` 不 blur**（dialog.tsx / alert-dialog.tsx Overlay）。glassmorphism overused。
+- **`Card: box-shadow + hover translateY` → 详情页不用 Card 装饰**：所有区块用 `<dl>` / `<ol>` / 自绘 timeline；timeline 卡片仅 `ring-1 ring-border/60` 无 shadow、无 hover 位移。fewer-but-better；hover 位移与 MASTER 自己的 anti-pattern #3 矛盾。
+- **`<Separator>` 未使用**：spec §7.1 决定 `space-y-10` + 各 section `<h2>` 语义分区即可。
+
+### 2. Timeline 视觉当前保留最简 2 节点形态
+
+本里程碑 timeline 节点视觉只区分「当前派发 = 实心高亮圆点（`bg-status-active` token） + 进行中文字标 / 历史 = 空心 muted 圆点」。M3 候选增强清单见 spec §10.2：
+
+- 时间近远渐隐（opacity 分级 ≤90d / ≤180d / 更早）
+- 派出类型染色（与"向外出借"派出类型扩展联动）
+- 超长派发预警（> 90 天未归还，节点加 `Clock` + 警示色）
+
+M3 启动时按此清单重构，不要重新讨论。
+
+### 3. Dialog 表单用纯 React state（M2c-3 迁 RHF）
+
+M2c-2 两个 Dialog（`CheckoutDialog` / `ReturnDialog`）用 `useState` + 手工校验实现，未引入 RHF+Zod。M2c-3 引入 Vitest + RHF + Zod 时，将把这两个 Dialog 迁到 RHF 版本（约半天工作量）。迁移只改表单状态 + 校验层，不动 JSX 骨架 / Toast / mutation hook。
+
+M2c-3 plan 起笔时要求列为独立 Task，避免遗漏。
+
+### 4. `useCheckoutHistoryQuery` 的 `enabled` 守护
+
+列表页 ⋯ 菜单的 `ReturnDialog` 在 `returnRow === null` 时传 `assetId=""`。最初实现会对空字符串发 `/api/assets//history` 请求（404）。Task 17 已修：hook 加 `enabled: !!assetId`。
+
+后续若新增更多"条件拉取"类的 query，遵循此模式。
+
+### 5. `useDeleteAttachmentMutation` 不走 `unwrap`
+
+DELETE 端点返回 204 无 body，`unwrap` 要求 `data` 存在会抛错。hook 内手工处理 `res.error` 即可，不改 `unwrap` 签名。throw 出去的错误对象用 `HttpErrorShape` 类型注解，与 `unwrap` 的抛错形态一致——这样 `isHttpError` / `toFriendlyMessage` 都能正确解析。
+
+若后续新增更多 204 端点，可考虑给 `unwrap` 加一个 `allowEmpty` 选项；但单例不值当。
+
+### 6. 新增运行时依赖：`date-fns`
+
+spec §4.3 起草时误以为 M2c-1 已装 `date-fns`（实际 M2c-1 用的是原生 `Date.toLocaleString`），实施期 Task 4 发现缺漏并补装 `date-fns ^4.1.0`。这是 M2c-2 唯一的新增 npm runtime 依赖（~3kb gzipped 树摇后）。spec §4.3 已同步修正。
+
+### Pre-Delivery Checklist（M2c-2 验证）
+
+- [x] No emojis as icons（全 Lucide SVG：SearchX / Copy / Check / X / Download / Trash2 / FileText / FileImage / File / Paperclip 等）
+- [x] cursor-pointer on clickable elements（shadcn Button 默认；附件缩略图 `<button>` 显式 `cursor-pointer`）
+- [x] Hover transitions smooth 150-300ms（`transition-colors` / `transition-shadow`；无 `transform: scale`）
+- [x] Light mode text contrast 4.5:1（M2c-1 已实测；本里程碑未引入新色变量，沿用 globals.css）
+- [x] Focus states visible for keyboard（globals.css `*:focus-visible` 兜底；Dialog / AlertDialog 默认 focus trap；Input / textarea 显式 `focus-visible:ring-2 focus-visible:ring-ring`）
+- [x] `prefers-reduced-motion` respected（globals.css 媒体查询降级 M2c-1 已设；本里程碑详情页本身不做 stagger，无依赖路径需要降级）
+- [x] Responsive 1024+（max-width 960；<1024 附件宫格自动从 4 列降至 3/2 列；其他区块为单列纵向自然适配）
+
+### 红线扫描结果
+
+`grep -rn "scale-\|animate-spin\|backdrop-blur\|bg-gradient"` 在 M2c-2 新增 17 个文件 + 修改 4 个文件 + 新增 2 个 shadcn 组件内：**0 命中**。
+
+### 手工烟测（spec 附录 A 12 项）
+
+由作者在合并前在浏览器中逐项执行；本静态闸门已通过。
