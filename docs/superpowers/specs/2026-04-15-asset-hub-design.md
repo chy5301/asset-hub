@@ -374,3 +374,41 @@ asset-hub/
 - **SQLModel 维护节奏**：若 2026 下半年仍无 minor feature release，考虑迁 SQLAlchemy 2.x + 独立 Pydantic schema。由于第 3.1 节的隔离约定，迁移代价可控
 - **Tremor**：若推出 Radix/shadcn 原生版本，可再评估是否回迁（目前 shadcn charts 已足够）
 - **openapi-fetch vs hey-api**：实操时择优，两者均与 openapi-typescript 生成的 schema 兼容
+
+## 14. 演进方向 / 候选扩展
+
+**未列入 M3，但已纳入候选**。每条都有明确触发场景，未到时不做。
+
+### 14.1 派出类型扩展（"向外出借"）
+
+**M3 候选**。v1 仅"组内派发"；M3 增加"向外出借"作为派出动作的第二种类型，归还语义统一。
+- 后端：`CheckoutRecord` 加 `kind: enum('internal', 'external')`；`CheckoutCreate` DTO 加 `kind`
+- 前端：`checkout-actions.ts` 升级为 `CHECKOUT_TYPES` 数组；CTA 升级为 split-button；CheckoutDialog 加派出类型 RadioGroup
+- 详情见 M2c-2 spec §10.1
+
+### 14.2 归还时可改 location / holder
+
+**M3 候选**。当前归还语义偏硬——POST `/return` 仅接受 `note`，资产 holder/location 由后端清空。但实际场景中：
+- 归还时位置经常变（"张三工位" → "仓库 A 排第 2 格"）
+- 极端情况 holder 也可能切（资产管理员代收）
+
+改造点：
+- 后端：`CheckoutReturn` DTO 加 `new_location?: str`、`new_holder?: str`（语义为"归还后的资产新位置/新保管人，缺省即清空"）
+- Service 层：`return_()` 接收新参数并落到 Asset 表；CheckoutRecord 仍只记 returned_at + return_note
+- 前端：ReturnDialog 加位置 + 保管人字段（默认沿用当前 location）
+
+### 14.3 IDLE 资产也支持显式 location
+
+与 14.2 联动：仓库内的设备虽然不在派发中，依然有保存位置。当前 `Asset.location` 可以表达，但派发/归还流程清空后无地方维护。需要 14.2 完成 + 加一个独立"修改位置"动作（M3 表单里程碑顺手做）。
+
+### 14.4 人员实体化（People 表）
+
+**独立大里程碑**（拟称 **M5 · 人员实体**）。当前 `Asset.holder` / `CheckoutRecord.holder` 都是 `str`，重名 / 改名 / 联系方式 / 单位 / 部门都没法记。改造为：
+- 新增 `People` 实体：`id` / `name`（必填）/ `contact?` / `org?` / `dept?` / `notes?`
+- `Asset.holder: str` → `Asset.person_id: UUID FK`
+- `CheckoutRecord.holder: str` → `CheckoutRecord.person_id: UUID FK`
+- 派发/归还 Dialog 改 typeahead 选人（搜索 + "新增"内联创建）
+- People CRUD UI（轻量）
+- 现有数据 migration（按 holder 字符串去重 + 自动建 People）
+
+工程量大；放在派出类型扩展（14.1）之后做较合适——14.1 升级了 CheckoutRecord 的 schema，恰好可以同周期顺势引入 person_id。或视情况提前到 M3 后期作为扁平段。
