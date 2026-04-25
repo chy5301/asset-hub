@@ -8,11 +8,13 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { AssetHeader } from "./asset-header";
 import { GeneralFields } from "./general-fields";
 import { CustomFields } from "./custom-fields";
+import { AttachmentGrid } from "./attachment-grid";
 import { CheckoutTimeline } from "./checkout-timeline";
 import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
 import { NotFoundPanel } from "./not-found-panel";
 import { isHttpError } from "@/lib/error";
+import type { components } from "@/api/generated/schema";
 
 interface AssetDetailPageProps {
   id: string;
@@ -31,7 +33,15 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
 
   // Dialog open state（Task 16 接线到 CheckoutDialog / ReturnDialog）
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  void checkoutOpen; // consumed by Task 16
   const [returnOpen, setReturnOpen] = useState(false);
+  void returnOpen; // consumed by Task 16
+
+  // Lightbox state（Task 14 接线到 AttachmentLightbox）
+  const [lightboxAttachment, setLightboxAttachment] = useState<
+    components["schemas"]["AttachmentRead"] | null
+  >(null);
+  void lightboxAttachment; // consumed by Task 14
 
   if (assetQuery.isLoading) return <DetailSkeleton />;
 
@@ -71,12 +81,10 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
         />
         <GeneralFields asset={asset} typeName={typeName} />
         <CustomFields asset={asset} assetType={assetType} />
-        {/* Task 13: AttachmentGrid 占位 */}
-        <div className="text-sm text-muted-foreground">
-          {checkoutOpen ? " / checkout dialog would open" : ""}
-          {returnOpen ? " / return dialog would open" : ""}
-          {attachmentsQuery.isLoading ? " / attachments 加载中" : ""}
-        </div>
+        <AttachmentGrid
+          query={attachmentsQuery}
+          onOpen={(att) => setLightboxAttachment(att)}
+        />
         <CheckoutTimeline query={historyQuery} />
       </main>
     </>
