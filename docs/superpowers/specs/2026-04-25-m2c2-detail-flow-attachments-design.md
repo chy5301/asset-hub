@@ -183,14 +183,14 @@ frontend/src/
 
 ### 4.3 依赖
 
-**不新增任何 npm 依赖**。所需能力 100% 来自 M2c-1 已装：
+**仅 1 个新增 npm 依赖：`date-fns`**。所需其他能力 100% 来自 M2c-1 已装：
 
 - `@tanstack/react-query`（query / mutation）
 - `@tanstack/react-router`（file-based route + UUID params 校验）
 - `openapi-fetch` + 生成的 `schema.d.ts`
 - `lucide-react`（新用 icon：`Trash2 / Download / FileText / FileImage / File / Clock / Check / X`）
 - `sonner`（Toast）
-- `date-fns`（M2c-1 已装，timeline 时间相对化用 `formatDistanceToNow`、custom_field date 用 `format(parseISO, 'yyyy-MM-dd')`）
+- **新增 `date-fns`**（`^4.x`，~3kb gzipped 树摇后）：timeline 用 `format(parseISO, 'yyyy-MM-dd HH:mm')`、custom_field date 用 `format(parseISO, 'yyyy-MM-dd')`。起草本 spec 时误以为 M2c-1 已装（AssetsTable 实际用的是原生 `Date.toLocaleString`），实施期在 Task 4 发现缺漏并补装。这是 M2c-2 **唯一**的新增 runtime 依赖，已在 Task 4 commit 中加入 `package.json` 与 lockfile。
 
 shadcn `dialog / alert-dialog` 通过 `pnpm dlx shadcn@latest add` 引入，引入后必须在同 PR 内审查（§3.5.7）。
 
