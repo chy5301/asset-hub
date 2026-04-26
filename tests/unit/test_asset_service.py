@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -30,6 +31,16 @@ def laptop_type(type_svc: TypeService):
             {"key": "ram_gb", "label": "内存(GB)", "type": "int"},
         ],
     )
+
+
+@pytest.fixture()
+def sample_type_nb(type_svc: TypeService):
+    return type_svc.create_type(name="笔记本电脑", code_prefix="NB", custom_fields=[])
+
+
+@pytest.fixture()
+def sample_type_pj(type_svc: TypeService):
+    return type_svc.create_type(name="投影仪", code_prefix="PJ", custom_fields=[])
 
 
 class TestRegisterAsset:
@@ -144,3 +155,42 @@ class TestDeleteAsset:
     def test_delete_nonexistent_raises(self, svc: AssetService):
         with pytest.raises(NotFoundError):
             svc.delete_asset(uuid4())
+
+
+def test_register_auto_generates_asset_code(session, sample_type_nb):
+    """同 type 多次 register，asset_code 按 prefix-001 / prefix-002 递增"""
+    svc = AssetService(session)
+    a1 = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a2 = svc.register(name="X1 Carbon", type_id=sample_type_nb.id, custom_data={})
+    a3 = svc.register(name="MacBook", type_id=sample_type_nb.id, custom_data={})
+    assert a1.asset_code == "NB-001"
+    assert a2.asset_code == "NB-002"
+    assert a3.asset_code == "NB-003"
+
+
+def test_register_per_type_seq_independent(session, sample_type_nb, sample_type_pj):
+    """不同 type 的 seq 独立"""
+    svc = AssetService(session)
+    a_nb1 = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a_pj1 = svc.register(name="投影仪", type_id=sample_type_pj.id, custom_data={})
+    a_nb2 = svc.register(name="X1 Carbon", type_id=sample_type_nb.id, custom_data={})
+    assert a_nb1.asset_code == "NB-001"
+    assert a_pj1.asset_code == "PJ-001"
+    assert a_nb2.asset_code == "NB-002"
+
+
+def test_register_with_acquired_at(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(
+        name="X1",
+        type_id=sample_type_nb.id,
+        custom_data={},
+        acquired_at=date(2025, 1, 15),
+    )
+    assert a.acquired_at == date(2025, 1, 15)
+
+
+def test_register_acquired_at_optional(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    assert a.acquired_at is None
