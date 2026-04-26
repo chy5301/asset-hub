@@ -133,3 +133,30 @@ def test_get_asset_returns_type_name(client, sample_type_nb_via_api):
     body = get_resp.json()
     assert body["type_name"] == "笔记本电脑"
     assert body["asset_code"].startswith("NB-")
+
+
+def test_delete_asset_cascade(client, sample_type_nb_via_api):
+    create = client.post("/api/assets", json={
+        "name": "X1", "type_id": sample_type_nb_via_api, "custom_data": {},
+    })
+    asset_id = create.json()["id"]
+    client.post(f"/api/assets/{asset_id}/checkout", json={"holder": "张三"})
+    client.post(f"/api/assets/{asset_id}/return", json={})
+
+    resp = client.delete(f"/api/assets/{asset_id}")
+    assert resp.status_code == 204
+
+    # 二次 DELETE → 404
+    resp2 = client.delete(f"/api/assets/{asset_id}")
+    assert resp2.status_code == 404
+
+
+def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
+    resp = client.post("/api/assets", json={
+        "name": "X1", "type_id": sample_type_nb_via_api,
+        "custom_data": {}, "acquired_at": "2025-01-15",
+    })
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["acquired_at"] == "2025-01-15"
+    assert body["asset_code"].startswith("NB-")
