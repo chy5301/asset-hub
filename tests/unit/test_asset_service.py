@@ -194,3 +194,24 @@ def test_register_acquired_at_optional(session, sample_type_nb):
     svc = AssetService(session)
     a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
     assert a.acquired_at is None
+
+
+def test_asset_read_includes_type_name(session, sample_type_nb):
+    from asset_hub.api.schemas.asset import AssetRead
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a_read = AssetRead.model_validate(a)
+    assert a_read.type_name == "笔记本电脑"
+    assert a_read.asset_code == "NB-001"
+
+
+def test_list_assets_each_has_type_name(session, sample_type_nb, sample_type_pj):
+    from asset_hub.api.schemas.asset import AssetRead
+    svc = AssetService(session)
+    svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    svc.register(name="投影仪", type_id=sample_type_pj.id, custom_data={})
+
+    assets = svc.list_assets()
+    reads = [AssetRead.model_validate(a) for a in assets]
+    type_names = {r.type_name for r in reads}
+    assert type_names == {"笔记本电脑", "投影仪"}

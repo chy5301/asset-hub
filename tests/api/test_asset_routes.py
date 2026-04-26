@@ -119,3 +119,17 @@ class TestDeleteAsset:
         from uuid import uuid4
         resp = client.delete(f"/api/assets/{uuid4()}")
         assert resp.status_code == 404
+
+
+def test_get_asset_returns_type_name(client, sample_type_nb_via_api):
+    """通过 API POST 创建 asset，GET 详情 → 响应里 type_name 已填"""
+    create_resp = client.post("/api/assets", json={
+        "name": "X1", "type_id": str(sample_type_nb_via_api), "custom_data": {},
+    })
+    assert create_resp.status_code == 201
+    asset_id = create_resp.json()["id"]
+
+    get_resp = client.get(f"/api/assets/{asset_id}")
+    body = get_resp.json()
+    assert body["type_name"] == "笔记本电脑"
+    assert body["asset_code"].startswith("NB-")
