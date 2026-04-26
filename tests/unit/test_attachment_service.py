@@ -35,7 +35,7 @@ def att_svc(session: Session, storage: LocalFSStorage) -> AttachmentService:
 
 @pytest.fixture()
 def simple_type(type_svc: TypeService):
-    return type_svc.create_type(name="笔记本", custom_fields=[])
+    return type_svc.create_type(name="笔记本", code_prefix="NB", custom_fields=[])
 
 
 @pytest.fixture()

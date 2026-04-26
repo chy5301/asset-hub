@@ -7,9 +7,9 @@ from asset_hub.cli.main import app
 runner = CliRunner()
 
 
-def _define_type(name: str = "笔记本电脑", fields: list | None = None) -> str:
+def _define_type(name: str = "笔记本电脑", code_prefix: str = "NB", fields: list | None = None) -> str:
     """Helper: 创建类型并返回 type_id"""
-    args = ["type", "define", "--name", name, "--json"]
+    args = ["type", "define", "--name", name, "--code-prefix", code_prefix, "--json"]
     if fields:
         args += ["--fields", json.dumps(fields, ensure_ascii=False)]
     r = runner.invoke(app, args)

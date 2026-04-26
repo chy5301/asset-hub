@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 def _create_type_and_asset(client: TestClient) -> str:
-    r = client.post("/api/types", json={"name": "笔记本"})
+    r = client.post("/api/types", json={"name": "笔记本", "code_prefix": "NB"})
     type_id = r.json()["id"]
     r = client.post("/api/assets", json={
         "name": "X1", "type_id": type_id, "custom_data": {},

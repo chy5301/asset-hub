@@ -23,6 +23,7 @@ def svc(session: Session) -> AssetService:
 def laptop_type(type_svc: TypeService):
     return type_svc.create_type(
         name="笔记本电脑",
+        code_prefix="NB",
         custom_fields=[
             {"key": "brand", "label": "品牌", "type": "string", "required": True},
             {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},

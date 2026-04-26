@@ -1,8 +1,13 @@
 from fastapi.testclient import TestClient
 
 
-def _create_type(client: TestClient, name: str = "笔记本电脑", fields: list | None = None) -> str:
-    body = {"name": name}
+def _create_type(
+    client: TestClient,
+    name: str = "笔记本电脑",
+    code_prefix: str = "NB",
+    fields: list | None = None,
+) -> str:
+    body = {"name": name, "code_prefix": code_prefix}
     if fields:
         body["custom_fields"] = fields
     r = client.post("/api/types", json=body)

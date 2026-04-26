@@ -22,6 +22,7 @@ def create_type(
 ):
     return svc.create_type(
         name=body.name,
+        code_prefix=body.code_prefix,
         description=body.description,
         custom_fields=[f.model_dump() for f in body.custom_fields],
     )
