@@ -33,16 +33,6 @@ def laptop_type(type_svc: TypeService):
     )
 
 
-@pytest.fixture()
-def sample_type_nb(type_svc: TypeService):
-    return type_svc.create_type(name="笔记本电脑", code_prefix="NB", custom_fields=[])
-
-
-@pytest.fixture()
-def sample_type_pj(type_svc: TypeService):
-    return type_svc.create_type(name="投影仪", code_prefix="PJ", custom_fields=[])
-
-
 class TestRegisterAsset:
     def test_register_minimal(self, svc: AssetService, laptop_type):
         a = svc.register(
@@ -223,3 +213,39 @@ def test_register_duplicate_serial_number_message(session, sample_type_nb):
     svc.register(name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
     with pytest.raises(DuplicateError, match="序列号"):
         svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+
+
+def test_change_status_idle_to_maintenance(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a2 = svc.change_status(a.id, AssetStatus.MAINTENANCE)
+    assert a2.status == AssetStatus.MAINTENANCE
+
+
+def test_change_status_in_use_to_maintenance_raises(session, sample_type_nb):
+    """spec D14: IN_USE 状态下要任何状态切换必须先归还"""
+    from asset_hub.errors import ValidationError
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a.status = AssetStatus.IN_USE
+    session.commit()
+    with pytest.raises(ValidationError, match="IN_USE.*MAINTENANCE"):
+        svc.change_status(a.id, AssetStatus.MAINTENANCE)
+
+
+def test_delete_asset_cascade_checkout_records(session, sample_type_nb):
+    """删除 asset 时同事务删 CheckoutRecord"""
+    from asset_hub.repositories.checkout import CheckoutRepository
+    from asset_hub.services.checkout import CheckoutService
+    svc = AssetService(session)
+    cs = CheckoutService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    cs.checkout(asset_id=a.id, holder="张三")
+    cs.return_(asset_id=a.id)
+    cs.checkout(asset_id=a.id, holder="李四")
+    cs.return_(asset_id=a.id)
+    repo = CheckoutRepository(session)
+    assert len(repo.list_by_asset(a.id)) == 2
+
+    svc.delete_asset(a.id)
+    assert len(repo.list_by_asset(a.id)) == 0

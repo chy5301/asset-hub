@@ -174,3 +174,19 @@ class TestHistory:
     ):
         with pytest.raises(NotFoundError):
             checkout_svc.history(asset_id=uuid4())
+
+
+def test_checkout_maintains_current_checkout_id(session, sample_type_nb):
+    from asset_hub.services.asset import AssetService
+    from asset_hub.services.checkout import CheckoutService
+    asvc = AssetService(session)
+    csvc = CheckoutService(session)
+    a = asvc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+
+    rec = csvc.checkout(asset_id=a.id, holder="张三")
+    a_refresh = asvc.get_asset(a.id)
+    assert a_refresh.current_checkout_id == rec.id
+
+    csvc.return_(asset_id=a.id)
+    a_refresh = asvc.get_asset(a.id)
+    assert a_refresh.current_checkout_id is None
