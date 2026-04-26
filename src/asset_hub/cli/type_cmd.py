@@ -20,7 +20,7 @@ type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=T
 @type_app.command("define")
 def type_define(
     name: Annotated[str | None, typer.Option(help="类型名称")] = None,
-    code_prefix: Annotated[str | None, typer.Option("--code-prefix", help="资产编号前缀（2-4 个大写字母，如 NB / GPU）")] = None,
+    prefix: Annotated[str | None, typer.Option("--prefix", help="编号前缀（2-4 大写字母，如 NB）")] = None,
     description: Annotated[str | None, typer.Option(help="类型描述")] = None,
     fields: Annotated[str | None, typer.Option(help="自定义字段 JSON 数组")] = None,
     from_file: Annotated[Path | None, typer.Option("--from", help="JSON schema 文件路径")] = None,
@@ -30,7 +30,7 @@ def type_define(
     if from_file is not None:
         schema = json.loads(from_file.read_text(encoding="utf-8"))
         name = schema["name"]
-        code_prefix = schema.get("code_prefix", code_prefix)
+        prefix = schema.get("code_prefix") or schema.get("prefix") or prefix
         description = schema.get("description")
         custom_fields = schema.get("custom_fields", [])
     elif name is not None:
@@ -38,14 +38,14 @@ def type_define(
     else:
         print_error("必须提供 --name 或 --from", json_output, exit_code=2)
 
-    if not code_prefix:
-        print_error("必须提供 --code-prefix（或在 --from JSON 中包含 code_prefix）", json_output, exit_code=2)
+    if not prefix:
+        print_error("必须提供 --prefix（2-4 大写字母）", json_output, exit_code=2)
 
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
         t = svc.create_type(
             name=name,
-            code_prefix=code_prefix,
+            code_prefix=prefix,
             description=description,
             custom_fields=custom_fields,
         )

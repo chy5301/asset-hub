@@ -9,7 +9,7 @@ runner = CliRunner()
 
 def _define_type(name: str = "笔记本电脑", code_prefix: str = "NB", fields: list | None = None) -> str:
     """Helper: 创建类型并返回 type_id"""
-    args = ["type", "define", "--name", name, "--code-prefix", code_prefix, "--json"]
+    args = ["type", "define", "--name", name, "--prefix", code_prefix, "--json"]
     if fields:
         args += ["--fields", json.dumps(fields, ensure_ascii=False)]
     r = runner.invoke(app, args)
@@ -55,6 +55,57 @@ class TestAssetRegister:
             "--json",
         ])
         assert result.exit_code == 3
+
+
+class TestAssetRegisterAcquiredAt:
+    def test_register_with_acquired_at(self):
+        type_id = _define_type()
+        result = runner.invoke(app, [
+            "asset", "register",
+            "--name", "X1",
+            "--type-id", type_id,
+            "--acquired-at", "2025-01-15",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["acquired_at"] == "2025-01-15"
+        assert body["data"]["asset_code"].startswith("NB-")
+
+
+class TestAssetChangeStatus:
+    def test_change_status_to_maintenance(self):
+        type_id = _define_type()
+        create = runner.invoke(app, [
+            "asset", "register",
+            "--name", "X1", "--type-id", type_id,
+            "--json",
+        ])
+        asset_id = json.loads(create.stdout)["data"]["id"]
+
+        resp = runner.invoke(app, [
+            "asset", "change-status", asset_id,
+            "--to", "MAINTENANCE",
+            "--json",
+        ])
+        assert resp.exit_code == 0
+        assert json.loads(resp.stdout)["data"]["status"] == "MAINTENANCE"
+
+    def test_change_status_illegal_returns_exit_1(self):
+        type_id = _define_type()
+        create = runner.invoke(app, [
+            "asset", "register",
+            "--name", "X1", "--type-id", type_id,
+            "--json",
+        ])
+        asset_id = json.loads(create.stdout)["data"]["id"]
+        runner.invoke(app, ["asset", "change-status", asset_id, "--to", "RETIRED", "--json"])
+        resp = runner.invoke(app, ["asset", "change-status", asset_id, "--to", "IN_USE", "--json"])
+        assert resp.exit_code == 1
+        body = json.loads(resp.stdout)
+        assert body["success"] is False
+        assert "不允许" in body["error"]
 
 
 class TestAssetList:

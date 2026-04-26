@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from typing import Annotated
 
 import typer
@@ -28,11 +29,13 @@ def asset_register(
     location: Annotated[str | None, typer.Option(help="位置")] = None,
     notes: Annotated[str | None, typer.Option(help="备注")] = None,
     custom: Annotated[str | None, typer.Option(help="自定义字段 JSON")] = None,
+    acquired_at: Annotated[str | None, typer.Option("--acquired-at", help="入账日期 YYYY-MM-DD")] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """登记新资产。"""
     uid = parse_uuid(type_id, json_output)
     custom_data = json.loads(custom) if custom else {}
+    parsed_date = date.fromisoformat(acquired_at) if acquired_at else None
 
     with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
@@ -44,7 +47,28 @@ def asset_register(
             location=location,
             notes=notes,
             custom_data=custom_data,
+            acquired_at=parsed_date,
         )
+    print_result(to_json_dict(AssetRead, a), json_output)
+
+
+@asset_app.command("change-status")
+def asset_change_status(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    to: Annotated[str, typer.Option("--to", help="目标状态：IDLE/IN_USE/MAINTENANCE/RETIRED")],
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """切换资产状态（送修/修好回库/退役/重新启用）。
+
+    派发/归还请用 `asset checkout` / `asset return`——它们会写流转记录；
+    本命令仅适合 §14.5 的 4 个轻量切换。
+    """
+    uid = parse_uuid(asset_id, json_output)
+    parsed_status = parse_enum(AssetStatus, to, json_output)
+
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = AssetService(session)
+        a = svc.change_status(uid, parsed_status)
     print_result(to_json_dict(AssetRead, a), json_output)
 
 

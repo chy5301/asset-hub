@@ -9,7 +9,7 @@ runner = CliRunner()
 
 
 def _define_type_and_asset() -> tuple[str, str]:
-    r = runner.invoke(app, ["type", "define", "--name", "笔记本", "--code-prefix", "NB", "--json"])
+    r = runner.invoke(app, ["type", "define", "--name", "笔记本", "--prefix", "NB", "--json"])
     type_id = json.loads(r.stdout)["data"]["id"]
     r = runner.invoke(app, [
         "asset", "register", "--name", "X1", "--type-id", type_id, "--json",
