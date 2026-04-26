@@ -215,3 +215,11 @@ def test_list_assets_each_has_type_name(session, sample_type_nb, sample_type_pj)
     reads = [AssetRead.model_validate(a) for a in assets]
     type_names = {r.type_name for r in reads}
     assert type_names == {"笔记本电脑", "投影仪"}
+
+
+def test_register_duplicate_serial_number_message(session, sample_type_nb):
+    """SN 重复时错误消息应该是'序列号重复'，不该被误读为'asset_code 撞车'"""
+    svc = AssetService(session)
+    svc.register(name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+    with pytest.raises(DuplicateError, match="序列号"):
+        svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")

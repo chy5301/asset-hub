@@ -9,6 +9,7 @@ from asset_hub.errors import DuplicateError, NotFoundError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
+from asset_hub.services.state_machine import assert_transition_allowed
 from asset_hub.services.validation import validate_custom_data
 
 
@@ -59,8 +60,12 @@ class AssetService:
             self.session.commit()
         except IntegrityError as e:
             self.session.rollback()
-            msg = str(e).lower()
-            if "asset_code" in msg:
+            orig_msg = (
+                str(e.orig.args[0]).lower()
+                if e.orig and e.orig.args
+                else str(e).lower()
+            )
+            if "asset_code" in orig_msg:
                 # 极小概率：同 type 极高并发，两个 register 各自 max+1 算到同一值
                 raise DuplicateError(f"asset_code 撞车（请重试）: {asset_code}") from None
             raise DuplicateError(f"序列号重复: {serial_number}") from None
@@ -124,13 +129,7 @@ class AssetService:
         if not isinstance(serial_number, _Unset):
             a.serial_number = serial_number
         if status is not None:
-            # state_machine 是 Task 5 才创建的模块；用 try-import 兜底，让本 Task 不阻塞
-            try:
-                from asset_hub.services.state_machine import assert_transition_allowed
-
-                assert_transition_allowed(a.status, status)
-            except ImportError:
-                pass  # Task 5 落地后这条 import 会成功，自动生效
+            assert_transition_allowed(a.status, status)
             a.status = status
         if not isinstance(holder, _Unset):
             a.holder = holder
@@ -147,6 +146,8 @@ class AssetService:
         try:
             self.session.commit()
         except IntegrityError:
+            # update_asset 不改 asset_code（register 才生成），SN 是唯一 unique 约束
+            # 故无需像 register 那样嗅探 e.orig.args[0]
             self.session.rollback()
             raise DuplicateError(f"序列号重复: {serial_number}") from None
         self.session.refresh(a)
