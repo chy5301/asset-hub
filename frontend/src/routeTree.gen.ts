@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AssetsNewRouteImport } from './routes/assets.new'
 import { Route as AssetsIdRouteImport } from './routes/assets.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssetsNewRoute = AssetsNewRouteImport.update({
+  id: '/assets/new',
+  path: '/assets/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssetsIdRoute = AssetsIdRouteImport.update({
@@ -26,27 +32,31 @@ const AssetsIdRoute = AssetsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets/$id': typeof AssetsIdRoute
+  '/assets/new': typeof AssetsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assets/$id': typeof AssetsIdRoute
+  '/assets/new': typeof AssetsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assets/$id': typeof AssetsIdRoute
+  '/assets/new': typeof AssetsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/assets/$id'
+  fullPaths: '/' | '/assets/$id' | '/assets/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/assets/$id'
-  id: '__root__' | '/' | '/assets/$id'
+  to: '/' | '/assets/$id' | '/assets/new'
+  id: '__root__' | '/' | '/assets/$id' | '/assets/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsIdRoute: typeof AssetsIdRoute
+  AssetsNewRoute: typeof AssetsNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assets/new': {
+      id: '/assets/new'
+      path: '/assets/new'
+      fullPath: '/assets/new'
+      preLoaderRoute: typeof AssetsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assets/$id': {
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsIdRoute: AssetsIdRoute,
+  AssetsNewRoute: AssetsNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
