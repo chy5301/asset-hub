@@ -9,6 +9,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
 import { CheckoutDialog } from "@/features/assets/detail/checkout-dialog";
 import { deriveCurrentCheckout } from "@/features/assets/detail/current-checkout";
+import { DeleteAssetAlert } from "@/features/assets/detail/delete-asset-alert";
 import { ReturnDialog } from "@/features/assets/detail/return-dialog";
 import { AssetsFilters } from "@/features/assets/list/assets-filters";
 import { AssetsPagination } from "@/features/assets/list/assets-pagination";
@@ -34,13 +35,11 @@ function AssetListPage() {
   // Dialog state for ⋯ menu actions
   const [checkoutRow, setCheckoutRow] = useState<AssetRow | null>(null);
   const [returnRow, setReturnRow] = useState<AssetRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<AssetRow | null>(null);
 
   const handleCheckout = useCallback((row: AssetRow) => setCheckoutRow(row), []);
   const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
-  const handleDelete = useCallback((row: AssetRow) => {
-    // TODO(Task 22): 接通 DeleteAssetAlert；当前 Task 13 仅占位 prop
-    console.log("delete asset:", row.id);
-  }, []);
+  const handleDelete = useCallback((row: AssetRow) => setDeleteRow(row), []);
 
   // 当 ReturnDialog 打开时挂 history query 以推导 currentCheckout
   const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id ?? "");
@@ -91,6 +90,17 @@ function AssetListPage() {
         assetId={returnRow?.id ?? ""}
         currentCheckout={currentCheckoutForReturn}
       />
+      {deleteRow && (
+        <DeleteAssetAlert
+          open
+          onOpenChange={(o) => !o && setDeleteRow(null)}
+          asset={{
+            id: deleteRow.id,
+            name: deleteRow.name,
+            asset_code: deleteRow.asset_code,
+          }}
+        />
+      )}
     </>
   );
 
