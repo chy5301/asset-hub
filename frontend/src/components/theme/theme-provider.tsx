@@ -1,26 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
-type Resolved = "light" | "dark";
 
 interface ThemeCtx {
   theme: Theme;
-  resolved: Resolved;
   setTheme: (t: Theme) => void;
 }
 
 const STORAGE_KEY = "asset-hub.theme";
 const Ctx = createContext<ThemeCtx | null>(null);
 
-function computeResolved(theme: Theme): Resolved {
-  if (theme === "system") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return theme;
-}
-
-function applyClass(resolved: Resolved) {
-  document.documentElement.classList.toggle("dark", resolved === "dark");
+function applyClass(theme: Theme) {
+  const dark =
+    theme === "dark" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.classList.toggle("dark", dark);
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -29,18 +24,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return (stored === "dark" || stored === "light" || stored === "system" ? stored : "light") as Theme;
   });
 
-  const [resolved, setResolved] = useState<Resolved>(() => computeResolved(theme));
-
-  // 首次挂载：同步一次 class（防闪烁脚本已处理首屏，这里保障 React 水合后一致）
+  // 主题变化时同步 html.dark；system 模式下额外监听系统切换
+  // 防闪烁脚本已处理首屏，这里保障 React 水合后一致
   useEffect(() => {
-    applyClass(resolved);
-  }, [resolved]);
-
-  // system 模式监听系统变化
-  useEffect(() => {
+    applyClass(theme);
     if (theme !== "system") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setResolved(mq.matches ? "dark" : "light");
+    const onChange = () => applyClass("system");
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
@@ -48,10 +38,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
     localStorage.setItem(STORAGE_KEY, next);
-    setResolved(computeResolved(next));
   }, []);
 
-  const value = useMemo<ThemeCtx>(() => ({ theme, resolved, setTheme }), [theme, resolved, setTheme]);
+  const value = useMemo<ThemeCtx>(() => ({ theme, setTheme }), [theme, setTheme]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

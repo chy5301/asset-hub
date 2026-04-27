@@ -47,24 +47,23 @@ const ALL_KEYS: ColumnKey[] = [
 ];
 const DEFAULT_HIDDEN: Set<ColumnKey> = new Set(["acquired_at"]);
 
+function loadStored(): Partial<Record<ColumnKey, boolean>> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function useColumnVisibility() {
   const [visible, setVisible] = useState<Record<ColumnKey, boolean>>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>;
-        return Object.fromEntries(
-          ALL_KEYS.map((k) => [
-            k,
-            parsed[k] !== undefined ? parsed[k] : !DEFAULT_HIDDEN.has(k),
-          ]),
-        ) as Record<ColumnKey, boolean>;
-      }
-    } catch {
-      // fall through to default
-    }
+    const stored = loadStored();
     return Object.fromEntries(
-      ALL_KEYS.map((k) => [k, !DEFAULT_HIDDEN.has(k)]),
+      ALL_KEYS.map((k) => [
+        k,
+        stored[k] !== undefined ? stored[k] : !DEFAULT_HIDDEN.has(k),
+      ]),
     ) as Record<ColumnKey, boolean>;
   });
 

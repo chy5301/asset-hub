@@ -41,8 +41,8 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   const typesQuery = useAssetTypesQuery();
 
   const currentCheckout = useMemo(
-    () => deriveCurrentCheckout(historyQuery.data),
-    [historyQuery.data],
+    () => deriveCurrentCheckout(historyQuery.data, assetQuery.data?.current_checkout_id),
+    [historyQuery.data, assetQuery.data?.current_checkout_id],
   );
 
   const [checkoutOpen, setCheckoutOpen] = useState(false);

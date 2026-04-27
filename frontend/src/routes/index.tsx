@@ -41,10 +41,11 @@ function AssetListPage() {
   const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
   const handleDelete = useCallback((row: AssetRow) => setDeleteRow(row), []);
 
-  // 当 ReturnDialog 打开时挂 history query 以推导 currentCheckout
-  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id ?? "");
+  // 当 ReturnDialog 打开时挂 history query 以拿到 holder/checked_out_at 等回填字段
+  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id);
   const currentCheckoutForReturn = deriveCurrentCheckout(
-    returnRow ? returnHistoryQuery.data : undefined,
+    returnHistoryQuery.data,
+    returnRow?.current_checkout_id,
   );
 
   useEffect(() => {
@@ -120,7 +121,12 @@ function AssetListPage() {
       return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
     }
     if (!query.data || query.data.length === 0) {
-      return <EmptyState />;
+      return (
+        <EmptyState
+          title="暂无资产"
+          description="还没有登记任何资产。可以通过 CLI 登记：asset-hub asset register"
+        />
+      );
     }
 
     const rows = query.data as AssetRow[];

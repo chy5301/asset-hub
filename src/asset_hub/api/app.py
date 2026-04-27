@@ -3,7 +3,27 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from asset_hub.api.routers import assets, attachments, checkouts, types
-from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
+from asset_hub.errors import (
+    AssetHubError,
+    DuplicateError,
+    NotFoundError,
+    StateError,
+    ValidationError,
+)
+
+_EXC_STATUS: dict[type[AssetHubError], int] = {
+    NotFoundError: 404,
+    DuplicateError: 409,
+    StateError: 409,
+    ValidationError: 422,
+}
+
+
+def _make_handler(status: int):
+    async def handler(request: Request, exc: Exception):
+        return JSONResponse(status_code=status, content={"detail": str(exc)})
+
+    return handler
 
 
 def create_app() -> FastAPI:
@@ -13,21 +33,8 @@ def create_app() -> FastAPI:
     app.include_router(checkouts.router, prefix="/api/assets", tags=["checkouts"])
     app.include_router(attachments.router, prefix="/api", tags=["attachments"])
 
-    @app.exception_handler(NotFoundError)
-    async def not_found_handler(request: Request, exc: NotFoundError):
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-    @app.exception_handler(DuplicateError)
-    async def duplicate_handler(request: Request, exc: DuplicateError):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    @app.exception_handler(StateError)
-    async def state_handler(request: Request, exc: StateError):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    @app.exception_handler(ValidationError)
-    async def validation_handler(request: Request, exc: ValidationError):
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
+    for exc_cls, status in _EXC_STATUS.items():
+        app.add_exception_handler(exc_cls, _make_handler(status))
 
     return app
 

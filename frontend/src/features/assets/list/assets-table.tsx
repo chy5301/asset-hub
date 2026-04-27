@@ -43,6 +43,7 @@ export interface AssetRow {
   location?: string | null;
   updated_at: string;
   acquired_at?: string | null;
+  current_checkout_id?: string | null;
 }
 
 interface AssetsTableProps {

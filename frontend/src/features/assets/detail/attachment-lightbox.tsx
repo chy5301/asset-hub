@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteAttachmentMutation } from "@/api/hooks/attachments";
 import { toFriendlyMessage } from "@/lib/error";
 import { formatDateTime } from "@/lib/date";
-import { DELETE_ATTACHMENT_PENDING_TEXT } from "./checkout-actions";
+import { PENDING_TEXT } from "@/features/assets/form/form-toast";
 import type { components } from "@/api/generated/schema";
 
 type AttachmentRead = components["schemas"]["AttachmentRead"];
@@ -36,19 +36,21 @@ export function AttachmentLightbox({
   onClose,
 }: AttachmentLightboxProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
   const deleteMutation = useDeleteAttachmentMutation();
+  const { reset: resetDelete } = deleteMutation;
 
-  // 切换附件时清理上一条遗留的错误（也覆盖成功删除→重开 lightbox 的场景）
+  // 切换附件时把上一条 mutation 错误一并 reset（覆盖删除失败后切换到下一附件场景）
   useEffect(() => {
-    setDeleteError("");
-  }, [attachment?.id]);
+    resetDelete();
+  }, [attachment?.id, resetDelete]);
 
   const open = attachment !== null;
+  const deleteError = deleteMutation.error
+    ? toFriendlyMessage(deleteMutation.error)
+    : null;
 
   async function handleDelete() {
     if (!attachment) return;
-    setDeleteError("");
     try {
       await deleteMutation.mutateAsync({
         attachmentId: attachment.id,
@@ -56,8 +58,8 @@ export function AttachmentLightbox({
       });
       setConfirmOpen(false);
       onClose();
-    } catch (err) {
-      setDeleteError(toFriendlyMessage(err));
+    } catch {
+      // 错误展示由 deleteMutation.error 渲染；mutateAsync 仍需 catch 防 Unhandled promise rejection
     }
   }
 
@@ -117,7 +119,7 @@ export function AttachmentLightbox({
         open={confirmOpen}
         onOpenChange={(v) => {
           setConfirmOpen(v);
-          if (!v) setDeleteError("");
+          if (!v) deleteMutation.reset();
         }}
       >
         <AlertDialogContent>
@@ -141,9 +143,7 @@ export function AttachmentLightbox({
               }}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending
-                ? DELETE_ATTACHMENT_PENDING_TEXT
-                : "确认删除"}
+              {deleteMutation.isPending ? PENDING_TEXT.DELETE : "确认删除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
