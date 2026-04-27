@@ -9,8 +9,7 @@ interface CopyableTextProps {
 }
 
 /**
- * 标识符类长字符串的复制 UI（SN / 资产 ID / 未来 asset_code 等）。
- * 复制成功后 1500ms 内 icon 暂态切换为 Check 反馈。
+ * 标识符类长字符串的复制 UI（SN / 资产 ID / asset_code 等）。
  */
 export function CopyableText({ value, toastLabel }: CopyableTextProps) {
   const [copied, setCopied] = useState(false);
