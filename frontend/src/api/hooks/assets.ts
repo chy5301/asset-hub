@@ -90,3 +90,22 @@ export function useAssetDetailQuery(id: string) {
     // 404 靠 errorComponent / isError 分支处理，不在此重试
   });
 }
+
+export function useChangeAssetStatusMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (toStatus: components["schemas"]["AssetStatus"]) => {
+      const res = await http.PATCH("/api/assets/{asset_id}", {
+        params: { path: { asset_id: id } },
+        body: { status: toStatus },
+      });
+      return unwrap(res);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.assets.all });
+      qc.invalidateQueries({ queryKey: qk.assets.detail(id) });
+      qc.invalidateQueries({ queryKey: qk.assets.history(id) });
+    },
+    // toast 由调用方控制（StateChangeAlert）
+  });
+}
