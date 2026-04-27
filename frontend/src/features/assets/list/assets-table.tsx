@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   flexRender,
@@ -299,8 +299,9 @@ function RowActions({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          {/* TODO(Task 19): 接通 typed route <Link to="/assets/$id/edit"> */}
-          <a href={`/assets/${row.id}/edit`}>编辑</a>
+          <Link to="/assets/$id/edit" params={{ id: row.id }}>
+            编辑
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onCheckout(row)}
