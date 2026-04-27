@@ -111,6 +111,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
         <AttachmentGrid
           query={attachmentsQuery}
           onOpen={(att) => setLightboxAttachment(att)}
+          assetId={asset.id}
         />
         <CheckoutTimeline query={historyQuery} />
       </main>
