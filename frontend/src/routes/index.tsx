@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAssetsQuery } from "@/api/hooks/assets";
 import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -64,7 +66,16 @@ function AssetListPage() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AssetsFilters search={search} />
-          <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+          <div className="flex items-center gap-2">
+            <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+            {/* TODO(Task 19): /assets/new 路由建好后改 <Link to="/assets/new"> */}
+            <a href="/assets/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                登记资产
+              </Button>
+            </a>
+          </div>
         </div>
 
         {renderBody()}
