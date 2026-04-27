@@ -7,7 +7,7 @@ export function BoolField({ def, control }: { def: FieldDef; control: Control })
   return (
     <FormField
       control={control}
-      name={def.key}
+      name={`custom_data.${def.key}`}
       render={({ field }) => (
         <FormItem className="flex flex-row items-start gap-3 space-y-0">
           <FormControl>

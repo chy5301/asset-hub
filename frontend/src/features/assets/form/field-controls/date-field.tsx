@@ -13,7 +13,7 @@ export function DateField({ def, control }: { def: FieldDef; control: Control })
   return (
     <FormField
       control={control}
-      name={def.key}
+      name={`custom_data.${def.key}`}
       render={({ field }) => (
         <FormItem className="flex flex-col">
           <FormLabel>

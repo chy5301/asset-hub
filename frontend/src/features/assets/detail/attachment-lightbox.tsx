@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, Trash2, X } from "lucide-react";
 import {
   Dialog,
@@ -104,11 +104,7 @@ export function AttachmentLightbox({
           </div>
 
           {isImage ? (
-            <img
-              src={contentUrl}
-              alt={attachment.original_name}
-              className="max-h-[90vh] w-auto object-contain"
-            />
+            <ZoomableImage src={contentUrl} alt={attachment.original_name} key={attachment.id} />
           ) : (
             <MetadataPanel att={attachment} contentUrl={contentUrl} />
           )}
@@ -149,6 +145,84 @@ export function AttachmentLightbox({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 8;
+
+function ZoomableImage({ src, alt }: { src: string; alt: string }) {
+  const [scale, setScale] = useState(1);
+  const [tx, setTx] = useState(0);
+  const [ty, setTy] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = e.clientX - rect.left - rect.width / 2;
+    const cy = e.clientY - rect.top - rect.height / 2;
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+    if (next === scale) return;
+    // 围绕鼠标位置缩放：保持 (cx,cy) 在世界坐标中不变
+    const ratio = next / scale;
+    setTx((prev) => cx - (cx - prev) * ratio);
+    setTy((prev) => cy - (cy - prev) * ratio);
+    setScale(next);
+  }
+
+  function handleDoubleClick() {
+    setScale(1);
+    setTx(0);
+    setTy(0);
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (scale === 1) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, y: e.clientY, tx, ty };
+    setDragging(true);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    setTx(dragRef.current.tx + (e.clientX - dragRef.current.x));
+    setTy(dragRef.current.ty + (e.clientY - dragRef.current.y));
+  }
+
+  function handlePointerUp() {
+    dragRef.current = null;
+    setDragging(false);
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex h-[90vh] w-full items-center justify-center overflow-hidden bg-black/5 select-none"
+      onWheel={handleWheel}
+      onDoubleClick={handleDoubleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{ cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in" }}
+      aria-label="可缩放图片：滚轮缩放，双击重置，缩放后可拖拽"
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        className="max-h-[90vh] w-auto object-contain pointer-events-none"
+        style={{ transform: `translate(${tx}px, ${ty}px) scale(${scale})`, transformOrigin: "center center" }}
+      />
+      <div className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 font-code text-xs text-white">
+        {Math.round(scale * 100)}%
+      </div>
+    </div>
   );
 }
 

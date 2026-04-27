@@ -74,9 +74,11 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
             派发于 ·{' '}
             <time className="font-code">{formatDateTime(currentCheckout.checked_out_at)}</time>
           </div>
-        ) : (
+        ) : mutation.isIdle ? (
+          // 仅在用户尚未提交时提示；mutation success/pending 期间不渲染——
+          // 否则成功后 currentCheckout 因 invalidate 变 null，dialog 关闭前会一闪 banner
           <InlineErrorBanner message="此资产当前无派发中记录，请刷新页面。" />
-        )}
+        ) : null}
 
         {form.formState.errors.root && (
           <InlineErrorBanner message={String(form.formState.errors.root.message)} />

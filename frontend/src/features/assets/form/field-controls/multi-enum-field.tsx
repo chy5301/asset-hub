@@ -17,7 +17,7 @@ export function MultiEnumField({ def, control }: { def: FieldDef; control: Contr
   return (
     <FormField
       control={control}
-      name={def.key}
+      name={`custom_data.${def.key}`}
       render={({ field }) => {
         const value: string[] = field.value ?? [];
         const toggle = (opt: string) =>

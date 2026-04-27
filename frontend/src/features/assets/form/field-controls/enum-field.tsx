@@ -12,7 +12,7 @@ export function EnumField({ def, control }: { def: FieldDef; control: Control })
   return (
     <FormField
       control={control}
-      name={def.key}
+      name={`custom_data.${def.key}`}
       render={({ field }) => (
         <FormItem>
           <FormLabel>

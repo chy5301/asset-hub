@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   flexRender,
@@ -286,6 +286,7 @@ function RowActions({
   onReturn: (row: AssetRow) => void;
   onDelete: (row: AssetRow) => void;
 }) {
+  const navigate = useNavigate();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -298,11 +299,18 @@ function RowActions({
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link to="/assets/$id/edit" params={{ id: row.id }}>
-            编辑
-          </Link>
+      <DropdownMenuContent
+        align="end"
+        // Radix Portal 渲染：菜单项点击仍沿 React 父链冒泡到 <tr onClick>，
+        // 否则点「编辑」会同时触发行点击导航到详情页
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenuItem
+          onSelect={() =>
+            navigate({ to: "/assets/$id/edit", params: { id: row.id } })
+          }
+        >
+          编辑
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onCheckout(row)}

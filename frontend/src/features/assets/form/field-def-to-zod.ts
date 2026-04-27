@@ -16,12 +16,16 @@ import type { FieldDef } from './types';
  *
  * unit 字段不参与校验（仅显示）。
  */
-export function fieldDefsToZodSchema(defs: FieldDef[]): z.ZodObject<z.ZodRawShape> {
+export function fieldDefsToZodSchema(defs: FieldDef[]) {
   const shape: z.ZodRawShape = {};
   for (const def of defs) {
     shape[def.key] = buildFieldSchema(def);
   }
-  return z.object(shape);
+  // passthrough：useForm 初始用 buildCreateSchema([])，但用户随后填进的
+  // custom_data.* 来自 selectedType 的 fieldDefs。z.object({}) 默认 strip 会把
+  // 这些值剥掉，导致 onSubmit 二次校验时 brand 等必填字段已变空 → 卡死。
+  // 真正校验在 asset-create-form.onSubmit 里再用最新 fieldDefs 跑一遍。
+  return z.object(shape).passthrough();
 }
 
 function buildFieldSchema(def: FieldDef): z.ZodTypeAny {

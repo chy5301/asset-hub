@@ -61,12 +61,21 @@ export function AssetEditForm() {
     }
   }, [asset, form]);
 
+  function onInvalid() {
+    form.setError('root', { message: '请检查表单中标红的字段' });
+    requestAnimationFrame(() => {
+      const el = document.querySelector('[aria-invalid="true"]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
   async function onSubmit(values: EditFormValues) {
     const parsed = editSchema.safeParse(values);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         form.setError(issue.path.join('.') as never, { message: issue.message });
       }
+      onInvalid();
       return;
     }
     try {
@@ -100,7 +109,7 @@ export function AssetEditForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-10">
           <AssetFormFields
             control={form.control as unknown as Control}
             types={types}

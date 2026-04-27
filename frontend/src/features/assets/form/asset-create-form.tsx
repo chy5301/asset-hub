@@ -57,6 +57,16 @@ export function AssetCreateForm() {
     form.clearErrors();
   }, [selectedType, form]);
 
+  function onInvalid() {
+    // 用户漏填必填字段（如 type_id / name）时，react-hook-form 内部 zodResolver
+    // 已 setError 到字段；这里补一条顶部 banner，否则按钮看似哑火
+    form.setError('root', { message: '请检查表单中标红的字段' });
+    requestAnimationFrame(() => {
+      const el = document.querySelector('[aria-invalid="true"]');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
   async function onSubmit(values: CreateFormValues) {
     const fieldDefs = (selectedType?.custom_fields ?? []) as FieldDef[];
     const schema = buildCreateSchema(fieldDefs);
@@ -67,6 +77,7 @@ export function AssetCreateForm() {
         const path = issue.path.join('.');
         form.setError(path as never, { message: issue.message });
       }
+      onInvalid();
       return;
     }
     try {
@@ -117,7 +128,7 @@ export function AssetCreateForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-10">
           <AssetFormFields control={form.control as unknown as Control} types={types} mode="create" />
 
           <div className="flex justify-end gap-3 border-t pt-6">

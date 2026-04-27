@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,6 +103,7 @@ function ActionArea({
 }) {
   const status = asset.status;
   const stateChanges = availableStateChanges(status);
+  const navigate = useNavigate();
 
   return (
     <div className="flex items-center gap-2">
@@ -148,10 +149,12 @@ function ActionArea({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link to="/assets/$id/edit" params={{ id: asset.id }}>
-              编辑
-            </Link>
+          <DropdownMenuItem
+            onSelect={() =>
+              navigate({ to: "/assets/$id/edit", params: { id: asset.id } })
+            }
+          >
+            编辑
           </DropdownMenuItem>
 
           {/* 需确认的状态切换项（IDLE/MAINTENANCE 状态下的「退役」；reactivate 已在主按钮位置） */}
