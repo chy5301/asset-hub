@@ -15,7 +15,7 @@ export function NotFoundPanel() {
           它可能已被删除，或链接有误。
         </p>
       </div>
-      <Link to="/" search={{ page: 1, pageSize: 50 }}>
+      <Link to="/" search={{ sort: "asset_code", page: 1, pageSize: 50 }}>
         <Button variant="outline">返回列表</Button>
       </Link>
     </div>

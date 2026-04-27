@@ -16,11 +16,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/status/status-badge";
 import type { AssetStatus } from "@/features/assets/status-labels";
-import type { AssetsSearch } from "@/features/assets/list/search-schema";
+import { type AssetsSearch, DEFAULT_SORT } from "@/features/assets/list/search-schema";
 import {
   COLUMN_LABELS,
   type ColumnKey,
@@ -32,6 +33,7 @@ import {
 
 export interface AssetRow {
   id: string;
+  asset_code: string;
   serial_number?: string | null;
   name: string;
   type_id?: string | null;
@@ -40,18 +42,18 @@ export interface AssetRow {
   holder?: string | null;
   location?: string | null;
   updated_at: string;
+  acquired_at?: string | null;
 }
 
 interface AssetsTableProps {
   rows: AssetRow[];
   search: AssetsSearch;
   visible: Record<ColumnKey, boolean>;
-  /** type_id → type_name 映射（前端客户端 join，弥补后端 AssetRead 不暴露 type_name） */
-  typeNameById: Record<string, string>;
   /** 筛选 / 排序 / 翻页变更时由父组件递增，用于触发 tbody 淡切（§3.5.5 时刻 2） */
   bodyKey: string;
   onCheckout: (row: AssetRow) => void;
   onReturn: (row: AssetRow) => void;
+  onDelete: (row: AssetRow) => void;
 }
 
 function urlSortToState(sort?: string): SortingState {
@@ -60,8 +62,8 @@ function urlSortToState(sort?: string): SortingState {
     ? [{ id: sort.slice(1), desc: true }]
     : [{ id: sort, desc: false }];
 }
-function stateToUrlSort(state: SortingState): string | undefined {
-  if (state.length === 0) return undefined;
+function stateToUrlSort(state: SortingState): string {
+  if (state.length === 0) return DEFAULT_SORT;
   const s = state[0];
   return s.desc ? `-${s.id}` : s.id;
 }
@@ -70,10 +72,10 @@ export function AssetsTable({
   rows,
   search,
   visible,
-  typeNameById,
   bodyKey,
   onCheckout,
   onReturn,
+  onDelete,
 }: AssetsTableProps) {
   const navigate = useNavigate({ from: "/" });
 
@@ -82,14 +84,11 @@ export function AssetsTable({
   const columns = useMemo<ColumnDef<AssetRow>[]>(
     () => [
       {
-        id: "code",
-        // 排序键：serial_number（静态识别符，缺失时回落到 id 前 8 位）
-        accessorFn: (r) => r.serial_number ?? r.id.slice(0, 8),
-        header: COLUMN_LABELS.code,
+        id: "asset_code",
+        accessorKey: "asset_code",
+        header: COLUMN_LABELS.asset_code,
         cell: ({ row }) => (
-          <span className="font-code text-xs">
-            {row.original.serial_number ?? row.original.id.slice(0, 8)}
-          </span>
+          <span className="font-code text-xs">{row.original.asset_code}</span>
         ),
       },
       {
@@ -101,19 +100,26 @@ export function AssetsTable({
         ),
       },
       {
+        id: "serial_number",
+        accessorKey: "serial_number",
+        header: COLUMN_LABELS.serial_number,
+        cell: ({ row }) =>
+          row.original.serial_number ? (
+            <span className="font-code text-xs">{row.original.serial_number}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
         id: "type",
-        accessorFn: (r) =>
-          r.type_name ?? (r.type_id ? typeNameById[r.type_id] : undefined) ?? "",
+        accessorFn: (r) => r.type_name ?? "",
         header: COLUMN_LABELS.type,
         enableSorting: false,
-        cell: ({ row }) => {
-          const name =
-            row.original.type_name ??
-            (row.original.type_id ? typeNameById[row.original.type_id] : undefined);
-          return (
-            <span className="text-sm text-muted-foreground">{name ?? "—"}</span>
-          );
-        },
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.type_name ?? "—"}
+          </span>
+        ),
       },
       {
         id: "status",
@@ -141,15 +147,31 @@ export function AssetsTable({
         cell: ({ row }) => formatDateTime(row.original.updated_at),
       },
       {
+        id: "acquired_at",
+        accessorKey: "acquired_at",
+        header: COLUMN_LABELS.acquired_at,
+        cell: ({ row }) =>
+          row.original.acquired_at ? (
+            <span className="font-code text-xs">{row.original.acquired_at}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
         id: "actions",
         header: "",
         enableSorting: false,
         cell: ({ row }) => (
-          <RowActions row={row.original} onCheckout={onCheckout} onReturn={onReturn} />
+          <RowActions
+            row={row.original}
+            onCheckout={onCheckout}
+            onReturn={onReturn}
+            onDelete={onDelete}
+          />
         ),
       },
     ],
-    [onCheckout, onReturn, typeNameById],
+    [onCheckout, onReturn, onDelete],
   );
 
   const columnVisibility = useMemo(
@@ -256,10 +278,12 @@ function RowActions({
   row,
   onCheckout,
   onReturn,
+  onDelete,
 }: {
   row: AssetRow;
   onCheckout: (row: AssetRow) => void;
   onReturn: (row: AssetRow) => void;
+  onDelete: (row: AssetRow) => void;
 }) {
   return (
     <DropdownMenu>
@@ -274,7 +298,10 @@ function RowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled>编辑（即将开放）</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          {/* TODO(Task 19): 接通 typed route <Link to="/assets/$id/edit"> */}
+          <a href={`/assets/${row.id}/edit`}>编辑</a>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onCheckout(row)}
           disabled={row.status !== "IDLE"}
@@ -287,7 +314,14 @@ function RowActions({
         >
           {RETURN_VERB}
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>删除（即将开放）</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => onDelete(row)}
+          disabled={row.status === "IN_USE"}
+          className="text-destructive focus:text-destructive"
+        >
+          删除…
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

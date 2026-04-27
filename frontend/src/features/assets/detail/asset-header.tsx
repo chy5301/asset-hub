@@ -34,7 +34,7 @@ export function AssetHeader({
       <div className="space-y-1">
         <Link
           to="/"
-          search={{ page: 1, pageSize: 50 }}
+          search={{ sort: "asset_code", page: 1, pageSize: 50 }}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← 返回列表

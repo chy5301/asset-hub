@@ -63,11 +63,19 @@ export interface paths {
         get: operations["get_asset_api_assets__asset_id__get"];
         put?: never;
         post?: never;
-        /** Delete Asset */
+        /**
+         * Delete Asset
+         * @description 删除资产 cascade（CheckoutRecord + Attachment FS+DB）。
+         */
         delete: operations["delete_asset_api_assets__asset_id__delete"];
         options?: never;
         head?: never;
-        /** Update Asset */
+        /**
+         * Update Asset
+         * @description 整合编辑 + 状态切换。
+         *
+         *     status 字段由 service 层 state_machine 校验合法性，非法转换抛 ValidationError → 422。
+         */
         patch: operations["update_asset_api_assets__asset_id__patch"];
         trace?: never;
     };
@@ -200,6 +208,8 @@ export interface components {
             custom_data?: {
                 [key: string]: unknown;
             };
+            /** Acquired At */
+            acquired_at?: string | null;
         };
         /** AssetRead */
         AssetRead: {
@@ -208,6 +218,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Asset Code */
+            asset_code: string;
             /** Name */
             name: string;
             /** Serial Number */
@@ -217,6 +229,8 @@ export interface components {
              * Format: uuid
              */
             type_id: string;
+            /** Type Name */
+            type_name: string | null;
             status: components["schemas"]["AssetStatus"];
             /** Holder */
             holder: string | null;
@@ -228,6 +242,10 @@ export interface components {
             custom_data: {
                 [key: string]: unknown;
             };
+            /** Acquired At */
+            acquired_at: string | null;
+            /** Current Checkout Id */
+            current_checkout_id: string | null;
             /**
              * Created At
              * Format: date-time
@@ -244,7 +262,10 @@ export interface components {
          * @enum {string}
          */
         AssetStatus: "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED";
-        /** AssetUpdate */
+        /**
+         * AssetUpdate
+         * @description 注意：type_id 不暴露——D9 编辑表单禁改 type；asset_code 也不暴露（系统生成、不允许手改）。
+         */
         AssetUpdate: {
             /** Name */
             name?: string | null;
@@ -257,6 +278,12 @@ export interface components {
             location?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Custom Data */
+            custom_data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Acquired At */
+            acquired_at?: string | null;
         };
         /**
          * AttachmentKind
@@ -339,12 +366,18 @@ export interface components {
             /** Note */
             note?: string | null;
         };
-        /** CustomFieldDef */
+        /**
+         * CustomFieldDef
+         * @description v1 schema：key + label + type + required + options + 扩展属性。
+         *
+         *     M2c-3 D2 决议：字段名沿用 M1/M2 的 `key`（与 services/validation.py:8 + 现有 fixtures 一致），
+         *     不重命名为 name；spec D2 文案随 plan Task 15 同步使用 `key`（前端 FieldDef 也用 key）。
+         */
         CustomFieldDef: {
             /** Key */
             key: string;
             /** Label */
-            label: string;
+            label?: string | null;
             /** Type */
             type: string;
             /**
@@ -352,8 +385,22 @@ export interface components {
              * @default false
              */
             required: boolean;
+            /** Default */
+            default?: string | number | boolean | null;
+            /** Placeholder */
+            placeholder?: string | null;
+            /** Help */
+            help?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Min */
+            min?: number | null;
+            /** Max */
+            max?: number | null;
             /** Options */
             options?: string[] | null;
+            /** Displayas */
+            displayAs?: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -364,6 +411,8 @@ export interface components {
         TypeCreate: {
             /** Name */
             name: string;
+            /** Code Prefix */
+            code_prefix: string;
             /** Description */
             description?: string | null;
             /**
@@ -381,6 +430,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Code Prefix */
+            code_prefix: string;
             /** Description */
             description: string | null;
             /** Custom Fields */
