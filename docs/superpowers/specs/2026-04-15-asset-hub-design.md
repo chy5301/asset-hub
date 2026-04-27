@@ -354,9 +354,11 @@ asset-hub/
 | 里程碑            | 版本 | 目标                            | 主要产出                                                                                                                                            |
 | ----------------- | ---- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M1 · 骨架**     | v0.1 | 可跑通的最小闭环                | 项目初始化；SQLModel 模型 + 首次迁移；service/repo 抽象；CLI `type define / asset register / list / show` 带 `--json`；FastAPI 最小端点；前端脚手架 |
-| **M2 · 核心流程** | v0.5 | 资产管理真正可用                | checkout / return + history；附件上传（CLI + API + FS 存储）；Web 资产列表 / 详情 / 动态表单 / 派发归还对话框                                       |
-| **M3 · 特性完整** | v1.0 | MVP 全量                        | 看板 4 图 + `/api/stats`；CSV/XLSX 导出（前后端）；SKILL.md 完善；基础测试覆盖；README + 部署文档                                                   |
+| **M2 · 核心流程** | v0.5 | 资产管理真正可用                | M2a checkout/return + history；M2b 附件（CLI + API + FS 存储）；M2c-1 列表页 + 前端地基；M2c-2 详情 + 流转 + 附件查看；**M2c-3 表单 + 上传 + 删除 + §14.5 状态切换 + acquired_at + 后端字段补齐（含简化 asset_code 反向纠偏）+ Vitest/RHF/Zod**；**M2c-4 类型管理 UI（含结构化 custom_fields builder）**；**M2d CLI 接管 web 服务生命周期** |
+| **M3 · 特性完整** | v1.0 | MVP 全量                        | 看板 4 图 + `/api/stats`；CSV/XLSX 导出（前后端）；SKILL.md 完善；§14.1 派出类型扩展；§14.6 audit 化；§14.7 状态枚举完善；基础测试覆盖；README + 部署文档 |
 | **M4 · UI 打磨**  | v1.x | 达到 `frontend-design` 审美标准 | 配色/间距/字体/微动效；空状态、错误态、加载态的设计；键盘快捷键；响应式基础                                                                         |
+
+**M2 子里程碑顺序**（M2a → M2b → M2c-1 → M2c-2 已交付）：M2c-3 → **M2d** → **M2c-4** → M3。M2d 与 M2c-4 顺序在 M2c-3 brainstorm 阶段拍：先 M2d（daily dev 体验改善每天兑现）。
 
 ## 12. 未决事项（供 Plan 阶段解决）
 
@@ -415,9 +417,9 @@ asset-hub/
 
 工程量大；放在派出类型扩展（14.1）之后做较合适——14.1 升级了 CheckoutRecord 的 schema，恰好可以同周期顺势引入 person_id。或视情况提前到 M3 后期作为扁平段。
 
-### 14.5 状态切换 web 入口（M2c-3 顺手）
+### 14.5 状态切换 web 入口（M2c-3 已收）
 
-**M2c-3 候选**。当前 web 仅有派发/归还两个状态切换动作；其他状态（`MAINTENANCE` / `RETIRED`）切换只能走 CLI `asset update --status` 或后端 PATCH。这造成"修好的设备没法在 web 上回 IDLE、坏掉的设备没法在 web 上标 MAINTENANCE"。
+**M2c-3 已落地**（详见 `2026-04-26-m2c3-form-attachments-actions-design.md` §7.6 / §7.7 / §5.5）。当前 web 仅有派发/归还两个状态切换动作；其他状态（`MAINTENANCE` / `RETIRED`）切换只能走 CLI `asset update --status` 或后端 PATCH。这造成"修好的设备没法在 web 上回 IDLE、坏掉的设备没法在 web 上标 MAINTENANCE"。
 
 **改造点（轻量版，无 audit）**：
 - 列表页 ⋯ 菜单 + 详情页扩 4 个动作：「**送修**」（→MAINTENANCE）/「**修好回库**」（→IDLE）/「**退役**」（→RETIRED）/「**重新启用**」（→IDLE，从 RETIRED 复活，谨慎）
@@ -492,9 +494,9 @@ asset-hub serve logs [--follow] [--lines N]  # tail 后端/前端日志
 
 替代方案：作为 M2c-3 顺手做（更省一次 spec/plan 开销，但风险是冲掉 M2c-3 主线节奏）。M2d 启动 brainstorm 时再决定。
 
-### 14.10 资产入账时间字段（与 14.5/§K 后端字段补齐同周期）
+### 14.10 资产入账时间字段（M2c-3 已收）
 
-**M3 候选**。当前 `Asset.created_at` 是 DB 写入时间——但实际入账时间可能是过去的某个日期（旧设备补录、跨财年录入等）。两者语义不同：
+**M2c-3 已落地**（详见 `2026-04-26-m2c3-form-attachments-actions-design.md` §1.1.1 / §5.1 / D18）。当前 `Asset.created_at` 是 DB 写入时间——但实际入账时间可能是过去的某个日期（旧设备补录、跨财年录入等）。两者语义不同：
 
 - `created_at`：审计意义的"记录创建时间"，DB 自动填，不可改
 - **`acquired_at: date | None`（新字段）**：业务意义的"资产入账日期"，用户填，可空（不知道时不填）
@@ -507,3 +509,20 @@ asset-hub serve logs [--follow] [--lines N]  # tail 后端/前端日志
 - 列表页可考虑加排序/筛选支持（按入账日期）—— 视实际需求
 
 时机：与 §K 后端字段补齐（asset_code / type_name / current_checkout_id）同周期。M2c-3 的登记表单需要这个字段，可以拆解为：M3 后端先补字段 → M2c-3 表单消费。或者把字段补齐前置到 M2c-3 同周期，再统一一次后端 deploy。
+
+**最终决议（M2c-3 brainstorm，2026-04-26）**：后端字段补齐前置到 M2c-3 同周期。`asset_code` / `code_prefix` / `acquired_at` / `current_checkout_id` 四项一次性落地；`type_name` 反规范化方式 plan 阶段定（候选：SQLAlchemy `relationship` + `column_property`，不真加列）。
+
+### 14.11 简化 asset_code 反向纠偏（M2c-3 已落地）
+
+**M2c-3 落地**。M1 brainstorm（`plans/2026-04-16-m1-skeleton.md:12`）当时砍掉了 `asset_code`，理由是"v1 UUID 已唯一 + SN 即足"。但后续 spec 没同步更新——主 spec §5.1 与 M2c-1/M2c-2 spec 仍按"asset_code 存在"假设写，实施期发现字段不存在被误读为"M3 待补缺口"。
+
+M2c-3 经 frontend-design skill 正式审核 6 候选后，重新引入 **简化 asset_code**：
+
+- 形态：`{prefix}-{seq:03d}`（如 `NB-007`），prefix 来自 `AssetType.code_prefix` 必填字段（`^[A-Z]{2,4}$`、unique、immutable）
+- seq：per-type 全局递增，service 层 register 时 `MAX(per_type_seq)+1`
+- 与 M1 砍掉的版本差别：**砍掉年度计数器、并发锁、AssetType.last_seq_year/no 等所有 v1 不需要的复杂度**；年份语义由 §14.10 `acquired_at` 字段独立承担（DRY）
+- 业务价值：列表扫读节奏（前缀字母 + 序号双层视觉节奏）+ 用户口头引用（"那台 NB-007"）+ Agent CLI 友好度（`--code NB-007` / `--prefix NB` 批量过滤）
+
+**和 M1 决策的关系**：M2c-3 加回的不是 M1 砍掉的那个东西。M1 砍的是工程复杂度过重的"完整版 asset_code"（年度计数 + 并发锁等）；简化版砍掉所有 v1 不需要的复杂度，仅保留视觉与扫读价值。
+
+详见 [`m2c3-form-attachments-actions-design.md`](./2026-04-26-m2c3-form-attachments-actions-design.md) §12。

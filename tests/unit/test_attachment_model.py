@@ -9,11 +9,11 @@ from asset_hub.models.asset_type import AssetType
 from asset_hub.models.attachment import Attachment, AttachmentKind
 
 
-def _make_asset(session: Session, *, name: str = "A") -> Asset:
-    t = AssetType(name=f"T-{name}", custom_fields=[])
+def _make_asset(session: Session, *, name: str = "A", code_prefix: str = "TST") -> Asset:
+    t = AssetType(name=f"T-{name}", code_prefix=code_prefix, custom_fields=[])
     session.add(t)
     session.flush()
-    a = Asset(name=name, type_id=t.id, custom_data={})
+    a = Asset(asset_code=f"{code_prefix}-001", name=name, type_id=t.id, custom_data={})
     session.add(a)
     session.commit()
     session.refresh(a)
@@ -72,8 +72,8 @@ def test_unique_constraint_blocks_same_asset_same_sha256(session: Session):
 
 
 def test_different_assets_can_share_sha256(session: Session):
-    a1 = _make_asset(session, name="A1")
-    a2 = _make_asset(session, name="A2")
+    a1 = _make_asset(session, name="A1", code_prefix="TSA")
+    a2 = _make_asset(session, name="A2", code_prefix="TSB")
 
     session.add(
         Attachment(

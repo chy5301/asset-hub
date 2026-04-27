@@ -30,7 +30,7 @@ export function CustomFields({ asset, assetType }: CustomFieldsProps) {
           const data = asset.custom_data as Record<string, unknown> | null;
           const hasValue = data != null && def.key in data;
           return (
-            <DefinitionRow key={def.key} label={def.label}>
+            <DefinitionRow key={def.key} label={def.label ?? def.key}>
               {hasValue ? (
                 formatCustomFieldValue(def, data[def.key])
               ) : (

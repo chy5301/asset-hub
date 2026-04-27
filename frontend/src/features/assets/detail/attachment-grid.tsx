@@ -1,60 +1,73 @@
 import { FileText, FileImage, File } from "lucide-react";
-import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { components } from "@/api/generated/schema";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { AttachmentAddSlot } from "./attachment-add-slot";
 
 type AttachmentRead = components["schemas"]["AttachmentRead"];
 
 interface AttachmentGridProps {
   query: UseQueryResult<AttachmentRead[]>;
   onOpen: (att: AttachmentRead) => void;
+  assetId: string;
 }
 
-export function AttachmentGrid({ query, onOpen }: AttachmentGridProps) {
+export function AttachmentGrid({ query, onOpen, assetId }: AttachmentGridProps) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-medium">附件</h2>
+      <h2 className="mb-3 text-lg font-medium">
+        附件{" "}
+        {query.data && (
+          <span className="text-sm font-normal text-muted-foreground">
+            {query.data.length}
+          </span>
+        )}
+      </h2>
       {query.isLoading ? (
         <GridSkeleton />
       ) : query.isError ? (
         <ErrorState error={query.error} onRetry={() => query.refetch()} />
-      ) : (query.data ?? []).length === 0 ? (
-        <EmptyState
-          title="暂无附件"
-          description="通过登记流程或 asset-hub attachment add CLI 上传。"
-        />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(query.data ?? []).map((att) => (
-            <button
-              key={att.id}
-              type="button"
-              onClick={() => onOpen(att)}
-              className="group relative aspect-square overflow-hidden rounded-md ring-1 ring-border cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40"
-              aria-label={`查看附件 ${att.original_name}`}
-            >
-              {att.mime_type.startsWith("image/") ? (
-                <img
-                  src={`/api/attachments/${att.id}/content`}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted/30 p-2 text-muted-foreground">
-                  <KindIcon mime={att.mime_type} />
-                  <span className="line-clamp-2 text-xs text-center">
-                    {att.original_name}
-                  </span>
-                </div>
-              )}
-            </button>
+            <AttachmentTile key={att.id} att={att} onOpen={onOpen} />
           ))}
+          <AttachmentAddSlot assetId={assetId} />
         </div>
       )}
     </section>
+  );
+}
+
+function AttachmentTile({
+  att,
+  onOpen,
+}: {
+  att: AttachmentRead;
+  onOpen: (a: AttachmentRead) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(att)}
+      className="group relative aspect-square overflow-hidden rounded-md ring-1 ring-border cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40"
+      aria-label={`查看附件 ${att.original_name}`}
+    >
+      {att.mime_type.startsWith("image/") ? (
+        <img
+          src={`/api/attachments/${att.id}/content`}
+          alt=""
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted/30 p-2 text-muted-foreground">
+          <KindIcon mime={att.mime_type} />
+          <span className="line-clamp-2 text-xs text-center">{att.original_name}</span>
+        </div>
+      )}
+    </button>
   );
 }
 

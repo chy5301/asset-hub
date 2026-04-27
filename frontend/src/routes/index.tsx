@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAssetsQuery } from "@/api/hooks/assets";
 import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
-import { useAssetTypesQuery } from "@/api/hooks/types";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
 import { CheckoutDialog } from "@/features/assets/detail/checkout-dialog";
 import { deriveCurrentCheckout } from "@/features/assets/detail/current-checkout";
+import { DeleteAssetAlert } from "@/features/assets/detail/delete-asset-alert";
 import { ReturnDialog } from "@/features/assets/detail/return-dialog";
 import { AssetsFilters } from "@/features/assets/list/assets-filters";
 import { AssetsPagination } from "@/features/assets/list/assets-pagination";
@@ -28,29 +30,23 @@ export const Route = createFileRoute("/")({
 function AssetListPage() {
   const search = Route.useSearch();
   const query = useAssetsQuery(search);
-  const typesQuery = useAssetTypesQuery();
   const { visible, toggle } = useColumnVisibility();
 
   // Dialog state for ⋯ menu actions
   const [checkoutRow, setCheckoutRow] = useState<AssetRow | null>(null);
   const [returnRow, setReturnRow] = useState<AssetRow | null>(null);
+  const [deleteRow, setDeleteRow] = useState<AssetRow | null>(null);
 
   const handleCheckout = useCallback((row: AssetRow) => setCheckoutRow(row), []);
   const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
+  const handleDelete = useCallback((row: AssetRow) => setDeleteRow(row), []);
 
-  // 当 ReturnDialog 打开时挂 history query 以推导 currentCheckout
-  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id ?? "");
+  // 当 ReturnDialog 打开时挂 history query 以拿到 holder/checked_out_at 等回填字段
+  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id);
   const currentCheckoutForReturn = deriveCurrentCheckout(
-    returnRow ? returnHistoryQuery.data : undefined,
+    returnHistoryQuery.data,
+    returnRow?.current_checkout_id,
   );
-
-  const typeNameById = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const t of typesQuery.data ?? []) {
-      map[t.id] = t.name;
-    }
-    return map;
-  }, [typesQuery.data]);
 
   useEffect(() => {
     if (query.data && query.data.length > WARN_THRESHOLD) {
@@ -70,7 +66,15 @@ function AssetListPage() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AssetsFilters search={search} />
-          <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+          <div className="flex items-center gap-2">
+            <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+            <Link to="/assets/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                登记资产
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {renderBody()}
@@ -87,6 +91,17 @@ function AssetListPage() {
         assetId={returnRow?.id ?? ""}
         currentCheckout={currentCheckoutForReturn}
       />
+      {deleteRow && (
+        <DeleteAssetAlert
+          open
+          onOpenChange={(o) => !o && setDeleteRow(null)}
+          asset={{
+            id: deleteRow.id,
+            name: deleteRow.name,
+            asset_code: deleteRow.asset_code,
+          }}
+        />
+      )}
     </>
   );
 
@@ -106,7 +121,12 @@ function AssetListPage() {
       return <ErrorState error={query.error} onRetry={() => query.refetch()} />;
     }
     if (!query.data || query.data.length === 0) {
-      return <EmptyState />;
+      return (
+        <EmptyState
+          title="暂无资产"
+          description="还没有登记任何资产。可以通过 CLI 登记：asset-hub asset register"
+        />
+      );
     }
 
     const rows = query.data as AssetRow[];
@@ -116,10 +136,10 @@ function AssetListPage() {
           rows={rows}
           search={search}
           visible={visible}
-          typeNameById={typeNameById}
           bodyKey={bodyKey}
           onCheckout={handleCheckout}
           onReturn={handleReturn}
+          onDelete={handleDelete}
         />
         <AssetsPagination search={search} total={rows.length} />
       </>

@@ -1,15 +1,10 @@
 import { Check, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { formatDate } from "@/lib/date";
+import type { FieldDef } from "../form/types";
 
-export type CustomFieldDef = {
-  key: string;
-  label: string;
-  type: "string" | "text" | "int" | "float" | "bool" | "enum" | "date";
-  required?: boolean;
-  unique?: boolean;
-  options?: string[];
-};
+/** 与 form 层共用的字段定义；保留别名以便 detail 模块的导入路径稳定。 */
+export type CustomFieldDef = FieldDef;
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("zh-CN");
 

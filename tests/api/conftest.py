@@ -23,3 +23,12 @@ def client(tmp_path, monkeypatch):
     app.dependency_overrides[get_session] = _override_session
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def sample_type_nb_via_api(client):
+    resp = client.post("/api/types", json={
+        "name": "笔记本电脑", "code_prefix": "NB", "custom_fields": [],
+    })
+    assert resp.status_code == 201
+    return resp.json()["id"]

@@ -8,8 +8,8 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  title = "暂无资产",
-  description = "还没有登记任何资产。可以通过 CLI 登记：asset-hub asset register",
+  title = "暂无数据",
+  description,
   action,
 }: EmptyStateProps) {
   return (
@@ -20,7 +20,9 @@ export function EmptyState({
       <Inbox className="h-8 w-8 text-muted-foreground" aria-hidden />
       <div className="space-y-1">
         <p className="text-base font-medium text-foreground">{title}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {action ? <div className="mt-2">{action}</div> : null}
     </div>

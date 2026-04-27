@@ -1,8 +1,13 @@
 from fastapi.testclient import TestClient
 
 
-def _create_type(client: TestClient, name: str = "笔记本电脑", fields: list | None = None) -> str:
-    body = {"name": name}
+def _create_type(
+    client: TestClient,
+    name: str = "笔记本电脑",
+    code_prefix: str = "NB",
+    fields: list | None = None,
+) -> str:
+    body = {"name": name, "code_prefix": code_prefix}
     if fields:
         body["custom_fields"] = fields
     r = client.post("/api/types", json=body)
@@ -114,3 +119,44 @@ class TestDeleteAsset:
         from uuid import uuid4
         resp = client.delete(f"/api/assets/{uuid4()}")
         assert resp.status_code == 404
+
+
+def test_get_asset_returns_type_name(client, sample_type_nb_via_api):
+    """通过 API POST 创建 asset，GET 详情 → 响应里 type_name 已填"""
+    create_resp = client.post("/api/assets", json={
+        "name": "X1", "type_id": str(sample_type_nb_via_api), "custom_data": {},
+    })
+    assert create_resp.status_code == 201
+    asset_id = create_resp.json()["id"]
+
+    get_resp = client.get(f"/api/assets/{asset_id}")
+    body = get_resp.json()
+    assert body["type_name"] == "笔记本电脑"
+    assert body["asset_code"].startswith("NB-")
+
+
+def test_delete_asset_cascade(client, sample_type_nb_via_api):
+    create = client.post("/api/assets", json={
+        "name": "X1", "type_id": sample_type_nb_via_api, "custom_data": {},
+    })
+    asset_id = create.json()["id"]
+    client.post(f"/api/assets/{asset_id}/checkout", json={"holder": "张三"})
+    client.post(f"/api/assets/{asset_id}/return", json={})
+
+    resp = client.delete(f"/api/assets/{asset_id}")
+    assert resp.status_code == 204
+
+    # 二次 DELETE → 404
+    resp2 = client.delete(f"/api/assets/{asset_id}")
+    assert resp2.status_code == 404
+
+
+def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
+    resp = client.post("/api/assets", json={
+        "name": "X1", "type_id": sample_type_nb_via_api,
+        "custom_data": {}, "acquired_at": "2025-01-15",
+    })
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["acquired_at"] == "2025-01-15"
+    assert body["asset_code"].startswith("NB-")

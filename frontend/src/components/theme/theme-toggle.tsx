@@ -1,4 +1,4 @@
-import { Laptop, Moon, Sun } from "lucide-react";
+import { Laptop, Moon, Sun, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme, type Theme } from "@/components/theme/theme-provider";
 
-const ITEMS: { value: Theme; label: string; Icon: typeof Sun }[] = [
+const ITEMS: { value: Theme; label: string; Icon: LucideIcon }[] = [
   { value: "light", label: "浅色", Icon: Sun },
   { value: "dark", label: "深色", Icon: Moon },
   { value: "system", label: "跟随系统", Icon: Laptop },

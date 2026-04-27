@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -23,6 +24,7 @@ def svc(session: Session) -> AssetService:
 def laptop_type(type_svc: TypeService):
     return type_svc.create_type(
         name="笔记本电脑",
+        code_prefix="NB",
         custom_fields=[
             {"key": "brand", "label": "品牌", "type": "string", "required": True},
             {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},
@@ -143,3 +145,107 @@ class TestDeleteAsset:
     def test_delete_nonexistent_raises(self, svc: AssetService):
         with pytest.raises(NotFoundError):
             svc.delete_asset(uuid4())
+
+
+def test_register_auto_generates_asset_code(session, sample_type_nb):
+    """同 type 多次 register，asset_code 按 prefix-001 / prefix-002 递增"""
+    svc = AssetService(session)
+    a1 = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a2 = svc.register(name="X1 Carbon", type_id=sample_type_nb.id, custom_data={})
+    a3 = svc.register(name="MacBook", type_id=sample_type_nb.id, custom_data={})
+    assert a1.asset_code == "NB-001"
+    assert a2.asset_code == "NB-002"
+    assert a3.asset_code == "NB-003"
+
+
+def test_register_per_type_seq_independent(session, sample_type_nb, sample_type_pj):
+    """不同 type 的 seq 独立"""
+    svc = AssetService(session)
+    a_nb1 = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a_pj1 = svc.register(name="投影仪", type_id=sample_type_pj.id, custom_data={})
+    a_nb2 = svc.register(name="X1 Carbon", type_id=sample_type_nb.id, custom_data={})
+    assert a_nb1.asset_code == "NB-001"
+    assert a_pj1.asset_code == "PJ-001"
+    assert a_nb2.asset_code == "NB-002"
+
+
+def test_register_with_acquired_at(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(
+        name="X1",
+        type_id=sample_type_nb.id,
+        custom_data={},
+        acquired_at=date(2025, 1, 15),
+    )
+    assert a.acquired_at == date(2025, 1, 15)
+
+
+def test_register_acquired_at_optional(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    assert a.acquired_at is None
+
+
+def test_asset_read_includes_type_name(session, sample_type_nb):
+    from asset_hub.api.schemas.asset import AssetRead
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a_read = AssetRead.model_validate(a)
+    assert a_read.type_name == "笔记本电脑"
+    assert a_read.asset_code == "NB-001"
+
+
+def test_list_assets_each_has_type_name(session, sample_type_nb, sample_type_pj):
+    from asset_hub.api.schemas.asset import AssetRead
+    svc = AssetService(session)
+    svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    svc.register(name="投影仪", type_id=sample_type_pj.id, custom_data={})
+
+    assets = svc.list_assets()
+    reads = [AssetRead.model_validate(a) for a in assets]
+    type_names = {r.type_name for r in reads}
+    assert type_names == {"笔记本电脑", "投影仪"}
+
+
+def test_register_duplicate_serial_number_message(session, sample_type_nb):
+    """SN 重复时错误消息应该是'序列号重复'，不该被误读为'asset_code 撞车'"""
+    svc = AssetService(session)
+    svc.register(name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+    with pytest.raises(DuplicateError, match="序列号"):
+        svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+
+
+def test_change_status_idle_to_maintenance(session, sample_type_nb):
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a2 = svc.change_status(a.id, AssetStatus.MAINTENANCE)
+    assert a2.status == AssetStatus.MAINTENANCE
+
+
+def test_change_status_in_use_to_maintenance_raises(session, sample_type_nb):
+    """spec D14: IN_USE 状态下要任何状态切换必须先归还"""
+    from asset_hub.errors import ValidationError
+    svc = AssetService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    a.status = AssetStatus.IN_USE
+    session.commit()
+    with pytest.raises(ValidationError, match="IN_USE.*MAINTENANCE"):
+        svc.change_status(a.id, AssetStatus.MAINTENANCE)
+
+
+def test_delete_asset_cascade_checkout_records(session, sample_type_nb):
+    """删除 asset 时同事务删 CheckoutRecord"""
+    from asset_hub.repositories.checkout import CheckoutRepository
+    from asset_hub.services.checkout import CheckoutService
+    svc = AssetService(session)
+    cs = CheckoutService(session)
+    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
+    cs.checkout(asset_id=a.id, holder="张三")
+    cs.return_(asset_id=a.id)
+    cs.checkout(asset_id=a.id, holder="李四")
+    cs.return_(asset_id=a.id)
+    repo = CheckoutRepository(session)
+    assert len(repo.list_by_asset(a.id)) == 2
+
+    svc.delete_asset(a.id)
+    assert len(repo.list_by_asset(a.id)) == 0

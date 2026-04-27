@@ -732,13 +732,11 @@ M2c-2 验证全靠：
 
 ### 10.3 后端字段补齐
 
-**M2c-1 + M2c-2 共同遗留**，M3 一次性补：
-- `Asset.asset_code`（`<type_prefix>-<year>-<序号>`，主识别符；列表页第二列从 SN 切回 asset_code）
-- `Asset.type_name` 反规范化或 relationship attribute（去除 M2c-1 客户端 join）
-- `Asset.current_checkout_id`（去除 M2c-2 前端 history 推导，详情页可单 endpoint 完整渲染）
-- `AssetType.code_prefix`（用于 asset_code 自动生成）
-
-CLI / API / 前端三处协同；DB migration 含历史数据回填规则。
+**M2c-1 + M2c-2 共同遗留**，**M2c-3 已落地**（详见 `2026-04-26-m2c3-form-attachments-actions-design.md` §1.1.4 / §5）：
+- ✅ `Asset.asset_code`（`{type_prefix}-{seq:03d}` 简化形态；M2c-3 落地）
+- ✅ `Asset.type_name` 反规范化（SQLAlchemy `Relationship + lazy="joined"` + `@property`）
+- ✅ `Asset.current_checkout_id`（service 层 checkout/return 维护）
+- ✅ `AssetType.code_prefix`（必填、^[A-Z]{2,4}$、unique、immutable）
 
 ### 10.4 M2c-3 预期对 M2c-2 的迁移
 

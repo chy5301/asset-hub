@@ -68,13 +68,14 @@ export function useDeleteAsset() {
       const res = await http.DELETE("/api/assets/{asset_id}", {
         params: { path: { asset_id: id } },
       });
-      return unwrap(res);
+      // DELETE 返回 204，没有 data；不能用 unwrap（会抛 missing data）
+      if (res.error) throw res.error;
+      return undefined;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.assets.all });
-      toast.success("资产已删除");
     },
-    onError: (err) => toast.error(toFriendlyMessage(err)),
+    // toast 由调用方控制（DeleteAssetAlert）
   });
 }
 
@@ -88,5 +89,24 @@ export function useAssetDetailQuery(id: string) {
       return unwrap(res);
     },
     // 404 靠 errorComponent / isError 分支处理，不在此重试
+  });
+}
+
+export function useChangeAssetStatusMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (toStatus: components["schemas"]["AssetStatus"]) => {
+      const res = await http.PATCH("/api/assets/{asset_id}", {
+        params: { path: { asset_id: id } },
+        body: { status: toStatus },
+      });
+      return unwrap(res);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.assets.all });
+      qc.invalidateQueries({ queryKey: qk.assets.detail(id) });
+      qc.invalidateQueries({ queryKey: qk.assets.history(id) });
+    },
+    // toast 由调用方控制（StateChangeAlert）
   });
 }

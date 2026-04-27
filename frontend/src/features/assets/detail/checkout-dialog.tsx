@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { useCheckoutMutation } from "@/api/hooks/checkouts";
 import { toFriendlyMessage } from "@/lib/error";
@@ -18,6 +28,13 @@ import {
   CHECKOUT_PENDING_TEXT,
   CHECKOUT_VERB,
 } from "./checkout-actions";
+
+const schema = z.object({
+  holder: z.string().min(1, "保管人必填"),
+  location: z.string().optional(),
+  note: z.string().optional(),
+});
+type Values = z.infer<typeof schema>;
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -30,49 +47,33 @@ export function CheckoutDialog({
   onOpenChange,
   assetId,
 }: CheckoutDialogProps) {
-  const [holder, setHolder] = useState("");
-  const [location, setLocation] = useState("");
-  const [note, setNote] = useState("");
-  const [holderError, setHolderError] = useState("");
-  const [submitError, setSubmitError] = useState("");
-
   const mutation = useCheckoutMutation();
-
-  function reset() {
-    setHolder("");
-    setLocation("");
-    setNote("");
-    setHolderError("");
-    setSubmitError("");
-  }
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { holder: "", location: "", note: "" },
+    mode: "onSubmit",
+  });
 
   function handleOpenChange(v: boolean) {
     if (mutation.isPending) return;
-    if (!v) reset();
+    if (!v) form.reset();
     onOpenChange(v);
   }
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!holder.trim()) {
-      setHolderError("请填写保管人");
-      return;
-    }
-    setHolderError("");
-    setSubmitError("");
+  async function onSubmit(values: Values) {
     try {
       await mutation.mutateAsync({
         assetId,
         body: {
-          holder: holder.trim(),
-          location: location.trim() || null,
-          note: note.trim() || null,
+          holder: values.holder.trim(),
+          location: values.location?.trim() || null,
+          note: values.note?.trim() || null,
         },
       });
-      reset();
+      form.reset();
       onOpenChange(false);
     } catch (err) {
-      setSubmitError(toFriendlyMessage(err));
+      form.setError("root", { message: toFriendlyMessage(err) });
     }
   }
 
@@ -86,68 +87,81 @@ export function CheckoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {submitError && <InlineErrorBanner message={submitError} />}
+        {form.formState.errors.root && (
+          <InlineErrorBanner
+            message={String(form.formState.errors.root.message)}
+          />
+        )}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="checkout-holder" className="text-sm font-medium">
-              保管人 <span className="text-destructive">*</span>
-            </label>
-            <Input
-              id="checkout-holder"
-              value={holder}
-              onChange={(e) => setHolder(e.target.value)}
-              disabled={mutation.isPending}
-              autoFocus
-              aria-invalid={holderError ? true : undefined}
-              aria-describedby={holderError ? "checkout-holder-err" : undefined}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="holder"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    保管人 <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={mutation.isPending}
+                      autoFocus
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {holderError && (
-              <p id="checkout-holder-err" className="text-xs text-destructive">
-                {holderError}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="checkout-location" className="text-sm font-medium">
-              位置
-            </label>
-            <Input
-              id="checkout-location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              disabled={mutation.isPending}
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>位置</FormLabel>
+                  <FormControl>
+                    <Input {...field} disabled={mutation.isPending} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="checkout-note" className="text-sm font-medium">
-              备注
-            </label>
-            <Textarea
-              id="checkout-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              disabled={mutation.isPending}
-              rows={3}
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>备注</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      disabled={mutation.isPending}
+                      rows={3}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => handleOpenChange(false)}
-              disabled={mutation.isPending}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? CHECKOUT_PENDING_TEXT : `确认${CHECKOUT_VERB}`}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleOpenChange(false)}
+                disabled={mutation.isPending}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending
+                  ? CHECKOUT_PENDING_TEXT
+                  : `确认${CHECKOUT_VERB}`}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

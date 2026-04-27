@@ -29,6 +29,7 @@ def create_asset(
         location=body.location,
         notes=body.notes,
         custom_data=body.custom_data,
+        acquired_at=body.acquired_at,
     )
 
 
@@ -57,6 +58,10 @@ def update_asset(
     body: AssetUpdate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
+    """整合编辑 + 状态切换。
+
+    status 字段由 service 层 state_machine 校验合法性，非法转换抛 ValidationError → 422。
+    """
     return svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
 
 
@@ -65,5 +70,6 @@ def delete_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
+    """删除资产 cascade（CheckoutRecord + Attachment FS+DB）。"""
     svc.delete_asset(asset_id)
     return Response(status_code=204)

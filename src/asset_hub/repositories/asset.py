@@ -40,5 +40,8 @@ class AssetRepository:
                 Asset.name.contains(q)
                 | Asset.serial_number.contains(q)
                 | Asset.notes.contains(q)
+                | Asset.asset_code.contains(q)  # 新：编号也参与全文搜索
             )
+        # 默认按 asset_code 升序——配合前端列表默认 sort
+        stmt = stmt.order_by(Asset.asset_code.asc())
         return list(self.session.exec(stmt).all())

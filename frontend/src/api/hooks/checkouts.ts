@@ -5,16 +5,16 @@ import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
 import { unwrap } from "@/lib/error";
 
-export function useCheckoutHistoryQuery(assetId: string) {
+export function useCheckoutHistoryQuery(assetId: string | undefined) {
   return useQuery({
-    queryKey: qk.assets.history(assetId),
+    queryKey: qk.assets.history(assetId ?? ""),
     queryFn: async () => {
       const res = await http.GET("/api/assets/{asset_id}/history", {
-        params: { path: { asset_id: assetId } },
+        params: { path: { asset_id: assetId! } },
       });
       return unwrap(res);
     },
-    enabled: !!assetId, // 守护：列表页菜单未触发时 assetId="" 不发请求
+    enabled: !!assetId,
   });
 }
 

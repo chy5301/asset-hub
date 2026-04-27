@@ -10,10 +10,10 @@ from asset_hub.models.checkout import CheckoutRecord
 
 
 def _make_asset(session: Session) -> Asset:
-    t = AssetType(name="T", custom_fields=[])
+    t = AssetType(name="T", code_prefix="TST", custom_fields=[])
     session.add(t)
     session.flush()
-    a = Asset(name="A", type_id=t.id, custom_data={})
+    a = Asset(asset_code="TST-001", name="A", type_id=t.id, custom_data={})
     session.add(a)
     session.commit()
     session.refresh(a)

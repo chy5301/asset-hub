@@ -11,52 +11,60 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export type ColumnKey =
-  | "code"
+  | "asset_code"
   | "name"
+  | "serial_number"
   | "type"
   | "status"
   | "holder"
   | "location"
-  | "updated_at";
+  | "updated_at"
+  | "acquired_at";
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
-  code: "代号",
+  asset_code: "编号",
   name: "名称",
+  serial_number: "SN",
   type: "类型",
   status: "状态",
-  holder: "保管人",
+  holder: "持有人",
   location: "位置",
   updated_at: "更新时间",
+  acquired_at: "入账日期",
 };
 
-const STORAGE_KEY = "asset-hub.list.columns";
+const STORAGE_KEY = "asset-hub.list.columns.v2";
 const ALL_KEYS: ColumnKey[] = [
-  "code",
+  "asset_code",
   "name",
+  "serial_number",
   "type",
   "status",
   "holder",
   "location",
   "updated_at",
+  "acquired_at",
 ];
+const DEFAULT_HIDDEN: Set<ColumnKey> = new Set(["acquired_at"]);
+
+function loadStored(): Partial<Record<ColumnKey, boolean>> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>) : {};
+  } catch {
+    return {};
+  }
+}
 
 export function useColumnVisibility() {
   const [visible, setVisible] = useState<Record<ColumnKey, boolean>>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>;
-        return Object.fromEntries(
-          ALL_KEYS.map((k) => [k, parsed[k] !== false]),
-        ) as Record<ColumnKey, boolean>;
-      }
-    } catch {
-      // fall through to default
-    }
-    return Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as Record<
-      ColumnKey,
-      boolean
-    >;
+    const stored = loadStored();
+    return Object.fromEntries(
+      ALL_KEYS.map((k) => [
+        k,
+        stored[k] !== undefined ? stored[k] : !DEFAULT_HIDDEN.has(k),
+      ]),
+    ) as Record<ColumnKey, boolean>;
   });
 
   useEffect(() => {
