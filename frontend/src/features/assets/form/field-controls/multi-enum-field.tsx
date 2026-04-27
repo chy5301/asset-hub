@@ -8,13 +8,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { FieldDef } from '../types';
-
-const CHECKBOX_THRESHOLD = 4;
+import { ENUM_INLINE_THRESHOLD, type FieldDef } from '../types';
 
 export function MultiEnumField({ def, control }: { def: FieldDef; control: Control }) {
   const options = def.options ?? [];
-  const useCheckboxes = def.displayAs === 'radio' || (def.displayAs !== 'select' && options.length <= CHECKBOX_THRESHOLD);
+  const useCheckboxes = def.displayAs === 'radio' || (def.displayAs !== 'select' && options.length <= ENUM_INLINE_THRESHOLD);
 
   return (
     <FormField

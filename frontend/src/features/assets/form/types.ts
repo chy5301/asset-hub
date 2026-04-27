@@ -25,3 +25,6 @@ export type FieldDef = {
   /** 仅 enum / multi-enum override 默认阈值（≤4 RadioGroup / ≥5 Select） */
   displayAs?: 'radio' | 'select';
 };
+
+/** enum / multi-enum：选项数 ≤ 此阈值时默认走内联 RadioGroup/Checkbox，否则走 Select/Combobox */
+export const ENUM_INLINE_THRESHOLD = 4;

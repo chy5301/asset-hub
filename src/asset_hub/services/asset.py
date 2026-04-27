@@ -79,14 +79,7 @@ class AssetService:
         或 INSERT 失败重试一次。本里程碑选择最简：失败 → DuplicateError → 调用方重试。
         """
         stmt = select(func.max(Asset.asset_code)).where(Asset.type_id == type_id)
-        row = self.session.exec(stmt).first()
-        # session.exec(select(func.max(...))) 返回单元素 Row（不是 tuple 子类），需要解包
-        if row is None:
-            max_code = None
-        elif hasattr(row, "_mapping") or isinstance(row, tuple):
-            max_code = row[0]
-        else:
-            max_code = row
+        max_code = self.session.scalar(stmt)
         if max_code is None:
             seq = 1
         else:

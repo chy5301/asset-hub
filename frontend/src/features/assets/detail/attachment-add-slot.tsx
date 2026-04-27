@@ -51,7 +51,12 @@ export function AttachmentAddSlot({ assetId }: AttachmentAddSlotProps) {
         assetId,
         file: pf.file,
         onProgress: (percent) => {
-          setPending((cur) => cur.map((p) => (p.localId === pf.localId ? { ...p, percent } : p)));
+          // XHR progress event 高频触发；percent 经 Math.round 后多次重复，避免 no-op re-render
+          setPending((cur) => {
+            const target = cur.find((p) => p.localId === pf.localId);
+            if (!target || target.percent === percent) return cur;
+            return cur.map((p) => (p.localId === pf.localId ? { ...p, percent } : p));
+          });
         },
       });
       // 成功 → 从 pending 列表移除（attachment query 自动 invalidate 后会出现在 grid）

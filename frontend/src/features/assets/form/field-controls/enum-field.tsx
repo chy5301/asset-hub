@@ -3,13 +3,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
-import type { FieldDef } from '../types';
-
-const RADIO_THRESHOLD = 4;
+import { ENUM_INLINE_THRESHOLD, type FieldDef } from '../types';
 
 export function EnumField({ def, control }: { def: FieldDef; control: Control }) {
   const options = def.options ?? [];
-  const useRadio = def.displayAs === 'radio' || (def.displayAs !== 'select' && options.length <= RADIO_THRESHOLD);
+  const useRadio = def.displayAs === 'radio' || (def.displayAs !== 'select' && options.length <= ENUM_INLINE_THRESHOLD);
 
   return (
     <FormField

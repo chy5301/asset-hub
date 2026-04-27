@@ -26,10 +26,14 @@ export function AssetEditForm() {
     () => (asset ? types.find((t) => t.id === asset.type_id) : undefined),
     [asset, types],
   );
-  const fieldDefs = (selectedType?.custom_fields ?? []) as FieldDef[];
+  const fieldDefs = useMemo<FieldDef[]>(
+    () => (selectedType?.custom_fields ?? []) as FieldDef[],
+    [selectedType],
+  );
+  const editSchema = useMemo(() => buildEditSchema(fieldDefs), [fieldDefs]);
 
   const form = useForm<EditFormValues>({
-    resolver: zodResolver(buildEditSchema(fieldDefs)),
+    resolver: zodResolver(editSchema),
     defaultValues: {
       name: '',
       serial_number: '',
@@ -58,8 +62,7 @@ export function AssetEditForm() {
   }, [asset, form]);
 
   async function onSubmit(values: EditFormValues) {
-    const schema = buildEditSchema(fieldDefs);
-    const parsed = schema.safeParse(values);
+    const parsed = editSchema.safeParse(values);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         form.setError(issue.path.join('.') as never, { message: issue.message });
