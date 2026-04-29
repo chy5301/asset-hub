@@ -151,7 +151,11 @@ def restart(
             exit_code=1,
         )
 
-    plain = render_plain_stop(stop_res) + "\n" + render_plain_start(start_res)
+    if not stop_res.stopped and not stop_res.stale_cleaned:
+        # spec §3.5: 服务未运行 → 直接 fresh start
+        plain = "- Not running, starting fresh\n" + render_plain_start(start_res)
+    else:
+        plain = render_plain_stop(stop_res) + "\n" + render_plain_start(start_res)
     _emit_success(
         json_out=json_out,
         plain_text=plain,

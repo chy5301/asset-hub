@@ -181,14 +181,20 @@ def _run_build() -> None:
 
 
 def _rollback_start(settings: Settings) -> None:
-    """探测失败时杀已起子进程 + 删 PID 文件。"""
+    """探测失败时杀已起子进程 + 删 PID 文件。
+
+    与 stop_service 同样要求 cmdline_match：避免 PID 复用窗口（极小但存在）
+    误杀无关进程；如 cmdline 不匹配则只清 PID 文件不杀。
+    SIGKILL 失败时静默吞错（rollback 是 best-effort，让用户看到原始探测超时
+    错误而非二次错误）。
+    """
     for service in ("backend", "frontend"):
         f = settings.pids_dir / f"{service}.pid"
         state = pid_mod.read_pid_state(f, service)  # type: ignore[arg-type]
-        if state.pid is not None:
+        if state.pid is not None and state.cmdline_match:
             try:
                 proc_mod.kill_tree(state.pid, timeout=5.0)
-            except (proc_mod.KillFailedError, Exception):
+            except proc_mod.KillFailedError:
                 pass
         pid_mod.remove_pid_file(f)
 
