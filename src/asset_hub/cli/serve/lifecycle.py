@@ -101,10 +101,13 @@ def start_service(
         )
 
     # Phase 4 · 健康探测
+    spawned: list[tuple[Literal["backend", "frontend"], int]] = [("backend", backend_pid)]
+    if frontend_pid is not None:
+        spawned.append(("frontend", frontend_pid))
     healthz_url = f"http://127.0.0.1:{backend_port}/api/healthz"
     probe = probe_mod.probe_until_ready(healthz_url)
     if not probe.ok:
-        _rollback_start(settings)
+        _rollback_spawned(settings, spawned)
         raise ServeLifecycleError(
             "serve.health_probe_timeout",
             f"backend failed to start within ~10s; see {backend_log}",
@@ -115,7 +118,7 @@ def start_service(
             # 前端慢，再试一次更宽松窗
             time.sleep(2.0)
             if not probe_mod.probe_once(frontend_url, timeout=4.0):
-                _rollback_start(settings)
+                _rollback_spawned(settings, spawned)
                 raise ServeLifecycleError(
                     "serve.frontend_failed_to_start",
                     f"frontend (pnpm dev) failed to respond on :{frontend_port}",
@@ -180,23 +183,22 @@ def _run_build() -> None:
         )
 
 
-def _rollback_start(settings: Settings) -> None:
-    """探测失败时杀已起子进程 + 删 PID 文件。
+def _rollback_spawned(
+    settings: Settings,
+    spawned: list[tuple[Literal["backend", "frontend"], int]],
+) -> None:
+    """探测失败时直接杀刚刚 spawn 的子进程 + 删对应 PID 文件。
 
-    与 stop_service 同样要求 cmdline_match：避免 PID 复用窗口（极小但存在）
-    误杀无关进程；如 cmdline 不匹配则只清 PID 文件不杀。
-    SIGKILL 失败时静默吞错（rollback 是 best-effort，让用户看到原始探测超时
-    错误而非二次错误）。
+    避免重读 PID 文件 + 重复 psutil 调用（PID 是我们刚 spawn 的，cmdline_match
+    隐含为真）。SIGKILL 失败时静默吞错——rollback 是 best-effort，让用户看到
+    原始探测超时错误而非二次错误。
     """
-    for service in ("backend", "frontend"):
-        f = settings.pids_dir / f"{service}.pid"
-        state = pid_mod.read_pid_state(f, service)  # type: ignore[arg-type]
-        if state.pid is not None and state.cmdline_match:
-            try:
-                proc_mod.kill_tree(state.pid, timeout=5.0)
-            except proc_mod.KillFailedError:
-                pass
-        pid_mod.remove_pid_file(f)
+    for service, pid in spawned:
+        try:
+            proc_mod.kill_tree(pid, timeout=5.0)
+        except proc_mod.KillFailedError:
+            pass
+        pid_mod.remove_pid_file(settings.pids_dir / f"{service}.pid")
 
 
 def stop_service() -> StopResult:

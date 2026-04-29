@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 _TAIL_BYTES_PER_LINE_ESTIMATE = 200
+_TAIL_LINES_MAX = 50_000  # 防止 --lines 过大时内存陡增（200B * 50K ≈ 10MB 上限）
 
 
 def rotate_log(log_path: Path) -> None:
@@ -18,12 +19,13 @@ def rotate_log(log_path: Path) -> None:
 
 
 def tail_lines(log_path: Path, n: int) -> list[str]:
-    """读取文件最后 N 行；文件不存在或为空返回 []."""
+    """读取文件最后 N 行；文件不存在或为空返回 []。N 自动 clamp 到 _TAIL_LINES_MAX。"""
     if not log_path.exists():
         return []
     size = log_path.stat().st_size
     if size == 0:
         return []
+    n = max(1, min(n, _TAIL_LINES_MAX))
     chunk = min(size, _TAIL_BYTES_PER_LINE_ESTIMATE * n)
     with log_path.open("rb") as f:
         f.seek(max(0, size - chunk))
