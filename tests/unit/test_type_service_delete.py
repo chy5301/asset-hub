@@ -19,7 +19,7 @@ def test_delete_type_with_assets_raises_conflict(session):
     asset_svc = AssetService(session)
     asset_svc.register(type_id=t.id, name="资产1", custom_data={})
 
-    with pytest.raises(ConflictError, match="1"):
+    with pytest.raises(ConflictError, match=r"仍有 1 个"):
         type_svc.delete_type(t.id)
 
 
