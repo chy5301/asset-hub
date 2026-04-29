@@ -82,7 +82,7 @@ def type_show(
 @type_app.command("delete")
 def type_delete(
     type_id: Annotated[str, typer.Argument(help="要删除的 AssetType id")],
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="跳过二次确认")] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="跳过二次确认（--json 模式自动跳过）")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="预览不真删")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
 ) -> None:
@@ -95,6 +95,13 @@ def type_delete(
         ref_count = svc.repo.count_assets_by_type(uid)
 
         if dry_run:
+            if ref_count > 0:
+                # 有引用 — 真删会失败；dry-run 应同样信号失败
+                print_error(
+                    f"该类型仍有 {ref_count} 个资产引用，dry-run 报告将会失败（实际删除会被拒绝）",
+                    json_output,
+                    exit_code=1,
+                )
             payload = {
                 "would_delete": {
                     "id": str(uid),

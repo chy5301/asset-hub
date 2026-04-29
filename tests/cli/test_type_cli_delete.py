@@ -62,3 +62,27 @@ def test_type_delete_not_found_returns_exit_3(isolated_db):
         app, ["type", "delete", str(uuid.uuid4()), "--yes", "--json"]
     )
     assert res.exit_code == 3
+
+
+def test_type_delete_dry_run_with_refs_returns_exit_1(isolated_db):
+    """dry-run 在有引用时应预报失败而非误报成功。"""
+    from asset_hub.cli.deps import cli_session
+    from asset_hub.services.asset import AssetService
+    from asset_hub.services.asset_type import TypeService
+
+    with cli_session() as session:
+        t = TypeService(session).create_type(name="CLI-DR-CF", code_prefix="DC")
+        AssetService(session).register(type_id=t.id, name="A1", custom_data={})
+        type_id = t.id
+
+    res = runner.invoke(
+        app, ["type", "delete", str(type_id), "--dry-run", "--json"]
+    )
+    assert res.exit_code == 1
+    payload = json.loads(res.stdout)
+    assert payload["success"] is False
+    assert "1" in payload["error"] and "dry-run" in payload["error"]
+
+    # type 仍存在（未真删）
+    with cli_session() as session:
+        assert TypeService(session).get_type(type_id) is not None
