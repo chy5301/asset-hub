@@ -6,7 +6,7 @@ from sqlmodel import Session, SQLModel, create_engine
 def engine(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSET_HUB_DATA_DIR", str(tmp_path))
     # 触发所有 SQLModel 表注册，否则 create_all 不会建表
-    import asset_hub.api.app  # noqa: F401
+    import asset_hub.models  # noqa: F401
 
     url = f"sqlite:///{tmp_path / 'test.db'}"
     eng = create_engine(url)
