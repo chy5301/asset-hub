@@ -10,7 +10,12 @@ from asset_hub.cli.serve import logs as logs_mod
 from asset_hub.cli.serve import pid as pid_mod
 from asset_hub.cli.serve import probe as probe_mod
 from asset_hub.cli.serve import proc as proc_mod
-from asset_hub.cli.serve.output import ServiceInfo, StartResult
+from asset_hub.cli.serve.output import (
+    ServiceInfo,
+    StartResult,
+    StatusReport,
+    StopResult,
+)
 from asset_hub.config import Settings
 
 
@@ -186,3 +191,152 @@ def _rollback_start(settings: Settings) -> None:
             except (proc_mod.KillFailedError, Exception):
                 pass
         pid_mod.remove_pid_file(f)
+
+
+def stop_service() -> StopResult:
+    settings = Settings()
+    result = StopResult()
+    for service in ("backend", "frontend"):
+        f = settings.pids_dir / f"{service}.pid"
+        state = pid_mod.read_pid_state(f, service)  # type: ignore[arg-type]
+        if state.status is pid_mod.PidStateStatus.NONE:
+            continue
+        if state.status is pid_mod.PidStateStatus.STALE:
+            result.stale_cleaned.append(
+                f"{service} pid={state.pid} not alive"
+                if state.pid is not None
+                else f"{service} corrupt PID file"
+            )
+            pid_mod.remove_pid_file(f)
+            continue
+        # status == RUNNING
+        try:
+            method = proc_mod.kill_tree(state.pid, timeout=5.0)  # type: ignore[arg-type]
+        except proc_mod.KillFailedError as e:
+            raise ServeLifecycleError(
+                "serve.kill_failed",
+                f"failed to kill {service} pid={state.pid}: {e}; "
+                "manual cleanup required (PID file kept)",
+            ) from e
+        result.stopped.append({
+            "service": service, "pid": state.pid, "method": method.value,
+        })
+        pid_mod.remove_pid_file(f)
+    return result
+
+
+def status_service(*, no_probe: bool) -> StatusReport:
+    t0 = time.monotonic()
+    settings = Settings()
+    backend_state = pid_mod.read_pid_state(
+        settings.pids_dir / "backend.pid", "backend"
+    )
+    frontend_state = pid_mod.read_pid_state(
+        settings.pids_dir / "frontend.pid", "frontend"
+    )
+
+    if backend_state.status is pid_mod.PidStateStatus.NONE:
+        return StatusReport(
+            running=False, mode=None, backend=None, frontend=None,
+            probed=False, took_ms=int((time.monotonic() - t0) * 1000),
+        )
+
+    mode = backend_state.mode
+    if mode is None:
+        # fallback: frontend.pid 存在 → dev
+        mode = "dev" if frontend_state.file_exists else "prod"
+
+    backend_info = _build_status_info(
+        backend_state,
+        no_probe=no_probe, port_for_probe=settings.backend_port,
+    )
+    frontend_info = None
+    if mode == "dev" and frontend_state.status is not pid_mod.PidStateStatus.NONE:
+        frontend_info = _build_status_info(
+            frontend_state,
+            no_probe=no_probe, port_for_probe=settings.frontend_port,
+        )
+    return StatusReport(
+        running=backend_state.status is pid_mod.PidStateStatus.RUNNING,
+        mode=mode,
+        backend=backend_info,
+        frontend=frontend_info,
+        probed=not no_probe,
+        took_ms=int((time.monotonic() - t0) * 1000),
+    )
+
+
+def _build_status_info(state, *, no_probe: bool, port_for_probe: int):
+    if state.status is pid_mod.PidStateStatus.STALE:
+        return {"status": "stale", "pid": state.pid, "port": None,
+                "uptime_sec": 0, "healthy": False}
+    uptime = 0
+    if state.started_at is not None:
+        uptime = int((datetime.now(UTC) - state.started_at).total_seconds())
+    healthy = False
+    if not no_probe:
+        url = (
+            f"http://127.0.0.1:{port_for_probe}/api/healthz"
+            if state.service == "backend"
+            else f"http://127.0.0.1:{port_for_probe}/"
+        )
+        healthy = probe_mod.probe_once(url, timeout=2.0)
+    return {
+        "status": "running",
+        "pid": state.pid,
+        "port": port_for_probe,
+        "uptime_sec": uptime,
+        "healthy": healthy,
+    }
+
+
+def restart_service(
+    *,
+    mode_override: Literal["dev", "prod"] | None,
+    skip_build: bool,
+    port_override: int | None,
+    frontend_port_override: int | None,
+    host_override: str | None,
+) -> tuple[StopResult, StartResult]:
+    settings = Settings()
+    backend_state = pid_mod.read_pid_state(
+        settings.pids_dir / "backend.pid", "backend"
+    )
+    frontend_state = pid_mod.read_pid_state(
+        settings.pids_dir / "frontend.pid", "frontend"
+    )
+
+    inferred_mode: Literal["dev", "prod"] | None = backend_state.mode
+    if inferred_mode is None and backend_state.status is not pid_mod.PidStateStatus.NONE:
+        inferred_mode = "dev" if frontend_state.file_exists else "prod"
+
+    target_mode = mode_override or inferred_mode
+    if target_mode is None:
+        raise ServeLifecycleError(
+            "serve.mode_required",
+            "cannot infer mode from PID files; specify --mode dev|prod",
+        )
+
+    stop_result = stop_service()
+    start_result = start_service(
+        mode=target_mode,
+        skip_build=skip_build,
+        port_override=port_override,
+        frontend_port_override=frontend_port_override,
+        host_override=host_override,
+    )
+    return stop_result, start_result
+
+
+def logs_for_service(
+    *,
+    service: Literal["backend", "frontend", "all"],
+    lines: int,
+) -> dict[str, list[str]]:
+    settings = Settings()
+    out: dict[str, list[str]] = {}
+    services = ["backend", "frontend"] if service == "all" else [service]
+    for s in services:
+        path = settings.logs_dir / f"{s}.log"
+        out[s] = logs_mod.tail_lines(path, lines)
+    return out
