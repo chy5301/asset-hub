@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
-from asset_hub.api.routers import assets, attachments, checkouts, types
+from asset_hub.api.routers import assets, attachments, checkouts, health, types
 from asset_hub.errors import (
     AssetHubError,
     ConflictError,
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
     app.include_router(checkouts.router, prefix="/api/assets", tags=["checkouts"])
     app.include_router(attachments.router, prefix="/api", tags=["attachments"])
+    app.include_router(health.router, prefix="/api", tags=["health"])
 
     for exc_cls, status in _EXC_STATUS.items():
         app.add_exception_handler(exc_cls, _make_handler(status))
