@@ -20,3 +20,9 @@ class StateError(AssetHubError):
 
     例：对 IN_USE 资产再次派发；对无未归还记录的资产归还。"""
     pass
+
+
+class ConflictError(AssetHubError):
+    """资源处于不允许此操作的状态（如有引用、状态冲突）。"""
+
+    pass
