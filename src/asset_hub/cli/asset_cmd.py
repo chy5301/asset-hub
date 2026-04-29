@@ -176,13 +176,24 @@ def asset_checkout(
 def asset_return(
     asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
     note: Annotated[str | None, typer.Option(help="归还备注")] = None,
+    location: Annotated[
+        str | None, typer.Option("--location", help="归还到的物理位置")
+    ] = None,
+    receiver: Annotated[
+        str | None, typer.Option("--receiver", help="归还接收的管理员")
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """归还资产。"""
+    """归还资产（可记录归还地点 + 接收人）。"""
     uid = parse_uuid(asset_id, json_output)
     with cli_session() as session, handle_domain_errors(json_output):
         svc = CheckoutService(session)
-        rec = svc.return_(asset_id=uid, note=note)
+        rec = svc.return_(
+            asset_id=uid,
+            note=note,
+            return_location=location,
+            return_receiver=receiver,
+        )
     print_result(to_json_dict(CheckoutRead, rec), json_output)
 
 
