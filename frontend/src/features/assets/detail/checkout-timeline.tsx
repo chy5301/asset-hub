@@ -77,6 +77,16 @@ function Card({ checkout: c }: { checkout: CheckoutRead }) {
           归还备注：{c.return_note}
         </p>
       ) : null}
+      {c.return_location && !ongoing ? (
+        <p className="text-sm text-muted-foreground">
+          归还至：{c.return_location}
+        </p>
+      ) : null}
+      {c.return_receiver && !ongoing ? (
+        <p className="text-sm text-muted-foreground">
+          接收人：{c.return_receiver}
+        </p>
+      ) : null}
     </div>
   );
 }

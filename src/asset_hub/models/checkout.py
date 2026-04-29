@@ -25,3 +25,5 @@ class CheckoutRecord(SQLModel, table=True):
     returned_at: datetime | None = Field(default=None, index=True)
     checkout_note: str | None = None
     return_note: str | None = None
+    return_location: str | None = None
+    return_receiver: str | None = None

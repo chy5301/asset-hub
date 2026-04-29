@@ -39,7 +39,12 @@ def return_asset(
     body: CheckoutReturn,
     svc: Annotated[CheckoutService, Depends(_get_svc)],
 ):
-    return svc.return_(asset_id=asset_id, note=body.note)
+    return svc.return_(
+        asset_id=asset_id,
+        note=body.note,
+        return_location=body.return_location,
+        return_receiver=body.return_receiver,
+    )
 
 
 @router.get("/{asset_id}/history", response_model=list[CheckoutRead])

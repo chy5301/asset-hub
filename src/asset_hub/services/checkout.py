@@ -63,6 +63,8 @@ class CheckoutService:
         self,
         asset_id: uuid.UUID,
         note: str | None = None,
+        return_location: str | None = None,
+        return_receiver: str | None = None,
     ) -> CheckoutRecord:
         asset = self.asset_svc.get_asset(asset_id)
 
@@ -78,11 +80,13 @@ class CheckoutService:
         now = datetime.now(UTC)
         record.returned_at = now
         record.return_note = note
+        record.return_location = return_location
+        record.return_receiver = return_receiver
 
         asset.status = AssetStatus.IDLE
         asset.holder = None
-        asset.location = None
-        asset.current_checkout_id = None  # 清空
+        asset.location = return_location  # 跟随，留空则清空
+        asset.current_checkout_id = None
         asset.updated_at = now
 
         self.session.commit()

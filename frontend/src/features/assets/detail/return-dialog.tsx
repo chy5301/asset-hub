@@ -5,6 +5,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
@@ -20,6 +21,8 @@ type CheckoutRead = components['schemas']['CheckoutRead'];
 
 const schema = z.object({
   note: z.string().optional(),
+  return_location: z.string().max(200).optional(),
+  return_receiver: z.string().max(100).optional(),
 });
 type Values = z.infer<typeof schema>;
 
@@ -34,7 +37,7 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
   const mutation = useReturnMutation();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { note: '' },
+    defaultValues: { note: '', return_location: '', return_receiver: '' },
     mode: 'onSubmit',
   });
 
@@ -49,7 +52,11 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
     try {
       await mutation.mutateAsync({
         assetId,
-        body: { note: values.note?.trim() || null },
+        body: {
+          note: values.note?.trim() || null,
+          return_location: values.return_location?.trim() || null,
+          return_receiver: values.return_receiver?.trim() || null,
+        },
       });
       form.reset();
       onOpenChange(false);
@@ -97,6 +104,40 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
                       {...field}
                       disabled={mutation.isPending || !currentCheckout}
                       rows={3}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="return_location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>归还地点（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="如：仓库 A-第 3 排"
+                      disabled={mutation.isPending || !currentCheckout}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="return_receiver"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>接收人（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="如：管理员张三"
+                      disabled={mutation.isPending || !currentCheckout}
                     />
                   </FormControl>
                   <FormMessage />
