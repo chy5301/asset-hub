@@ -5,7 +5,13 @@ from typing import Any, NoReturn
 
 from pydantic import BaseModel
 
-from asset_hub.errors import DuplicateError, NotFoundError, StateError, ValidationError
+from asset_hub.errors import (
+    ConflictError,
+    DuplicateError,
+    NotFoundError,
+    StateError,
+    ValidationError,
+)
 
 
 def success_envelope(data: Any, count: int | None = None, took_ms: float | None = None) -> str:
@@ -62,12 +68,12 @@ def to_json_dict(schema_cls: type[BaseModel], obj: Any) -> dict:
 def handle_domain_errors(json_output: bool) -> Generator[None, None, None]:
     """把域异常按 CLI 退出码契约翻译成 print_error。
 
-    退出码：NotFoundError → 3；DuplicateError/ValidationError/StateError → 1。
+    退出码：NotFoundError → 3；ConflictError/DuplicateError/ValidationError/StateError → 1。
     与 api/app.py 的 HTTP 映射对称，避免每个命令重复 try/except。
     """
     try:
         yield
     except NotFoundError as e:
         print_error(str(e), json_output, exit_code=3)
-    except (DuplicateError, ValidationError, StateError) as e:
+    except (ConflictError, DuplicateError, ValidationError, StateError) as e:
         print_error(str(e), json_output, exit_code=1)

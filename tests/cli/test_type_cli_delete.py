@@ -1,0 +1,64 @@
+import json
+import uuid
+
+import pytest
+from typer.testing import CliRunner
+
+from asset_hub.cli.deps import cli_session
+from asset_hub.cli.main import app
+from asset_hub.errors import NotFoundError
+from asset_hub.services.asset import AssetService
+from asset_hub.services.asset_type import TypeService
+
+runner = CliRunner()
+
+
+def test_type_delete_dry_run_no_db_change(isolated_db):
+    with cli_session() as s:
+        t = TypeService(s).create_type(name="CLI-DR", code_prefix="DR")
+        type_id = t.id
+
+    res = runner.invoke(
+        app, ["type", "delete", str(type_id), "--dry-run", "--json"]
+    )
+    assert res.exit_code == 10  # dry-run 预览
+    payload = json.loads(res.stdout)
+    assert payload["success"] is True
+
+    # 数据库内 type 仍存在
+    with cli_session() as s:
+        assert TypeService(s).get_type(type_id) is not None
+
+
+def test_type_delete_no_refs_succeeds(isolated_db):
+    with cli_session() as s:
+        t = TypeService(s).create_type(name="CLI-OK", code_prefix="OK")
+        type_id = t.id
+
+    res = runner.invoke(app, ["type", "delete", str(type_id), "--yes", "--json"])
+    assert res.exit_code == 0
+
+    with cli_session() as s, pytest.raises(NotFoundError):
+        TypeService(s).get_type(type_id)
+
+
+def test_type_delete_with_refs_returns_exit_1(isolated_db):
+    with cli_session() as s:
+        t = TypeService(s).create_type(name="CLI-CF", code_prefix="CF")
+        AssetService(s).register(type_id=t.id, name="A1", custom_data={})
+        type_id = t.id
+
+    res = runner.invoke(app, ["type", "delete", str(type_id), "--yes", "--json"])
+    assert res.exit_code == 1
+    payload = json.loads(res.stdout)
+    assert payload["success"] is False
+    # error envelope 是字符串，不是嵌套 dict — 见 envelope.py error_envelope
+    assert isinstance(payload["error"], str)
+    assert "引用" in payload["error"]
+
+
+def test_type_delete_not_found_returns_exit_3(isolated_db):
+    res = runner.invoke(
+        app, ["type", "delete", str(uuid.uuid4()), "--yes", "--json"]
+    )
+    assert res.exit_code == 3
