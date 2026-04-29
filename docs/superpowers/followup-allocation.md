@@ -16,7 +16,7 @@
 
 | 项 | 来源 | 理由 |
 |---|---|---|
-| **B2** 归还时直接转交（dialog 加可选 holder/location） | smoketest | 高频用户痛点；纯 service+dialog 局部小动 |
+| **B2** 归还时记录归还地点 + 接收人（dialog 加 return_location / return_receiver 字段） | smoketest（按 spec §14.2 真实意图实施；smoketest 原文表述失真） | 高频用户痛点；纯 service+dialog 局部小动 |
 | **B3** AssetType DELETE 端点（严格拒绝引用）+ CLI | smoketest | 与 B2 同 PR 合理（service+router+CLI 三层小动）；运维盲点低成本清掉 |
 | **I1** 后端 validation 补 `url` / `multi-enum` / `int.min/max` | simplify §4 | 真实功能缺口（前端能过、后端必拒），用户可触发的运行时错误，不能再拖 |
 | **I2** `FieldType` Enum + 表驱动 dispatch | simplify §4 | 与 I1 同时做 ROI 最高（新增 url/multi-enum 也要进 Enum） |
@@ -55,8 +55,7 @@
 | **C3** detail page 多查 type 列表（detail DTO 补 type_name） | simplify §1.C | 已登记"M3 详情页改动时顺手做" |
 | **D1** generated schema 类型业务化 alias 层 | simplify §1.D | 已登记"M3 openapi 客户端选型决策时一并做"（spec §13） |
 | **H4** `error.ts` `unwrap` 签名抽 `OpenapiFetchResult<T>` | simplify §3.H | 与 D1 同周期（受 openapi 客户端选型驱动） |
-| **§14.2** 归还时可改 location / holder | spec | M3 主线项；B2 落地后 14.2 大半被覆盖，残值"IDLE 默认 location 可改"可能合并到 §14.3 |
-| **§14.3** IDLE 资产显式 location 维护 | spec | 已登记"M3 表单里程碑顺手做"，与 14.2 联动 |
+| **§14.3** IDLE 资产显式 location 维护（独立"修改位置" action） | spec | M2d B2 已覆盖归还时 location；§14.3 残值缩小为"派发→归还之间的时段需独立修改位置 action" |
 | **§14.8** timeline 视觉重构（时间渐隐 + 派出类型染色 + 超长派发预警） | spec | 已登记"M3 与 14.1 联动" |
 
 ---
@@ -86,6 +85,7 @@
 1. **smoketest B1 不要在 M2d 单独建表** —— 与 M3 §14.6 的 `StateTransitionRecord` 设计天然合并，先做 B1 等于自己挖坑给 §14.6 填。M2d 期间只做 B2+B3。
 2. **simplify I1+I2 应跟 M2d 走** —— 不是主题相关，而是 I1 是用户可触发的运行时 bug，已经拖了 M2c-3；M2c-4 的 custom_fields builder 会更早暴露 url/multi-enum 在后端不认的事实，必须在 M2c-4 之前修。
 3. **simplify A2+A4 必须挂 M2c-4** —— 不是顺手，而是 builder 让"运行时增加 field type"成为常态，9 个 field-control 外壳在 M2c-4 期间会被反复触碰，不抽 FieldShell 等于反复改 9 处。
+4. **B2 真实意图 = spec §14.2**（2026-04-29 brainstorm 修正）—— smoketest 原文描述"A→甲→乙 直接转交"是失真表述；真实需求是"归还时记录归还到哪个地点 + 哪个管理员接收"。M2d B2 实施完成后 §14.2 完全覆盖，从 M3 移除；§14.3 残值缩小为"派发→归还之间需独立修改位置 action"。
 
 ---
 
@@ -95,5 +95,5 @@
 |---|---|---|---|
 | **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 |
 | **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 |
-| **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.2、§14.3、§14.8 | 8 |
+| **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.3、§14.8 | 7 |
 | 暂不动 | — | 13 项 | 13 |
