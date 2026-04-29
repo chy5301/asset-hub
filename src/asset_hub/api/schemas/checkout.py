@@ -12,6 +12,8 @@ class CheckoutCreate(BaseModel):
 
 class CheckoutReturn(BaseModel):
     note: str | None = None
+    return_location: str | None = None
+    return_receiver: str | None = None
 
 
 class CheckoutRead(BaseModel):
@@ -25,3 +27,5 @@ class CheckoutRead(BaseModel):
     returned_at: datetime | None
     checkout_note: str | None
     return_note: str | None
+    return_location: str | None
+    return_receiver: str | None
