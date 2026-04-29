@@ -361,11 +361,19 @@ export interface components {
             checkout_note: string | null;
             /** Return Note */
             return_note: string | null;
+            /** Return Location */
+            return_location: string | null;
+            /** Return Receiver */
+            return_receiver: string | null;
         };
         /** CheckoutReturn */
         CheckoutReturn: {
             /** Note */
             note?: string | null;
+            /** Return Location */
+            return_location?: string | null;
+            /** Return Receiver */
+            return_receiver?: string | null;
         };
         /**
          * CustomFieldDef
