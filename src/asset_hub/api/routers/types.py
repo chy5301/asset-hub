@@ -39,3 +39,11 @@ def get_type(
     svc: Annotated[TypeService, Depends(_get_svc)],
 ):
     return svc.get_type(type_id)
+
+
+@router.delete("/{type_id}", status_code=204)
+def delete_type(
+    type_id: uuid.UUID,
+    svc: Annotated[TypeService, Depends(_get_svc)],
+):
+    svc.delete_type(type_id)

@@ -1,7 +1,9 @@
 import uuid
 
+from sqlalchemy import func
 from sqlmodel import Session, select
 
+from asset_hub.models.asset import Asset
 from asset_hub.models.asset_type import AssetType
 
 
@@ -19,3 +21,10 @@ class TypeRepository:
 
     def list_all(self) -> list[AssetType]:
         return list(self.session.exec(select(AssetType)).all())
+
+    def count_assets_by_type(self, type_id: uuid.UUID) -> int:
+        stmt = select(func.count()).select_from(Asset).where(Asset.type_id == type_id)
+        return self.session.exec(stmt).one()
+
+    def delete(self, asset_type: AssetType) -> None:
+        self.session.delete(asset_type)

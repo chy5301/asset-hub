@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from asset_hub.api.schemas.asset_type import CustomFieldDef
-from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
+from asset_hub.errors import (
+    ConflictError,
+    DuplicateError,
+    NotFoundError,
+    ValidationError,
+)
 from asset_hub.models.asset_type import AssetType
 from asset_hub.repositories.asset_type import TypeRepository
 
@@ -62,3 +67,13 @@ class TypeService:
 
     def list_types(self) -> list[AssetType]:
         return self.repo.list_all()
+
+    def delete_type(self, type_id: uuid.UUID) -> None:
+        t = self.get_type(type_id)  # 不存在抛 NotFoundError
+        ref_count = self.repo.count_assets_by_type(type_id)
+        if ref_count > 0:
+            raise ConflictError(
+                f"该类型仍有 {ref_count} 个资产引用，请先删除/迁移所有引用此类型的资产"
+            )
+        self.repo.delete(t)
+        self.session.commit()

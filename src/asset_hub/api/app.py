@@ -5,6 +5,7 @@ from starlette.requests import Request
 from asset_hub.api.routers import assets, attachments, checkouts, types
 from asset_hub.errors import (
     AssetHubError,
+    ConflictError,
     DuplicateError,
     NotFoundError,
     StateError,
@@ -12,8 +13,9 @@ from asset_hub.errors import (
 )
 
 _EXC_STATUS: dict[type[AssetHubError], int] = {
-    NotFoundError: 404,
+    ConflictError: 409,
     DuplicateError: 409,
+    NotFoundError: 404,
     StateError: 409,
     ValidationError: 422,
 }
