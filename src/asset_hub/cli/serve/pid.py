@@ -33,7 +33,6 @@ class PidState:
     pid: int | None
     mode: Literal["dev", "prod"] | None
     started_at: datetime | None
-    process_alive: bool
     cmdline_match: bool
     status: PidStateStatus
 
@@ -85,12 +84,22 @@ def _cmdline_tokens_for(service: Literal["backend", "frontend"]) -> tuple[str, .
     return BACKEND_CMDLINE_TOKENS if service == "backend" else FRONTEND_CMDLINE_TOKENS
 
 
-def _check_cmdline(pid: int, tokens: tuple[str, ...]) -> bool:
-    try:
-        cmdline_str = " ".join(psutil.Process(pid).cmdline())
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return False
-    return all(t in cmdline_str for t in tokens)
+def _stale(
+    service: Literal["backend", "frontend"],
+    *,
+    file_exists: bool = True,
+    content: PidFileContent | None = None,
+    cmdline_match: bool = False,
+) -> PidState:
+    return PidState(
+        service=service,
+        file_exists=file_exists,
+        pid=content.pid if content else None,
+        mode=content.mode if content else None,
+        started_at=content.started_at if content else None,
+        cmdline_match=cmdline_match,
+        status=PidStateStatus.STALE,
+    )
 
 
 def read_pid_state(
@@ -104,7 +113,6 @@ def read_pid_state(
             pid=None,
             mode=None,
             started_at=None,
-            process_alive=False,
             cmdline_match=False,
             status=PidStateStatus.NONE,
         )
@@ -113,76 +121,30 @@ def read_pid_state(
         content = read_pid_file(path)
         assert content is not None
     except ValueError:
-        return PidState(
-            service=service,
-            file_exists=True,
-            pid=None,
-            mode=None,
-            started_at=None,
-            process_alive=False,
-            cmdline_match=False,
-            status=PidStateStatus.STALE,
-        )
+        return _stale(service)
 
-    pid = content.pid
-    if not psutil.pid_exists(pid):
-        return PidState(
-            service=service,
-            file_exists=True,
-            pid=pid,
-            mode=content.mode,
-            started_at=content.started_at,
-            process_alive=False,
-            cmdline_match=False,
-            status=PidStateStatus.STALE,
-        )
+    if not psutil.pid_exists(content.pid):
+        return _stale(service, content=content)
 
+    # 单一 psutil.Process 实例：避免 status() 与 cmdline() 各构造一次
     try:
-        proc_status = psutil.Process(pid).status()
+        proc = psutil.Process(content.pid)
+        if proc.status() == psutil.STATUS_ZOMBIE:
+            return _stale(service, content=content)
+        cmdline_str = " ".join(proc.cmdline())
     except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return PidState(
-            service=service,
-            file_exists=True,
-            pid=pid,
-            mode=content.mode,
-            started_at=content.started_at,
-            process_alive=False,
-            cmdline_match=False,
-            status=PidStateStatus.STALE,
-        )
+        return _stale(service, content=content)
 
-    if proc_status == psutil.STATUS_ZOMBIE:
-        return PidState(
-            service=service,
-            file_exists=True,
-            pid=pid,
-            mode=content.mode,
-            started_at=content.started_at,
-            process_alive=False,
-            cmdline_match=False,
-            status=PidStateStatus.STALE,
-        )
-
-    cmdline_ok = _check_cmdline(pid, _cmdline_tokens_for(service))
-    if not cmdline_ok:
-        return PidState(
-            service=service,
-            file_exists=True,
-            pid=pid,
-            mode=content.mode,
-            started_at=content.started_at,
-            process_alive=True,
-            cmdline_match=False,
-            status=PidStateStatus.STALE,
-        )
+    tokens = _cmdline_tokens_for(service)
+    if not all(t in cmdline_str for t in tokens):
+        return _stale(service, content=content, cmdline_match=False)
 
     return PidState(
         service=service,
         file_exists=True,
-        pid=pid,
+        pid=content.pid,
         mode=content.mode,
         started_at=content.started_at,
-        process_alive=True,
         cmdline_match=True,
         status=PidStateStatus.RUNNING,
     )

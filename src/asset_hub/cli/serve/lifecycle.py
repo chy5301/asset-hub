@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import time
 from datetime import UTC, datetime
@@ -101,21 +102,28 @@ def start_service(
         )
 
     # Phase 4 · 健康探测
+    spawned: list[tuple[Literal["backend", "frontend"], int]] = [("backend", backend_pid)]
+    if frontend_pid is not None:
+        spawned.append(("frontend", frontend_pid))
     healthz_url = f"http://127.0.0.1:{backend_port}/api/healthz"
     probe = probe_mod.probe_until_ready(healthz_url)
     if not probe.ok:
-        _rollback_start(settings)
+        _rollback_spawned(settings, spawned)
         raise ServeLifecycleError(
             "serve.health_probe_timeout",
             f"backend failed to start within ~10s; see {backend_log}",
         )
     if mode == "dev":
-        frontend_url = f"http://127.0.0.1:{frontend_port}/"
+        # 用 localhost 而非 127.0.0.1：Vite 8.x 在 Windows 上 dev 默认只绑 IPv6
+        # ::1，IPv4 127.0.0.1 会被拒绝；localhost 由 OS 解析（先 ::1 后回退
+        # 127.0.0.1），与浏览器实际访问行为一致。后端用 127.0.0.1 因为 uvicorn
+        # 显式 --host 绑 IPv4，路径不同。
+        frontend_url = f"http://localhost:{frontend_port}/"
         if not probe_mod.probe_once(frontend_url, timeout=2.0):
             # 前端慢，再试一次更宽松窗
             time.sleep(2.0)
             if not probe_mod.probe_once(frontend_url, timeout=4.0):
-                _rollback_start(settings)
+                _rollback_spawned(settings, spawned)
                 raise ServeLifecycleError(
                     "serve.frontend_failed_to_start",
                     f"frontend (pnpm dev) failed to respond on :{frontend_port}",
@@ -170,8 +178,14 @@ def _check_pids_or_clean_stale(settings: Settings) -> None:
 
 
 def _run_build() -> None:
+    # Windows pnpm 是 .cmd/.ps1 wrapper，subprocess 不解析 PATHEXT，必须用 which 显式解析
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        raise ServeLifecycleError(
+            "serve.build_failed", "pnpm not found on PATH"
+        )
     proc = subprocess.run(
-        ["pnpm", "--dir", "frontend", "build"], check=False
+        [pnpm, "--dir", "frontend", "build"], check=False
     )
     if proc.returncode != 0:
         raise ServeLifecycleError(
@@ -180,17 +194,22 @@ def _run_build() -> None:
         )
 
 
-def _rollback_start(settings: Settings) -> None:
-    """探测失败时杀已起子进程 + 删 PID 文件。"""
-    for service in ("backend", "frontend"):
-        f = settings.pids_dir / f"{service}.pid"
-        state = pid_mod.read_pid_state(f, service)  # type: ignore[arg-type]
-        if state.pid is not None:
-            try:
-                proc_mod.kill_tree(state.pid, timeout=5.0)
-            except (proc_mod.KillFailedError, Exception):
-                pass
-        pid_mod.remove_pid_file(f)
+def _rollback_spawned(
+    settings: Settings,
+    spawned: list[tuple[Literal["backend", "frontend"], int]],
+) -> None:
+    """探测失败时直接杀刚刚 spawn 的子进程 + 删对应 PID 文件。
+
+    避免重读 PID 文件 + 重复 psutil 调用（PID 是我们刚 spawn 的，cmdline_match
+    隐含为真）。SIGKILL 失败时静默吞错——rollback 是 best-effort，让用户看到
+    原始探测超时错误而非二次错误。
+    """
+    for service, pid in spawned:
+        try:
+            proc_mod.kill_tree(pid, timeout=5.0)
+        except proc_mod.KillFailedError:
+            pass
+        pid_mod.remove_pid_file(settings.pids_dir / f"{service}.pid")
 
 
 def stop_service() -> StopResult:
@@ -275,10 +294,12 @@ def _build_status_info(state, *, no_probe: bool, port_for_probe: int):
         uptime = int((datetime.now(UTC) - state.started_at).total_seconds())
     healthy = False
     if not no_probe:
+        # frontend 用 localhost（Vite IPv6 ::1 binding；详见 start_service 注释）；
+        # backend 用 127.0.0.1（uvicorn 显式绑 IPv4）。
         url = (
             f"http://127.0.0.1:{port_for_probe}/api/healthz"
             if state.service == "backend"
-            else f"http://127.0.0.1:{port_for_probe}/"
+            else f"http://localhost:{port_for_probe}/"
         )
         healthy = probe_mod.probe_once(url, timeout=2.0)
     return {

@@ -9,6 +9,7 @@
 - [§2 M2c-2 范围（2026-04-27 二轮）](#2-m2c-2-范围2026-04-27二轮)
 - [§3 M2c-1 范围（2026-04-27 二轮）](#3-m2c-1-范围2026-04-27二轮)
 - [§4 M1 范围（2026-04-27 二轮）](#4-m1-范围2026-04-27二轮)
+- [§5 M2d 范围（2026-04-29）](#5-m2d-范围2026-04-29)
 
 ---
 
@@ -538,10 +539,10 @@
 
 ### §4 总览
 
-| 优先级 | 项目 | 触发条件 |
+| 优先级 | 项目 | 触发条件 / 状态 |
 |---|---|---|
-| 🔴 **高优先级 fix（非 simplify）** | I1 | 立即开单独 PR / issue——这是用户可触发的运行时错误 |
-| 🟡 与 I1 合并做 | I2 | I1 启动时一并引入 FieldType Enum |
+| ✅ **已完成（M2d Phase 0）** | I1 | M2d 落地于 `feature/m2d-validation`：补 url/multi-enum/int+float min/max 校验 + 4 + 5 + 6 unit tests |
+| ✅ **已完成（M2d Phase 0）** | I2 | M2d 落地于 `feature/m2d-validation`：引入 `FieldType StrEnum` + 表驱动 dispatch（`_DISPATCH: dict[FieldType, Callable]`），与 I1 合并到同一 PR |
 | 🔴 决定不做 | I3 / I4 / I5 / I6 | 协议差异 / 收益微小 / lazy-load 复杂度过高 |
 
 ---
@@ -561,6 +562,165 @@
 - agent 间共识"抽象比现状更糟"（G3 / H3）
 - 等待外部决策（H4 等 openapi 客户端选型）
 
-**例外**：I1 是真实功能缺口（前端能过、后端必拒），属于用户可触发的运行时错误，应单独开 fix PR / issue 跟踪，**不归在"暂不动"分类下**。
+**例外**：I1 是真实功能缺口（前端能过、后端必拒），属于用户可触发的运行时错误，应单独开 fix PR / issue 跟踪，**不归在"暂不动"分类下**。✅ **已在 M2d Phase 0 闭环**（与 I2 合并实施）。
+
+后续启动重构时按"触发条件"列对照即可，不必重新评估。
+
+---
+
+## §5 M2d 范围（2026-04-29）
+
+**分支**：`feature/m2d-review-fixup`（commit `db60189` 已落地 4 处低悬果实，下面是当时记录暂不动的项）
+**审查范围**：自 b811e07（M2d plan）到 481d3d7（feature/m2d-serve 合并），约 3150 行新增（含测试），生产代码 ~1300 行
+**视角**：reuse / quality / efficiency 三 agent 并行 review
+
+### J. 已落地（参考 commit `db60189`）
+
+- pid.read_pid_state 抽 `_stale()` builder + 复用单一 psutil.Process 实例（合并 Quality HIGH PidState 5 ctors + Efficiency F3）
+- pid.PidState 删 derivable `process_alive` 字段
+- lifecycle._rollback_start → `_rollback_spawned`：直接拿已 spawn 的 (service, pid) list（Efficiency F2）
+- logs.tail_lines clamp `--lines` 到 50000 上限（Efficiency F6）
+
+### K. 未修条目
+
+#### K1 · serve envelope 与项目 CLI envelope shape drift — **HIGH 优先级 follow-up**
+
+**位置**：
+- `src/asset_hub/cli/serve/output.py::render_json_envelope` + `serve/cmd.py::_emit_success/_emit_error`
+- vs `src/asset_hub/cli/envelope.py::success_envelope/error_envelope/print_result/print_error`
+
+**现状**：serve 命令的 JSON 信封 `error` 字段为结构化 `{"code": "serve.xxx", "message": "..."}`；其他 CLI 命令（asset/type/attachment）的 `error` 字段为 plain string。同一个 `asset-hub` 二进制的两套 envelope 形态对 Agent 消费者是 silent contract drift。
+
+**建议**：扩 `envelope.py` 的 `error_envelope`/`print_error` 接受可选 `code=` 参数；migrate 既有 `handle_domain_errors` 把 domain 异常类名映射成 code（如 `domain.NotFoundError`）。serve cmd.py 删 `_emit_*` + `output.py::render_json_envelope`，统一走 envelope.py。
+
+**ROI**：高（统一契约对 Agent-Native 项目意义大）。**风险**：中——需修改既有 CLI 命令的 envelope shape，触发现有 CLI tests 调整。
+
+**何时做**：M3 SKILL.md 完善同周期（届时 SKILL.md 要文档化所有 CLI 的 JSON 输出，正好统一一次）。
+
+---
+
+#### K2 · cmd.py 5 子命令重复 try/except/_emit 壳
+
+**位置**：`src/asset_hub/cli/serve/cmd.py:42-160`（start / stop / restart 三处近重复）
+
+**现状**：每条命令都是 `try lifecycle.xxx() / except ServeLifecycleError as e / _emit_error(... code=e.code)` 6 行模板。
+
+**建议**：抽 `_run_lifecycle(json_out, fn, *, plain_renderer, data_fn, metadata_fn)` 装饰器或 helper。3 命令各省 ~6 行 → 共省 ~18 行。
+
+**ROI**：中。3 命令的重复未达"5 倍化"抽象阈值；加装饰器后字段定义"间接化"，IDE 跳转链变长。
+
+**何时做**：未来 serve 子命令扩到 7+（如加 `serve doctor` / `serve build`）时考虑。
+
+---
+
+#### K3 · lifecycle.start_service 110 行 / 6 phase 单函数
+
+**位置**：`src/asset_hub/cli/serve/lifecycle.py:31-141`
+
+**现状**：phase 0-5 全集中在一个函数；已有 `# Phase 0 · ...` 注释提示分段。
+
+**建议**：拆 5 私有 helper（`_preflight_or_raise` / `_build_if_needed` / `_rotate_logs` / `_spawn_processes` / `_health_probe_or_rollback`），主函数压缩为 5 行 orchestration。
+
+**ROI**：中。可读性提升；但 phase 边界共享变量较多（`backend_pid` / `frontend_pid` / `started_at` / `host` 等），拆完后 helper 签名臃肿。
+
+**何时做**：未来 start_service 再加新 phase（如 §A.1 的 `serve doctor` 集成 / `serve build` 剥离）时启动。
+
+---
+
+#### K4 · stringly-typed mode/service literal
+
+**位置**：`cmd.py:52,131,175`（手写 `mode not in ("dev","prod")` / `service not in ("backend","frontend","all")` 校验 3 处）
+
+**现状**：repeated literal validation；与项目已有 StrEnum 风格（`AssetStatus` / `PidStateStatus`）不一致。
+
+**建议**：定义 `ServeMode(StrEnum)` 与 `ServiceTarget(StrEnum)`，让 Typer 通过 Enum 注解自动校验（Typer 原生支持），删 3 处手写检查。
+
+**ROI**：中。typed safer；但 Typer 的 Enum 对 `--mode dev` 和 `--mode ServeMode.DEV` 输出格式不同，可能触发 help 文案变化。
+
+**何时做**：与 K2 装饰器同期做（统一在 cmd.py 一次扫荡）；或未来 mode/service 取值再扩时启动。
+
+---
+
+#### K5 · `_build_status_info` 返回 untyped dict
+
+**位置**：`src/asset_hub/cli/serve/lifecycle.py:_build_status_info` 返回 `dict[str, Any]`；`StatusReport.backend/frontend: dict[str, Any] | None`
+
+**现状**：与同模块 `ServiceInfo` dataclass 不对称（start 用 typed dataclass，status 用 raw dict）；`render_plain_status` 读 `info["status"]` / `info["pid"]` 失去类型检查。
+
+**建议**：定义 `StatusInfo` dataclass（`status: Literal["running","stale"]` / `pid: int` / `port: int` / `uptime_sec: int` / `healthy: bool`），与 `ServiceInfo` 平行。`StatusReport.backend/frontend: StatusInfo | None`。
+
+**ROI**：低 - 中。类型安全；但 `_build_status_info` 是模块内部函数，外部消费者只有 `render_plain_status` + `to_dict()` —— 当前 raw dict 已被 dataclass-likeshape 约束，typo 风险低。
+
+**何时做**：M3 时 status 命令如新增字段（如 `latency_p50`）时一并 typed 化。
+
+---
+
+#### K6 · 3 处 (backend, frontend) 循环重复
+
+**位置**：
+- `lifecycle._check_pids_or_clean_stale:158-169`
+- `lifecycle.stop_service:202-231`
+- `lifecycle._rollback_spawned`（已落地 db60189 改用 spawn list 形式，**已部分缓解**）
+
+**现状**：每处都是 `for service in ("backend", "frontend"): f = settings.pids_dir / f"{service}.pid"; state = pid_mod.read_pid_state(...)`。
+
+**建议**：抽 `_iter_service_states(settings: Settings) -> Iterator[tuple[str, Path, PidState]]` generator 共享。
+
+**ROI**：低。3 处循环都很短（每处 5-10 行），抽出后 helper 签名比 inline 更绕。
+
+**何时做**：未来 service 数量扩展（如加 prometheus-exporter 等第三个服务）时启动。
+
+---
+
+#### K7 · validation `_coerce_int` 与 `_coerce_float` 95% 同构
+
+**位置**：`src/asset_hub/services/validation.py:33-50`
+
+**现状**：两 helper 仅 `int` / `float` 构造器不同；其他 try/except + `_check_range` 完全一致。
+
+**建议**：抽 `_coerce_numeric(value, spec, ctor)` helper；`_DISPATCH[FieldType.INT] = lambda v,s: _coerce_numeric(v,s,int)`。
+
+**ROI**：低。15 LOC saving；但 lambda dispatch 可读性下降。
+
+**何时做**：未来加 `decimal` / `complex` 等第 3 种数字类型时启动。
+
+---
+
+#### K8 · Settings 在 restart 路径多次实例化
+
+**位置**：`lifecycle.py:307` (restart) → `:203` (stop) → `:40` (start)
+
+**现状**：单次 restart 命令产生 3 次 `Settings()` 实例化（每次重读 .env + 跑 Pydantic 校验）。
+
+**建议**：`stop_service`/`start_service` 加可选 `settings: Settings | None = None` kw-only 参数；`restart_service` 实例化一次传入。
+
+**ROI**：低。微优化 v1 无影响（毫秒级）；代码清洁度边际收益。
+
+**何时做**：v1 不做。未来如 serve 命令吞吐量成为瓶颈（极不可能）再考虑。
+
+---
+
+#### K9 · cmd.py logs 命令直接 reach 进 Settings
+
+**位置**：`src/asset_hub/cli/serve/cmd.py:189` —— `path = Settings().logs_dir / f"{service}.log"`
+
+**现状**：其他 cmd 函数都通过 lifecycle 模块；logs --follow 路径单独 reach 进 Settings 拼路径。
+
+**建议**：在 `lifecycle.py` 加 `log_path_for(service)` helper，cmd 调它即可（logs_for_service 返回 dict，但 follow 路径需要 Path 而不是 lines list）。
+
+**ROI**：低。一致性微改善。
+
+**何时做**：与 K2 / K3 同期做。
+
+### §5 总览
+
+| 优先级 | 项目 | 触发条件 |
+|---|---|---|
+| 🔴 **高优先级 follow-up** | K1 | M3 SKILL.md 完善同周期 — 统一项目级 CLI envelope 契约 |
+| 🟡 等里程碑 | K2 / K3 / K4 / K9 | serve 子命令再扩（doctor / build）或 cmd.py 大改时一并启动 |
+| 🟡 等里程碑 | K5 | M3 status 命令加新字段时启动 |
+| 🔴 暂不动 | K6 / K7 / K8 | 触发条件远未到 |
+
+---
 
 后续启动重构时按"触发条件"列对照即可，不必重新评估。

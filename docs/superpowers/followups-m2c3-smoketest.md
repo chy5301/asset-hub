@@ -8,6 +8,16 @@
 
 ---
 
+## 处理状态总览（2026-04-29 M2d 完成后回填）
+
+| 项 | 状态 | 落地 commit / 决策 |
+|---|---|---|
+| B1 状态切换进流转记录 | ⏸ **延后到 M3 §14.6 audit 化** | 不在 M2d 单独建 `StatusChangeRecord` 表（会与 §14.6 的 `StateTransitionRecord` 设计冲突）。M3 §14.6 audit 化时一并覆盖。 |
+| B2 归还时记录归还地点 + 接收人 | ✅ **M2d 已完成**（修正语义） | brainstorm 阶段澄清 smoketest 原文"直接转交"是表述失真，真实需求是 spec §14.2 "归还时记录 location/holder"。M2d Phase 2 (Tasks 9-13) 落地，merge 自 `feature/m2d-return-fields`。涉及 model + migration + service + DTO + router + CLI + 前端 5 层。 |
+| B3 AssetType DELETE 端点 + CLI | ✅ **M2d 已完成** | M2d Phase 1 (Tasks 5-8) 落地，merge 自 `feature/m2d-type-delete`。严格拒绝有引用的删除（ConflictError → 409 / exit 1）；CLI 含 `--dry-run`/`--yes`/`--json`。 |
+
+---
+
 ## B1 · 状态切换是否进流转记录
 
 ### 现状
