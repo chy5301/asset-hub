@@ -1,6 +1,7 @@
 # Follow-up 分配（M2d / M2c-4 / M3 / 暂不动）
 
-**日期**：2026-04-28
+**日期**：2026-04-28（M2d 启动前规划）
+**M2d 完成回填**：2026-04-29
 **输入**：[`followups-m2c3-smoketest.md`](./followups-m2c3-smoketest.md)（产品决策类 B1/B2/B3） + [`simplify-followups.md`](./simplify-followups.md)（重构清单 §1-§4）+ [`specs/2026-04-15-asset-hub-design.md`](./specs/2026-04-15-asset-hub-design.md) §11/§14 主线
 **用途**：M2d 启动前确定 follow-up 落点，避免临时塞、避免漏。
 
@@ -8,20 +9,21 @@
 
 ---
 
-## M2d · CLI 接管 web 服务生命周期
+## M2d · CLI 接管 web 服务生命周期 ✅ **已完成（2026-04-29）**
 
 **主线**：spec §14.9 — `asset-hub serve start/stop/status/restart/logs`，psutil 进程树管理，PID/log 文件，dev/prod 模式。
+→ ✅ 落地于 `feature/m2d-serve` (Phase 3-8, Tasks 14-29)。详见 [`specs/2026-04-29-m2d-cli-serve-design.md`](./specs/2026-04-29-m2d-cli-serve-design.md) + [`plans/2026-04-29-m2d-cli-serve.md`](./plans/2026-04-29-m2d-cli-serve.md)。
 
 **搭车的小项**（与 M2d 主题无关，但可在同一里程碑独立 PR 顺手吃掉，不混进 serve spec）：
 
-| 项 | 来源 | 理由 |
+| 项 | 来源 | 状态 |
 |---|---|---|
-| **B2** 归还时记录归还地点 + 接收人（dialog 加 return_location / return_receiver 字段） | smoketest（按 spec §14.2 真实意图实施；smoketest 原文表述失真） | 高频用户痛点；纯 service+dialog 局部小动 |
-| **B3** AssetType DELETE 端点（严格拒绝引用）+ CLI | smoketest | 与 B2 同 PR 合理（service+router+CLI 三层小动）；运维盲点低成本清掉 |
-| **I1** 后端 validation 补 `url` / `multi-enum` / `int.min/max` | simplify §4 | 真实功能缺口（前端能过、后端必拒），用户可触发的运行时错误，不能再拖 |
-| **I2** `FieldType` Enum + 表驱动 dispatch | simplify §4 | 与 I1 同时做 ROI 最高（新增 url/multi-enum 也要进 Enum） |
+| **B2** 归还时记录归还地点 + 接收人（dialog 加 return_location / return_receiver 字段） | smoketest（按 spec §14.2 真实意图实施；smoketest 原文表述失真） | ✅ 落地于 `feature/m2d-return-fields` (Tasks 9-13)。M2d brainstorm 阶段澄清 smoketest 原文"直接转交"是表述失真。涉及 model + alembic migration + service + DTO + router + CLI + 前端 5 层；4 + 2 + 1 + 1 + 2 = 10 个新测试。**§14.2 完全被覆盖，从 M3 移除**；§14.3 残值缩小为"派发→归还之间需独立修改位置 action" |
+| **B3** AssetType DELETE 端点（严格拒绝引用）+ CLI | smoketest | ✅ 落地于 `feature/m2d-type-delete` (Tasks 5-8)。ConflictError 域异常 + 三层贯通（errors → app.py 409 / envelope exit 1）；CLI 含 `--dry-run` / `--yes` / `--json`；3 + 3 + 5 = 11 个新测试 |
+| **I1** 后端 validation 补 `url` / `multi-enum` / `int.min/max` | simplify §4 | ✅ 落地于 `feature/m2d-validation` (Tasks 1-4)。补 url（http/https + netloc）/ multi-enum / int+float min/max 校验；6 + 5 + 6 = 17 个新测试 |
+| **I2** `FieldType` Enum + 表驱动 dispatch | simplify §4 | ✅ 落地于 `feature/m2d-validation` (Tasks 1-2)。引入 `FieldType StrEnum`（9 字段类型字面量集中）+ `_DISPATCH: dict[FieldType, Callable]` 替换 7 层 if 链 |
 
-> 上面 4 项打包成"M2d 期间的 backend gaps PR"独立合并，不混进 serve spec。
+> 4 项均按计划独立 PR 实施，未混进 serve spec。**M2d 总计 38 commits，285 backend + 38 frontend tests 全绿。**
 
 ---
 
@@ -91,9 +93,19 @@
 
 ## 摘要
 
-| 里程碑 | 主线 | 强搭车项 | 数量 |
-|---|---|---|---|
-| **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 |
-| **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 |
-| **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.3、§14.8 | 7 |
-| 暂不动 | — | 13 项 | 13 |
+| 里程碑 | 主线 | 强搭车项 | 数量 | 状态 |
+|---|---|---|---|---|
+| **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 | ✅ 已完成（2026-04-29） |
+| **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 | ⏳ 待启动 |
+| **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.3、§14.8 | 7 | ⏳ 待启动 |
+| 暂不动 | — | 13 项 | 13 | — |
+
+---
+
+## M2d 期间另登记的新 follow-up
+
+M2d 实施 + final code review + simplify review 过程中又产生了一批新 follow-up，已分别登记到对应文档：
+
+- [`simplify-followups.md` §5 M2d 范围](./simplify-followups.md#5-m2d-范围2026-04-29)：K1-K9（已落地 4 项，未修 9 项；其中 **K1 envelope 统一**为 HIGH 优先级，登记到 M3 SKILL.md 完善同周期）
+- [`specs/2026-04-29-m2d-cli-serve-design.md` 附录 B](./specs/2026-04-29-m2d-cli-serve-design.md)：M2d 已知 Gap（Linux 真机烟测延后 / 多代日志轮转 / serve doctor / serve build 独立子命令 / --workers）
+- [`release-notes-m2d.md`](./release-notes-m2d.md)：部署清单 + Windows 烟测 checklist

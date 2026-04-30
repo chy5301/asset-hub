@@ -539,10 +539,10 @@
 
 ### §4 总览
 
-| 优先级 | 项目 | 触发条件 |
+| 优先级 | 项目 | 触发条件 / 状态 |
 |---|---|---|
-| 🔴 **高优先级 fix（非 simplify）** | I1 | 立即开单独 PR / issue——这是用户可触发的运行时错误 |
-| 🟡 与 I1 合并做 | I2 | I1 启动时一并引入 FieldType Enum |
+| ✅ **已完成（M2d Phase 0）** | I1 | M2d 落地于 `feature/m2d-validation`：补 url/multi-enum/int+float min/max 校验 + 4 + 5 + 6 unit tests |
+| ✅ **已完成（M2d Phase 0）** | I2 | M2d 落地于 `feature/m2d-validation`：引入 `FieldType StrEnum` + 表驱动 dispatch（`_DISPATCH: dict[FieldType, Callable]`），与 I1 合并到同一 PR |
 | 🔴 决定不做 | I3 / I4 / I5 / I6 | 协议差异 / 收益微小 / lazy-load 复杂度过高 |
 
 ---
@@ -562,7 +562,7 @@
 - agent 间共识"抽象比现状更糟"（G3 / H3）
 - 等待外部决策（H4 等 openapi 客户端选型）
 
-**例外**：I1 是真实功能缺口（前端能过、后端必拒），属于用户可触发的运行时错误，应单独开 fix PR / issue 跟踪，**不归在"暂不动"分类下**。
+**例外**：I1 是真实功能缺口（前端能过、后端必拒），属于用户可触发的运行时错误，应单独开 fix PR / issue 跟踪，**不归在"暂不动"分类下**。✅ **已在 M2d Phase 0 闭环**（与 I2 合并实施）。
 
 后续启动重构时按"触发条件"列对照即可，不必重新评估。
 
