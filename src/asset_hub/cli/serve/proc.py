@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import socket
 import subprocess
 import sys
@@ -11,6 +12,13 @@ import psutil
 
 DETACHED_PROCESS = 0x00000008
 CREATE_NEW_PROCESS_GROUP = 0x00000200
+CREATE_NO_WINDOW = 0x08000000
+
+# Windows detach 选 CREATE_NO_WINDOW + CREATE_NEW_PROCESS_GROUP 而非 DETACHED_PROCESS：
+# DETACHED_PROCESS 完全剥离 console handle，会让 .cmd / .bat 等批处理 wrapper
+# （如 pnpm.cmd / npm.cmd）启动后立即崩溃；CREATE_NO_WINDOW 同样隐藏窗口但保留
+# console handle，对批处理与 native exe 都安全。CREATE_NEW_PROCESS_GROUP 让父
+# CLI 退出后子进程不被父终端的 Ctrl+C 信号传递误杀。
 
 
 class KillMethod(StrEnum):
@@ -20,6 +28,25 @@ class KillMethod(StrEnum):
 
 class KillFailedError(RuntimeError):
     """SIGKILL 后仍存活的极端情况。"""
+
+
+class CommandNotFoundError(RuntimeError):
+    """指定的可执行文件在 PATH 上找不到。"""
+
+
+def _resolve_executable(name: str) -> str:
+    """在 PATH 上解析可执行文件名为完整路径。
+
+    Windows 必需：subprocess.Popen 不会自动解析 PATHEXT（如 pnpm.cmd / pnpm.ps1），
+    必须给出含扩展名的完整路径才能起；shutil.which 处理 PATHEXT 解析。
+    Unix 上若 name 已含路径分隔符则直接返回，否则 shutil.which 也是同样的查 PATH。
+    """
+    if "/" in name or "\\" in name:
+        return name
+    resolved = shutil.which(name)
+    if resolved is None:
+        raise CommandNotFoundError(f"executable not found on PATH: {name}")
+    return resolved
 
 
 def start_detached(
@@ -32,18 +59,21 @@ def start_detached(
     log_file.parent.mkdir(parents=True, exist_ok=True)
     fd = open(log_file, "ab")  # binary append; uvicorn / pnpm 自带编码
 
+    cmd_list = list(cmd)
+    cmd_list[0] = _resolve_executable(cmd_list[0])
+
     if sys.platform == "win32":
         proc = subprocess.Popen(
-            list(cmd),
+            cmd_list,
             stdout=fd,
             stderr=subprocess.STDOUT,
-            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+            creationflags=CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP,
             cwd=str(cwd),
             close_fds=True,
         )
     else:
         proc = subprocess.Popen(
-            list(cmd),
+            cmd_list,
             stdout=fd,
             stderr=subprocess.STDOUT,
             start_new_session=True,

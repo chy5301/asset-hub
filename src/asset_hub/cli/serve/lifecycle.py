@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import time
 from datetime import UTC, datetime
@@ -113,7 +114,11 @@ def start_service(
             f"backend failed to start within ~10s; see {backend_log}",
         )
     if mode == "dev":
-        frontend_url = f"http://127.0.0.1:{frontend_port}/"
+        # 用 localhost 而非 127.0.0.1：Vite 8.x 在 Windows 上 dev 默认只绑 IPv6
+        # ::1，IPv4 127.0.0.1 会被拒绝；localhost 由 OS 解析（先 ::1 后回退
+        # 127.0.0.1），与浏览器实际访问行为一致。后端用 127.0.0.1 因为 uvicorn
+        # 显式 --host 绑 IPv4，路径不同。
+        frontend_url = f"http://localhost:{frontend_port}/"
         if not probe_mod.probe_once(frontend_url, timeout=2.0):
             # 前端慢，再试一次更宽松窗
             time.sleep(2.0)
@@ -173,8 +178,14 @@ def _check_pids_or_clean_stale(settings: Settings) -> None:
 
 
 def _run_build() -> None:
+    # Windows pnpm 是 .cmd/.ps1 wrapper，subprocess 不解析 PATHEXT，必须用 which 显式解析
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        raise ServeLifecycleError(
+            "serve.build_failed", "pnpm not found on PATH"
+        )
     proc = subprocess.run(
-        ["pnpm", "--dir", "frontend", "build"], check=False
+        [pnpm, "--dir", "frontend", "build"], check=False
     )
     if proc.returncode != 0:
         raise ServeLifecycleError(
@@ -283,10 +294,12 @@ def _build_status_info(state, *, no_probe: bool, port_for_probe: int):
         uptime = int((datetime.now(UTC) - state.started_at).total_seconds())
     healthy = False
     if not no_probe:
+        # frontend 用 localhost（Vite IPv6 ::1 binding；详见 start_service 注释）；
+        # backend 用 127.0.0.1（uvicorn 显式绑 IPv4）。
         url = (
             f"http://127.0.0.1:{port_for_probe}/api/healthz"
             if state.service == "backend"
-            else f"http://127.0.0.1:{port_for_probe}/"
+            else f"http://localhost:{port_for_probe}/"
         )
         healthy = probe_mod.probe_once(url, timeout=2.0)
     return {
