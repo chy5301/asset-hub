@@ -10,6 +10,7 @@
 - [§3 M2c-1 范围（2026-04-27 二轮）](#3-m2c-1-范围2026-04-27二轮)
 - [§4 M1 范围（2026-04-27 二轮）](#4-m1-范围2026-04-27二轮)
 - [§5 M2d 范围（2026-04-29）](#5-m2d-范围2026-04-29)
+- [§6 M2c-4 范围（2026-04-30）](#6-m2c-4-范围2026-04-30)
 
 ---
 
@@ -720,6 +721,34 @@
 | 🟡 等里程碑 | K2 / K3 / K4 / K9 | serve 子命令再扩（doctor / build）或 cmd.py 大改时一并启动 |
 | 🟡 等里程碑 | K5 | M3 status 命令加新字段时启动 |
 | 🔴 暂不动 | K6 / K7 / K8 | 触发条件远未到 |
+
+---
+
+## §6 M2c-4 范围（2026-04-30）
+
+**分支**：`feature/m2c4-form-infra`（PR-2 form infra 阶段，Task 11 code-quality review approve with one ask）
+**审查范围**：A1 合并 `buildCreateSchema` / `buildEditSchema` → `buildAssetSchema(fieldDefs, { mode })`（Plan §Task 10）+ Task 11 迁 asset-create/edit-form
+**视角**：reviewer 单视角（PR-2 quality review）
+
+### J · `buildAssetSchema` 条件 .extend 三元导致 zod inference 丢 type_id
+
+**位置**：`frontend/src/features/assets/form/build-asset-schema.ts` + `asset-create-form.tsx`
+
+**现状**：A1 把 `buildCreateSchema` / `buildEditSchema` 合并为 `buildAssetSchema(fieldDefs, { mode })`。条件三元 `mode === 'create' ? withCustom.extend({ type_id }) : withCustom` 让 zod 的 TS inference 在 `mode='create'` 时丢 `type_id`。
+
+**症状**：`asset-create-form.tsx` 引入 2 处 cast：
+- `resolver: zodResolver(CREATE_EMPTY_SCHEMA) as unknown as Resolver<CreateFormValues>`
+- `parsed.data as CreateFormValues`（onSubmit 内）
+
+EditForm 不需要 cast（`EditFormValues = Omit<CreateFormValues, 'type_id'>` 与 inferred shape 一致）。
+
+**消除方案候选**（M2c-4 review 期评估，最终未选）：
+- **路径 A · 拆 builder**：split 回 `createAssetSchema(fieldDefs)` + `editAssetSchema(fieldDefs)` 两函数，`z.infer` 直接工作。代价：A1 主张的"merged single builder"被回退；但公共 API 仍可分两个窄函数。reviewer 推荐方案。
+- **路径 B · 函数重载 + 条件类型**：`buildAssetSchema<M extends Mode>(...)` + `SchemaFor<M>`。代价：类型体操重 + 函数体内仍需 cast 让 TS 接受三元返回；reviewer 不推荐。
+
+**何时做**：post-M2c-4 单独小 PR，或 `A4 后续清理` 周期。Task 15 (A4) 范围限于 `Control<TFieldValues>`，不会顺手消除这两处 zod-inference cast。
+
+**ROI**：低。2 cast 已加 inline 注释 + 引用 `build-asset-schema.ts` M1/M2 doc + Plan §Task 10。是被 spec 阶段 design 决议预知的 trade-off，不是工程失误。
 
 ---
 
