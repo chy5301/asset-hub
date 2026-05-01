@@ -13,7 +13,7 @@ import type { FieldDef } from '../types';
 type FieldShellProps<TFieldValues extends FieldValues> = {
   def: FieldDef;
   control: Control<TFieldValues>;
-  /** 默认 'block'（垂直堆叠）；'inline' 给 bool 类型用横向布局 */
+  /** 默认 'block'（垂直堆叠）；'inline' 给 bool 类型用横向布局：control 在左，label/help/message 在右 */
   layout?: 'block' | 'inline';
   children: (
     field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>,
@@ -31,23 +31,34 @@ export function FieldShell<TFieldValues extends FieldValues>({
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem
-          className={
-            layout === 'inline'
-              ? 'flex flex-row items-start gap-3 space-y-0'
-              : undefined
-          }
-        >
-          <FormLabel htmlFor={`field-${def.key}`}>
-            {def.label ?? def.key}
-            {def.required && <span className="ml-1 text-destructive">*</span>}
-          </FormLabel>
-          <FormControl>{children(field)}</FormControl>
-          {def.help && <FormDescription>{def.help}</FormDescription>}
-          <FormMessage />
-        </FormItem>
-      )}
+      render={({ field }) => {
+        if (layout === 'inline') {
+          return (
+            <FormItem className="flex flex-row items-start gap-3 space-y-0">
+              <FormControl>{children(field)}</FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel htmlFor={`field-${def.key}`}>
+                  {def.label ?? def.key}
+                  {def.required && <span className="ml-1 text-destructive">*</span>}
+                </FormLabel>
+                {def.help && <FormDescription>{def.help}</FormDescription>}
+                <FormMessage />
+              </div>
+            </FormItem>
+          );
+        }
+        return (
+          <FormItem>
+            <FormLabel htmlFor={`field-${def.key}`}>
+              {def.label ?? def.key}
+              {def.required && <span className="ml-1 text-destructive">*</span>}
+            </FormLabel>
+            <FormControl>{children(field)}</FormControl>
+            {def.help && <FormDescription>{def.help}</FormDescription>}
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 }
