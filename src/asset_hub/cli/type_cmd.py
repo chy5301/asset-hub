@@ -13,6 +13,7 @@ from asset_hub.cli.envelope import (
     print_result,
     to_json_dict,
 )
+from asset_hub.models.asset_type import AssetType
 from asset_hub.services.asset_type import TypeService
 
 type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=True)
@@ -199,8 +200,17 @@ def type_update(
     print_result(to_json_dict(TypeRead, t), json_output)
 
 
-def _build_diff(current, new_name, new_description, new_custom_fields) -> dict:
-    """构造 update --dry-run 的 diff payload。"""
+def _build_diff(
+    current: AssetType,
+    new_name: str | None,
+    new_description: str | None,
+    new_custom_fields: list | None,
+) -> dict:
+    """构造 update --dry-run 的 diff payload。
+
+    注意：current 是 ORM 对象，custom_fields 是 list[dict]（JSON 列）；
+    如改用 DTO 需把 f["key"] 调整为 f.key。
+    """
     diff: dict = {}
     if new_name is not None:
         diff["name"] = (

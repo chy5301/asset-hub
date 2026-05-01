@@ -102,3 +102,53 @@ class TestUpdateExitCodes:
         )
         assert res.exit_code == 1
         assert json.loads(res.stdout)["success"] is False
+
+
+class TestUpdateDryRun:
+    def test_update_dry_run_exit_10_outputs_diff(self, isolated_db, tmp_path):
+        with cli_session() as s:
+            t = TypeService(s).create_type(
+                name="原",
+                code_prefix="OO",
+                description="原描述",
+                custom_fields=[{"key": "cpu", "type": "string"}],
+            )
+            tid = t.id
+
+        schema = {
+            "name": "改",
+            "description": "新描述",
+            "custom_fields": [
+                {"key": "ram", "type": "int"},  # 加
+                # cpu 删
+            ],
+        }
+        f = tmp_path / "new.json"
+        f.write_text(json.dumps(schema), encoding="utf-8")
+
+        res = runner.invoke(
+            app,
+            ["type", "update", str(tid), "--from", str(f), "--dry-run", "--json"],
+        )
+        assert res.exit_code == 10
+        payload = json.loads(res.stdout)
+        assert payload["success"] is True
+        diff = payload["data"]["diff"]
+        assert diff["name"]["from"] == "原"
+        assert diff["name"]["to"] == "改"
+        assert len(diff["custom_fields"]["added"]) == 1
+        assert diff["custom_fields"]["added"][0]["key"] == "ram"
+        assert len(diff["custom_fields"]["removed"]) == 1
+        assert diff["custom_fields"]["removed"][0]["key"] == "cpu"
+        assert payload["data"]["affected_assets_count"] == 0  # 无引用资产
+
+    def test_update_json_envelope_shape(self, isolated_db):
+        tid = _make_type()
+        res = runner.invoke(
+            app, ["type", "update", str(tid), "--name", "X", "--json"]
+        )
+        payload = json.loads(res.stdout)
+        # success envelope 标准 4 字段
+        assert set(payload.keys()) == {"success", "data", "metadata", "error"}
+        assert payload["success"] is True
+        assert payload["error"] is None
