@@ -126,3 +126,111 @@ def type_delete(
         deleted_payload = {"deleted_id": str(uid), "name": t.name}
 
     print_result(deleted_payload, json_output)
+
+
+@type_app.command("update")
+def type_update(
+    type_id: Annotated[str, typer.Argument(help="要更新的 AssetType id")],
+    from_file: Annotated[Path | None, typer.Option("--from", help="JSON schema 文件路径（整体替换）")] = None,
+    name: Annotated[str | None, typer.Option(help="新类型名称")] = None,
+    description: Annotated[str | None, typer.Option(help="新描述")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="预览不真改")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
+) -> None:
+    """部分更新 AssetType（code_prefix 不可改）。"""
+    uid = parse_uuid(type_id, json_output)
+
+    # 互斥校验
+    if from_file is not None and (name is not None or description is not None):
+        print_error(
+            "--from 与 --name/--description 互斥，请二选一",
+            json_output,
+            exit_code=2,
+        )
+
+    # 至少一个修改源
+    if from_file is None and name is None and description is None:
+        print_error(
+            "必须提供至少一个修改源：--from / --name / --description",
+            json_output,
+            exit_code=2,
+        )
+
+    # 解析 --from
+    new_name: str | None = name
+    new_description: str | None = description
+    new_custom_fields: list | None = None
+    if from_file is not None:
+        try:
+            schema = json.loads(from_file.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print_error(f"JSON 文件读取失败：{from_file}（{e}）", json_output, exit_code=2)
+        new_name = schema.get("name")
+        new_description = schema.get("description")
+        new_custom_fields = schema.get("custom_fields")
+        # code_prefix 字段允许出现但被忽略（spec §5.3）
+
+    if dry_run:
+        # 预览：构造 diff
+        with cli_session() as session, handle_domain_errors(json_output):
+            svc = TypeService(session)
+            current = svc.get_type(uid)
+            ref_count = svc.repo.count_assets_by_type(uid)
+
+        diff = _build_diff(current, new_name, new_description, new_custom_fields)
+        payload = {"diff": diff, "affected_assets_count": ref_count}
+        print_dry_run(
+            payload,
+            json_output,
+            message=f"将更新 type '{current.name}' (引用资产数: {ref_count})",
+        )
+
+    # 真改
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TypeService(session)
+        kwargs: dict = {}
+        if new_name is not None:
+            kwargs["name"] = new_name
+        if new_description is not None:
+            kwargs["description"] = new_description
+        if new_custom_fields is not None:
+            kwargs["custom_fields"] = new_custom_fields
+        t = svc.update_type(uid, **kwargs)
+    print_result(to_json_dict(TypeRead, t), json_output)
+
+
+def _build_diff(current, new_name, new_description, new_custom_fields) -> dict:
+    """构造 update --dry-run 的 diff payload。"""
+    diff: dict = {}
+    if new_name is not None:
+        diff["name"] = (
+            {"unchanged": True}
+            if new_name == current.name
+            else {"from": current.name, "to": new_name}
+        )
+    if new_description is not None:
+        diff["description"] = (
+            {"unchanged": True}
+            if new_description == current.description
+            else {"from": current.description, "to": new_description}
+        )
+    if new_custom_fields is not None:
+        old_keys = {f["key"]: f for f in current.custom_fields}
+        new_keys = {f["key"]: f for f in new_custom_fields}
+        added = [f for k, f in new_keys.items() if k not in old_keys]
+        removed = [{"key": k} for k in old_keys if k not in new_keys]
+        changed = [
+            {"key": k, "from": old_keys[k], "to": new_keys[k]}
+            for k in new_keys
+            if k in old_keys and old_keys[k] != new_keys[k]
+        ]
+        unchanged_count = sum(
+            1 for k in new_keys if k in old_keys and old_keys[k] == new_keys[k]
+        )
+        diff["custom_fields"] = {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "unchanged_count": unchanged_count,
+        }
+    return diff
