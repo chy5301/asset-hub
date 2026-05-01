@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { type Control, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -110,8 +110,8 @@ export function AssetEditForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-10">
-          <AssetFormFields
-            control={form.control as unknown as Control}
+          <AssetFormFields<EditFormValues>
+            control={form.control}
             types={types}
             mode="edit"
             assetCode={asset.asset_code}

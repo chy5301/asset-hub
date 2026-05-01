@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useForm, useWatch, type Control, type Resolver } from 'react-hook-form';
+import { useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -137,7 +137,7 @@ export function AssetCreateForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-10">
-          <AssetFormFields control={form.control as unknown as Control} types={types} mode="create" />
+          <AssetFormFields<CreateFormValues> control={form.control} types={types} mode="create" />
 
           <div className="flex justify-end gap-3 border-t pt-6">
             <Button

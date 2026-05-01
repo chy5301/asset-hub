@@ -1,4 +1,4 @@
-import { type Control } from 'react-hook-form';
+import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,8 +8,8 @@ import type { components } from '@/api/generated/schema';
 
 type AssetTypeRead = components['schemas']['TypeRead'];
 
-interface GeneralFieldsFormProps {
-  control: Control;
+interface GeneralFieldsFormProps<TFieldValues extends FieldValues> {
+  control: Control<TFieldValues>;
   types: AssetTypeRead[];
   /** 编辑模式下 type 字段 disabled */
   typeReadonly: boolean;
@@ -19,7 +19,22 @@ interface GeneralFieldsFormProps {
   forceTypeName?: string;
 }
 
-export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, forceTypeName }: GeneralFieldsFormProps) {
+export function GeneralFieldsForm<TFieldValues extends FieldValues>({
+  control,
+  types,
+  typeReadonly,
+  assetCode,
+  forceTypeName,
+}: GeneralFieldsFormProps<TFieldValues>) {
+  // CreateFormValues / EditFormValues 都含这些 base 字段；用 Path<TFieldValues> 包一层
+  // 让 RHF 在不知道具体 TFieldValues 时仍然接受字面量名。
+  const nameField = 'name' as Path<TFieldValues>;
+  const typeIdField = 'type_id' as Path<TFieldValues>;
+  const serialField = 'serial_number' as Path<TFieldValues>;
+  const holderField = 'holder' as Path<TFieldValues>;
+  const locationField = 'location' as Path<TFieldValues>;
+  const notesField = 'notes' as Path<TFieldValues>;
+
   return (
     <div className="space-y-4">
       {assetCode && (
@@ -34,7 +49,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
 
       <FormField
         control={control}
-        name="name"
+        name={nameField}
         render={({ field }) => (
           <FormItem>
             <FormLabel>资产名 <span className="text-destructive">*</span></FormLabel>
@@ -57,7 +72,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
       ) : (
         <FormField
           control={control}
-          name="type_id"
+          name={typeIdField}
           render={({ field }) => (
             <FormItem>
               <FormLabel>资产类型 <span className="text-destructive">*</span></FormLabel>
@@ -81,7 +96,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
 
       <FormField
         control={control}
-        name="serial_number"
+        name={serialField}
         render={({ field }) => (
           <FormItem>
             <FormLabel>SN</FormLabel>
@@ -101,7 +116,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
 
       <FormField
         control={control}
-        name="holder"
+        name={holderField}
         render={({ field }) => (
           <FormItem>
             <FormLabel>持有人</FormLabel>
@@ -113,7 +128,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
 
       <FormField
         control={control}
-        name="location"
+        name={locationField}
         render={({ field }) => (
           <FormItem>
             <FormLabel>位置</FormLabel>
@@ -125,7 +140,7 @@ export function GeneralFieldsForm({ control, types, typeReadonly, assetCode, for
 
       <FormField
         control={control}
-        name="notes"
+        name={notesField}
         render={({ field }) => (
           <FormItem>
             <FormLabel>备注</FormLabel>

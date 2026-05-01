@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type Control, useWatch } from 'react-hook-form';
+import { type Control, type FieldValues, type Path, useWatch } from 'react-hook-form';
 import { GeneralFieldsForm } from './general-fields-form';
 import { CustomFieldsForm } from './custom-fields-form';
 import type { FieldDef } from './types';
@@ -7,8 +7,8 @@ import type { components } from '@/api/generated/schema';
 
 type AssetTypeRead = components['schemas']['TypeRead'];
 
-interface AssetFormFieldsProps {
-  control: Control;
+interface AssetFormFieldsProps<TFieldValues extends FieldValues> {
+  control: Control<TFieldValues>;
   types: AssetTypeRead[];
   mode: 'create' | 'edit';
   assetCode?: string;
@@ -16,10 +16,18 @@ interface AssetFormFieldsProps {
   forceTypeId?: string;
 }
 
-export function AssetFormFields({ control, types, mode, assetCode, forceTypeId }: AssetFormFieldsProps) {
-  // 监听 type_id 切换；编辑模式下用 forceTypeId 绕过 useWatch
-  const watchedTypeId = useWatch({ control, name: 'type_id' });
-  const effectiveTypeId = mode === 'edit' ? forceTypeId : watchedTypeId;
+export function AssetFormFields<TFieldValues extends FieldValues>({
+  control,
+  types,
+  mode,
+  assetCode,
+  forceTypeId,
+}: AssetFormFieldsProps<TFieldValues>) {
+  // 监听 type_id 切换；编辑模式下用 forceTypeId 绕过 useWatch。
+  // EditFormValues 不含 type_id，故 name 用 Path<TFieldValues> 拓宽——edit 模式下
+  // watchedTypeId 不会被消费（被 forceTypeId 短路），运行时安全。
+  const watchedTypeId = useWatch({ control, name: 'type_id' as Path<TFieldValues> });
+  const effectiveTypeId = mode === 'edit' ? forceTypeId : (watchedTypeId as string | undefined);
 
   const selectedType = useMemo(
     () => types.find((t) => t.id === effectiveTypeId),
