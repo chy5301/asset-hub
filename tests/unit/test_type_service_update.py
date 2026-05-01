@@ -1,6 +1,7 @@
 import pytest
 from sqlmodel import Session
 
+from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.services.asset_type import TypeService
 
 
@@ -66,3 +67,21 @@ class TestUpdateType:
         t = svc.create_type(name="E", code_prefix="EE")
         updated = svc.update_type(t.id, name="E2")
         assert updated.code_prefix == "EE"
+
+    def test_update_not_found_raises_404(self, svc: TypeService):
+        import uuid
+        with pytest.raises(NotFoundError):
+            svc.update_type(uuid.uuid4(), name="x")
+
+    def test_update_duplicate_name_raises(self, svc: TypeService):
+        svc.create_type(name="占座", code_prefix="ZZ")
+        t = svc.create_type(name="待改", code_prefix="WW")
+        with pytest.raises(DuplicateError, match="名称"):
+            svc.update_type(t.id, name="占座")  # name 撞车
+
+    def test_update_invalid_field_def_raises_validation(self, svc: TypeService):
+        t = svc.create_type(name="V", code_prefix="VV")
+        # CustomFieldDef.type 是必填，缺字段会被 model_validate 拒
+        bad = [{"key": "x"}]  # 缺 type
+        with pytest.raises(ValidationError, match="custom_fields"):
+            svc.update_type(t.id, custom_fields=bad)
