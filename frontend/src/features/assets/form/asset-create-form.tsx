@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useForm, useWatch, type Control } from 'react-hook-form';
+import { useForm, useWatch, type Control, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,13 @@ import { useAssetTypesQuery } from '@/api/hooks/types';
 import { useCreateAsset } from '@/api/hooks/assets';
 import { toFriendlyMessage } from '@/lib/error';
 import { AssetFormFields } from './asset-form-fields';
-import { buildCreateSchema, type CreateFormValues } from './build-create-schema';
+import { buildAssetSchema, type CreateFormValues } from './build-asset-schema';
 import { PENDING_TEXT } from './form-toast';
 import type { FieldDef } from './types';
 import { DEFAULT_SORT } from '@/features/assets/list/search-schema';
+
+// 模块级常量：避免每次 render 都重建空 schema（F3 修复）
+const CREATE_EMPTY_SCHEMA = buildAssetSchema([], { mode: 'create' });
 
 export function AssetCreateForm() {
   const navigate = useNavigate({ from: '/assets/new' });
@@ -21,7 +24,10 @@ export function AssetCreateForm() {
   const mutation = useCreateAsset();
 
   const form = useForm<CreateFormValues>({
-    resolver: zodResolver(buildCreateSchema([])),
+    // 显式 Resolver<CreateFormValues> 断言：buildAssetSchema 的条件 .extend
+    // 让 zod 在 mode='create' 时无法把 type_id 推进 inferred type（见
+    // build-asset-schema.ts CreateFormValues 注释 / Plan §Task 10）。运行时正确。
+    resolver: zodResolver(CREATE_EMPTY_SCHEMA) as unknown as Resolver<CreateFormValues>,
     defaultValues: {
       name: '',
       type_id: '',
@@ -69,7 +75,7 @@ export function AssetCreateForm() {
 
   async function onSubmit(values: CreateFormValues) {
     const fieldDefs = (selectedType?.custom_fields ?? []) as FieldDef[];
-    const schema = buildCreateSchema(fieldDefs);
+    const schema = buildAssetSchema(fieldDefs, { mode: 'create' });
     const parsed = schema.safeParse(values);
     if (!parsed.success) {
       // 把 custom_data.* 错误回填到对应字段
@@ -80,16 +86,18 @@ export function AssetCreateForm() {
       onInvalid();
       return;
     }
+    // 见上方 resolver 注释：zod 推导丢失 type_id，回到手写类型
+    const data = parsed.data as CreateFormValues;
     try {
       const created = await mutation.mutateAsync({
-        name: parsed.data.name,
-        type_id: parsed.data.type_id,
-        serial_number: parsed.data.serial_number || null,
-        acquired_at: parsed.data.acquired_at || null,
-        holder: parsed.data.holder || null,
-        location: parsed.data.location || null,
-        notes: parsed.data.notes || null,
-        custom_data: parsed.data.custom_data ?? {},
+        name: data.name,
+        type_id: data.type_id,
+        serial_number: data.serial_number || null,
+        acquired_at: data.acquired_at || null,
+        holder: data.holder || null,
+        location: data.location || null,
+        notes: data.notes || null,
+        custom_data: data.custom_data ?? {},
       });
       navigate({ to: '/assets/$id', params: { id: created.id } });
     } catch (err) {

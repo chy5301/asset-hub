@@ -9,7 +9,7 @@ import { useAssetTypesQuery } from '@/api/hooks/types';
 import { useAssetDetailQuery, useUpdateAsset } from '@/api/hooks/assets';
 import { toFriendlyMessage } from '@/lib/error';
 import { AssetFormFields } from './asset-form-fields';
-import { buildEditSchema, type EditFormValues } from './build-edit-schema';
+import { buildAssetSchema, type EditFormValues } from './build-asset-schema';
 import { PENDING_TEXT } from './form-toast';
 import type { FieldDef } from './types';
 
@@ -30,7 +30,7 @@ export function AssetEditForm() {
     () => (selectedType?.custom_fields ?? []) as FieldDef[],
     [selectedType],
   );
-  const editSchema = useMemo(() => buildEditSchema(fieldDefs), [fieldDefs]);
+  const editSchema = useMemo(() => buildAssetSchema(fieldDefs, { mode: 'edit' }), [fieldDefs]);
 
   const form = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),

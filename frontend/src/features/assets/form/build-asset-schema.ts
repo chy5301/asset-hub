@@ -33,6 +33,8 @@ export function buildAssetSchema(
     : withCustom;
 }
 
+// 类型别名手写而非 z.infer：buildAssetSchema 的条件 .extend 三元让 zod 推导
+// 无法在 mode='create' 时正确把 type_id 加进 inferred type。Plan §Task 10 已记录此 trade-off。
 export type CreateFormValues = {
   name: string;
   type_id: string;
@@ -43,4 +45,5 @@ export type CreateFormValues = {
   notes?: string;
   custom_data: Record<string, unknown>;
 };
+// EditFormValues = CreateFormValues 减去 create-only 字段（当前仅 type_id）
 export type EditFormValues = Omit<CreateFormValues, 'type_id'>;
