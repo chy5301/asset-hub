@@ -99,6 +99,8 @@ frontend/src/
 
 ```
 frontend/src/
+├── styles/
+│   └── globals.css               # 改：加 --color-warning token（决策 D16；light + dark 各调一组）
 ├── routes/
 │   ├── types.tsx                 # 新：列表路由
 │   ├── types.new.tsx             # 新：创建路由
@@ -175,7 +177,7 @@ frontend/src/
 
 - **位置**：在 `app-layout.tsx` 的 header 下方加一行 nav，与 main 同 `max-w-[1400px]` 居中、`px-6` 对齐
 - **内容（v1）**：`资产` (`/assets`) / `类型` (`/types`)；M3 加看板时 append `<Link to="/dashboard">看板</Link>`
-- **active 状态**：通过 TanStack Router 的 `useMatchRoute` 判断；视觉用 underline + primary color（design-system MASTER token #1E40AF）
+- **active 状态**：通过 TanStack Router 的 `useMatchRoute` 判断；视觉用 underline + `var(--color-primary)`（Tailwind: `text-primary border-b-2 border-primary`）；dark 模式由 globals.css 的 `--color-primary` dark variant 接管，不在组件内硬编码 hex（F4 修订）
 - **键盘可达**：focus-visible 可见、Tab 可遍历
 - **ThemeToggle 位置**：保留在 header 右侧，不并入 nav 行（视觉关注点分离）
 
@@ -184,7 +186,9 @@ frontend/src/
 - **toolbar**：右上 "+ 新建类型" 按钮（→ `/types/new`）；左侧标题 + 类型总数
 - **table**：列 = name / code_prefix（mono font）/ 字段数（"5 个字段" chip）/ 资产引用数（数字 + 点击跳到 `/assets?type_id=…`）/ 操作（→ 详情 / 删除）
 - **资产引用数获取**：每行一个 `useAssetsQuery({ type_id: row.id, limit: 0 })`——v1 类型数 < 20，可接受 N 次查询；不引入聚合端点
-- **空态**：图标 + "还没有类型" + CTA 按钮 → `/types/new`
+- **加载态**：复用 assets-list 的骨架行模式——新增 `TypesTableSkeleton`（4-6 行 muted 占位 row + 不显示列头切换图标）；**严禁 spinner**（沿用 m2c1 §3.5.5 反 spinner 红线）
+- **空态**：Lucide `Inbox` 图标（与 assets-list 空态一致）+ "还没有类型" + CTA 按钮 → `/types/new`
+- **错误态**：复用 M2c-1 `<ErrorState onRetry={refetch}>` 组件
 - **删除入口**：行操作 `…` → 删除（dialog）
 
 ### 3.4 创建/编辑表单 `/types/new` 和 `/types/$id`
@@ -212,6 +216,13 @@ frontend/src/
 └──────────────────────────────────────────┘
 ```
 
+**Footer 按钮规格**（F6 修订）：
+- `[取消]` 用 `variant="outline"`（secondary，navy text + navy border，对应 m2c1 §3.5.4 navy 主色 70% 占比）
+- `[保存]` 用 `variant="default"`（primary action，amber CTA，对应 §3.5.4 CTA <5% 占比中的"真正关键动作"——创建/保存类型是关键操作）
+- **顺序**：取消在左、保存在右（与 M2c-3 form / M2c-2 dialog footer 同序）
+
+**提交态**（F3 修订）：mutation pending 时按钮 `disabled` + 文案切「保存中…」（创建模式 = 「创建中…」，编辑模式 = 「保存中…」）；**严禁** `<Loader2 className="animate-spin" />` 风格 spinner（沿用 M2c-2 实施期纠偏 §1）。
+
 **code_prefix 在 edit 模式**：input readOnly + 灰显 + 解释文案"创建后不可修改"——DTO 已不暴露此字段，前端再加一层防御。
 
 **实现细节**：edit 模式下 `code_prefix` **不进 RHF 表单 state**（buildTypeSchema 在 mode='edit' 时本就不含此字段，见 §6.4），改为从 `useTypeQuery(id)` 数据直接渲染只读 input；提交时也不参与 PATCH body。这样既视觉可见、又不被 zod 校验、也不会被误改。
@@ -221,6 +232,13 @@ frontend/src/
 - 复用 §3.4 表单；额外 metadata 区显示 created_at / updated_at（灰文本）
 - 顶部右侧：[删除类型] 按钮
 - 删除流程：点击 → useAssetsQuery 拿 ref_count → ref_count > 0 显示 dialog 提示 + 禁用确认按钮；ref_count = 0 显示 dialog 让确认输入 type name 防误删
+
+**删除 dialog 视觉规格**（F10 修订）：
+- 标题：「删除类型 '{name}'」
+- 描述文字：「此操作不可撤销。请输入完整类型名 '{name}' 以确认」
+- 输入框：`placeholder="请输入完整类型名 '{name}'"`，受控 state；按钮 disabled until `input.trim() === name`
+- 确认按钮：`variant="destructive"`，文案「永久删除」；提交中切「删除中…」（沿用 M2c-2 模式，无 spinner）
+- 取消按钮：`variant="outline"`
 
 ### 3.6 资产详情 unknown-key banner（α 策略）
 
@@ -233,12 +251,17 @@ violatedRequired = type.custom_fields.filter(f => f.required && asset.custom_dat
 
 if (orphanKeys.length || violatedRequired.length) {
   → 渲染 banner（顶部一行 + 折叠展开列表）
-    "⚠ 该资产含 {orphanKeys.length} 个未声明字段 / {violatedRequired.length} 个必填项为空"
-  → 主区分两组渲染：declaredKeys 正常显示；orphanKeys 灰显 + 标 "未声明"
+    <AlertTriangle /> 该资产含 {orphanKeys.length} 个未声明字段 / {violatedRequired.length} 个必填项为空
+  → 主区分两组渲染：
+    - declaredKeys：正常显示
+    - orphanKeys：行 text-muted-foreground + 行尾 <Badge variant="outline">未声明</Badge>（F11 修订）
 }
 ```
 
-**banner 不阻塞操作**：资产的编辑、删除、状态切换（checkout / return / 状态变更）入口全部正常工作；banner 仅是信息提示，不影响任何 mutation。
+**banner 视觉规格**（F1 修订）：
+- 图标用 Lucide `<AlertTriangle className="h-4 w-4 shrink-0" />`（**不**用 emoji "⚠"——MASTER anti-pattern: "Emojis as icons"）
+- 配色用 `var(--color-warning)` token（详见 §8.1 + 决策 D16）
+- 不阻塞操作：资产的编辑、删除、状态切换（checkout / return / 状态变更）入口全部正常工作；banner 仅是信息提示，不影响任何 mutation
 
 ### 3.7 错误展示策略
 
@@ -393,7 +416,7 @@ $ asset-hub type update <id> --from new.json --dry-run --json
 - **折叠态**（默认）：单行高，左到右：`{key 文字}` `{type chip}` `{required * 标记}` `{删除按钮 trash icon}`，点击行任意位置展开
 - **展开态**：内嵌 11 属性表单（详见 §6.3 conditional UI）；右上"折叠"按钮收起
 - **新增字段卡**：默认展开（用户刚加的字段需要立刻填属性）；其他卡保持原状态
-- **空态**：custom_fields 为空时，显示虚线占位框 + "[+ 添加你的第一个字段]" CTA
+- **空态**：custom_fields 为空时，显示虚线占位框 + "[+ 添加你的第一个字段]" CTA。dashed border 风格沿用 M2c-3 §6 attachment-add-slot：`border-1.5 border-dashed border-muted-foreground/40`、hover `border-primary text-primary bg-primary/5`、`transition-colors`（F12 修订）
 
 ### 6.2 卡片操作
 
@@ -532,19 +555,19 @@ export function buildTypeSchema({ mode }: { mode: 'create' | 'edit' }) {
 
 | 组件 | 红线 |
 |---|---|
-| **B nav 行** | 高度 ≤ 40px；用 `var(--space-md)` 与 header 间距；active 状态用 underline + 主色（不用 background fill）；ThemeToggle 与 nav 视觉分离 |
+| **B nav 行** | 高度 ≤ 40px；用 `var(--space-md)` 与 header 间距；active 状态用 underline + `var(--color-primary)`（不用 background fill）；ThemeToggle 与 nav 视觉分离 |
 | **types-table** | 与 assets-table 完全同款（密度、行高、列分隔、空态图标）；不引入新组件库 |
 | **type-detail-page** | summary card 用与 asset-detail-page 同款 metadata 网格；不堆 shadow / glassmorphism |
-| **custom-fields-builder** | 卡片折叠态高度固定（≤ 56px）；展开态遵守 spacing token；卡片间 `var(--space-md)` 间距；不动效（除 collapsed/expanded 切换的 200ms ease） |
-| **field-type-selector** | 用 shadcn `Select`，**不**用 RadioGroup 横排（9 个选项太挤） |
-| **field-options-editor** | chip 用现有 Badge variant；输入新选项 = 输入框 + Enter 提交 + 不带"添加按钮"（最小化 UI 元素） |
-| **unknown-key banner** | 用 `var(--color-cta)` (#F59E0B) 做警告色（非 destructive 红，因为不阻塞）；折叠列表默认展开（信息密度 > 折叠折腾）；可关闭（per-asset session 内 dismiss，不持久化） |
+| **custom-fields-builder** | 卡片折叠态高度固定（≤ 56px）；展开态遵守 spacing token；卡片间 `var(--space-md)` 间距；折叠/展开切换 `transition-[height] duration-200 ease-out` 是 **m2c1 §3.5.5 三时刻之外的第 4 个 motion 时刻**（决策 D17，理由：交互态切换需 affordance）；其他 motion 仍受 §3.5.5 banlist 全部禁用；`prefers-reduced-motion: reduce` 时降级为瞬时切换 |
+| **field-type-selector** | 用 shadcn `Select`（M2c-3 已引入），**不**用 RadioGroup 横排（9 个选项太挤）；本里程碑首次密集使用，需按 m2c1 §3.5.7 红线复审：focus ring 与 §3.5.2 "显眼方块框"对齐、`bg-popover` token、no `use client` 残留、chevron icon 用 Lucide `ChevronsUpDown`（沿用 M2c-3 Combobox） |
+| **field-options-editor** | chip 用 `Badge variant="secondary"`（默认 chip 美学）；hover 时 chip 右侧显 `<X className="h-3 w-3" />` 图标点击删（沿用 M2c-1 attachment 删除按钮模式，**不**做"点 chip 即删"避免误操作）；输入框 `placeholder="输入选项后按 Enter"`；Enter 键提交、不带"添加按钮"（最小化 UI 元素） |
+| **unknown-key banner** | 用 `var(--color-warning)` token 做警告色（**非** `--color-cta`，避免 CTA 与 warning 语义混淆——决策 D16）；图标用 Lucide `AlertTriangle`（**禁止 emoji**）；折叠列表默认展开（信息密度 > 折叠折腾）；可关闭（per-asset `sessionStorage` dismiss，key = `m2c4.banner.dismissed.${assetId}`；重启浏览器恢复，避免永久遗忘问题） |
 
 ### 8.2 审美决策溯源
 
-- 卡片列表 builder = M2c-1 §3.5.4 "Density first" + Analytics Dashboard category 的 "data tables, KPI cards, minimal padding" 关键词
+- 卡片列表 builder = M2c-1 **§3.5.2 Differentiation（keyboard-first density）** + Analytics Dashboard category 的 "data tables, KPI cards, minimal padding" 关键词（F16 修订：原引 §3.5.4 错，§3.5.4 是配色深化）
 - B nav 行 = M2c-1 §3.5 "Industrial minimalism"；不用 sidebar（Anti-pattern: "No content hidden behind fixed navbars"）
-- α banner 用 CTA 色 = "warning ≠ error" 区分（本系统现仅 destructive 用 #DC2626，warning 此前未定义；用 MASTER 现有 CTA 色 #F59E0B，不引入新色）
+- α banner 复用 amber 色相但走**独立** `--color-warning` token（决策 D16）：CTA 与 warning 语义解耦，不让 amber 同时背"关键动作"+"警告"两层语义
 
 ### 8.3 frontend-design skill 4 阶段介入
 
@@ -553,7 +576,7 @@ export function buildTypeSchema({ mode }: { mode: 'create' | 'edit' }) {
 | ① Spec 阶段 | 本文 §8.1 / §8.2 | 审美红线写入 spec，可追溯 |
 | ② Token reaffirm | spec → plan 之间 | 由用户 invoke `/frontend-design:frontend-design` 对本文 spec 草稿做 review；review 发现的问题回写 spec |
 | ③ Plan review | 写完 plan 后 | 扫 plan 是否漏了 §8.1 红线、是否有 shadcn 默认 variant 渗入 |
-| ④ 实施期 3 闸门 | (a) PR-2 合并前（token reaffirm，因为 PR-2 不引入新 UI 流但要保 build-asset-schema + FieldShell 不破现有审美）/ (b) PR-3 builder 骨架可跑后 / (c) PR-3 合并前最终审查 | 闸门 (b) (c) 配合 §9 Playwright 烟测一起跑 |
+| ④ 实施期 3 闸门 | (a) PR-2 合并前（token reaffirm，因为 PR-2 不引入新 UI 流但要保 build-asset-schema + FieldShell 不破现有审美）/ (b) PR-3 builder 骨架可跑后 / (c) PR-3 合并前最终审查——**同时勾完 m2c1/m2c2/m2c3 通用 Pre-Delivery Checklist 7 项**（emoji / cursor-pointer / hover transition / contrast / focus-visible / reduced-motion / responsive）+ **红线扫描**（`grep -rnE 'scale-\|animate-spin\|backdrop-blur\|bg-gradient-to'` 命中数 = 0）（F17 修订） | 闸门 (b) (c) 配合 §9 Playwright 烟测一起跑 |
 
 ## 9. 测试分层
 
@@ -677,4 +700,6 @@ PR-2 前端重构 ──┘
 | **D12** | 字段排序 = ↑↓ 按钮（拒绝 dnd-kit） | v1 字段 ≤ 10；引入 dnd-kit 装 4KB 包 + a11y/触屏边角不值 |
 | **D13** | PR 拆三段 PR-1 + PR-2 + PR-3，PR-2 纯重构独立 | A2/A4 simplify 原文标"中风险"（RHF 泛型 + 嵌套字段路径过往踩坑）；独立 PR 单独验，避免与 builder 同 PR 互相干扰排查 |
 | **D14** | Playwright 烟测由 Claude 主动执行，不进 frontend/tests/ | 沿用 M2d "Claude 执行 checklist" 模式；符合 CLAUDE.md "不写 e2e" 约束 |
-| **D15** | banner 颜色用 CTA 色 #F59E0B（warning，不用 destructive） | banner 不阻塞 = warning 语义；MASTER 已有 CTA 色，不引入新色 |
+| **D15** | banner 不阻塞操作（仅信息提示） | warning 语义 ≠ error；与编辑入口配套实现"用户主动接受清理"路径 |
+| **D16**（frontend-design F2 修订） | banner 用独立 `--color-warning` token，**而非** `--color-cta` | m2c1 §3.5.4 明确 "状态语义色不与 Primary/CTA 撞脸" + "CTA 仅用于真正的关键动作 <5%"；让 amber 同时背"CTA"+"warning"两个语义 = 色 = 语义原则破窗。色相仍是 amber 但 token 独立、dark 模式可独立调 |
+| **D17**（frontend-design F8 修订） | builder 卡片折叠动效是 m2c1 §3.5.5 三时刻之外的**第 4 个 motion 时刻** | 交互态切换需 affordance，避免点击后无视觉反馈的"瞬切感"；范围严格限于 `transition-[height] duration-200 ease-out` + `prefers-reduced-motion: reduce` 时降级；其他 motion 仍受 §3.5.5 banlist 全部禁用 |
