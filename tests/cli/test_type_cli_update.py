@@ -55,3 +55,50 @@ class TestUpdateBasic:
         payload = json.loads(res.stdout)
         assert payload["data"]["name"] == "改自 from"
         assert len(payload["data"]["custom_fields"]) == 1
+
+
+class TestUpdateExitCodes:
+    def test_update_no_change_source_exit_2(self, isolated_db):
+        tid = _make_type()
+        res = runner.invoke(app, ["type", "update", str(tid), "--json"])
+        assert res.exit_code == 2
+
+    def test_update_from_and_name_conflict_exit_2(self, isolated_db, tmp_path):
+        tid = _make_type()
+        f = tmp_path / "x.json"
+        f.write_text('{"name":"x","custom_fields":[]}', encoding="utf-8")
+        res = runner.invoke(
+            app,
+            ["type", "update", str(tid), "--from", str(f), "--name", "y", "--json"],
+        )
+        assert res.exit_code == 2
+
+    def test_update_invalid_uuid_exit_2(self, isolated_db):
+        res = runner.invoke(app, ["type", "update", "not-a-uuid", "--name", "x", "--json"])
+        assert res.exit_code == 2
+
+    def test_update_invalid_json_in_file_exit_2(self, isolated_db, tmp_path):
+        tid = _make_type()
+        f = tmp_path / "bad.json"
+        f.write_text("{not json", encoding="utf-8")
+        res = runner.invoke(
+            app, ["type", "update", str(tid), "--from", str(f), "--json"]
+        )
+        assert res.exit_code == 2
+
+    def test_update_unknown_id_exit_3(self, isolated_db):
+        random_id = uuid.uuid4()
+        res = runner.invoke(
+            app, ["type", "update", str(random_id), "--name", "x", "--json"]
+        )
+        assert res.exit_code == 3
+
+    def test_update_duplicate_name_exit_1(self, isolated_db):
+        with cli_session() as s:
+            TypeService(s).create_type(name="占座", code_prefix="ZZ")
+        tid = _make_type(name="待改", prefix="WW")
+        res = runner.invoke(
+            app, ["type", "update", str(tid), "--name", "占座", "--json"]
+        )
+        assert res.exit_code == 1
+        assert json.loads(res.stdout)["success"] is False
