@@ -23,7 +23,9 @@ import type { components } from '@/api/generated/schema';
 type TypeRead = components['schemas']['TypeRead'];
 
 function RefCountCell({ typeId }: { typeId: string }) {
-  const q = useAssetsQuery({ type: typeId, page: 1, pageSize: 1, sort: 'asset_code' });
+  // pageSize 200：toServerParams 不发往后端，服务端总返完整 type 过滤列表，但 zod schema 要求 ≥10。
+  // M3 排期建议后端在 TypeRead 暴露 ref_count 消除此处 N+1 + 列表上限隐患（PR-3 final review followup）。
+  const q = useAssetsQuery({ type: typeId, page: 1, pageSize: 200, sort: 'asset_code' });
   if (q.isLoading) return <Skeleton className="inline-block h-3 w-6" />;
   const total = q.data?.length ?? 0;
   return (
