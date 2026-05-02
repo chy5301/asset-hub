@@ -1,26 +1,26 @@
-import { type Control } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
-import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
+import { FieldShell } from './field-shell';
 import type { FieldDef } from '../types';
 
-export function UrlField({ def, control }: { def: FieldDef; control: Control }) {
+export function UrlField<TFieldValues extends FieldValues>({
+  def,
+  control,
+}: {
+  def: FieldDef;
+  control: Control<TFieldValues>;
+}) {
   return (
-    <FormField
-      control={control}
-      name={`custom_data.${def.key}`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            {def.label ?? def.key}
-            {def.required && <span className="ml-1 text-destructive">*</span>}
-          </FormLabel>
-          <FormControl>
-            <Input type="url" {...field} placeholder={def.placeholder ?? 'https://…'} value={field.value ?? ''} />
-          </FormControl>
-          {def.help && <FormDescription>{def.help}</FormDescription>}
-          <FormMessage />
-        </FormItem>
+    <FieldShell def={def} control={control}>
+      {(field) => (
+        <Input
+          type="url"
+          {...field}
+          id={`field-${def.key}`}
+          placeholder={def.placeholder ?? 'https://…'}
+          value={field.value ?? ''}
+        />
       )}
-    />
+    </FieldShell>
   );
 }

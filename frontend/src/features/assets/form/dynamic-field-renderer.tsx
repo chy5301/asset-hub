@@ -1,4 +1,4 @@
-import { type Control } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
 import { StringField } from './field-controls/string-field';
 import { TextField } from './field-controls/text-field';
 import { NumberField } from './field-controls/number-field';
@@ -9,7 +9,13 @@ import { MultiEnumField } from './field-controls/multi-enum-field';
 import { UrlField } from './field-controls/url-field';
 import type { FieldDef } from './types';
 
-export function DynamicFieldRenderer({ def, control }: { def: FieldDef; control: Control }) {
+export function DynamicFieldRenderer<TFieldValues extends FieldValues>({
+  def,
+  control,
+}: {
+  def: FieldDef;
+  control: Control<TFieldValues>;
+}) {
   switch (def.type) {
     case 'string': return <StringField def={def} control={control} />;
     case 'text': return <TextField def={def} control={control} />;

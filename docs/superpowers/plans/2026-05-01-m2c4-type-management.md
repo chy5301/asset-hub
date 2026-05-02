@@ -1466,6 +1466,13 @@ git commit -m "refactor(form): A4 AssetFormFields 泛型化 Control<TFieldValues
 
 - [ ] **Step 1: 修改 layout**
 
+> **路径修正（T16 fixup, 2026-04-30）**：原 plan 写的 `to: '/assets'` 与 `to: '/types'` 都过不了 tsc：
+> - `/assets` 是错的——资产列表实际路由是 `/`（见 `routes/index.tsx`）。语义修正为 `/`。
+> - `/types` 在 PR-2 阶段还没注册到 router 类型表（PR-3 T35 才创建路由文件），TanStack Router strict typing 拒收字面量。临时用 `as '/'` 类型谎言绕过；运行时点击 404 是 plan 已声明的预期行为，PR-3 T35 落地后此 cast 即可移除。
+> - `/` 路由要求显式传 `search` prop（`assetsSearchSchema`），Link 上加 `search={{ sort: "asset_code", page: 1, pageSize: 50 }}`。
+>
+> 下方代码块已是修正后版本。
+
 ```tsx
 import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
@@ -1473,8 +1480,12 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { ErrorBoundary } from "@/components/feedback/error-boundary";
 
 const NAV_ITEMS = [
-  { to: "/assets", label: "资产" },
-  { to: "/types", label: "类型" },
+  // 资产列表实际在 `/`（routes/index.tsx），不是 `/assets`
+  { to: "/", label: "资产" },
+  // `/types` 路由由 PR-3 T35 创建；PR-2 阶段尚未注册到 router 类型表，
+  // 临时用 `as '/'` 类型谎言绕过 strict typing。运行时点击会 404，是 plan 已声明的预期行为，
+  // PR-3 T35 落地后此 cast 即可移除。
+  { to: "/types" as "/", label: "类型" },
 ] as const;
 
 function NavBar() {
@@ -1491,6 +1502,10 @@ function NavBar() {
             <Link
               key={item.to}
               to={item.to}
+              // `/` 路由要求显式传 search（TanStack Router strict typing），
+              // 复用 assetsSearchSchema 默认值；`/types as '/'` cast 复用同 shape，
+              // 运行时点击 404 由 PR-3 T35 路由文件落地后修复。
+              search={{ sort: "asset_code", page: 1, pageSize: 50 }}
               className={
                 active
                   ? "text-sm font-medium text-primary border-b-2 border-primary -mb-px py-2 transition-colors"
@@ -1548,8 +1563,24 @@ uv run asset-hub serve start --mode dev
 
 ```bash
 git add frontend/src/components/layout/app-layout.tsx
-git commit -m "feat(layout): B nav 行（资产/类型）+ active 状态 underline + primary color（M2c-4 PR-2 Task 16）"
+git commit -m "feat(layout): B nav 行（资产/类型）+ active 状态 + 修正 plan 路径错（/assets→/ + /types as '/' transient cast）（M2c-4 PR-2 Task 16）"
 ```
+
+> **PR-3 T35 备忘**：T35 创建 `routes/types.tsx` 后，回到 `frontend/src/components/layout/app-layout.tsx`：
+> 1. 去掉 `{ to: "/types" as "/", label: "类型" }` 上的 `as "/"` cast 还原为 `{ to: "/types", label: "类型" }`；
+> 2. 检查 `search={{...}}` 是否仍然适配（`/types` 路由如有不同 search schema，需按情况调整或拆分 NAV_ITEMS 类型）。
+> 3. **I1（Important，T16 review 起）** —— nav 资产 链接当前固定写死 `search={{ sort: "asset_code", page: 1, pageSize: 50 }}`，会覆盖用户当前页面正在用的 filter / sort / page / pageSize 状态（用户从 `/?sort=name&page=3` 点 nav 资产 会被踹回首屏默认）。T35 改用 `useSearch({ strict: false })` 把当前 search 透传到 nav Link：
+>    ```tsx
+>    const currentSearch = useSearch({ strict: false });
+>    // ...
+>    <Link to={item.to} search={currentSearch}> ... </Link>
+>    ```
+>    若 `/types` 路由 search schema 与 `/` 不同，需在 NAV_ITEMS 上分别声明 each item 的 default search 并按 `to` 选择透传策略；最低成本是只对"资产 → /" 一项透传，"类型 → /types" 走 `/types` 默认值。
+> 4. **M2（Minor，T16 review 起）** —— 当前 active 检测对两条 nav 都用 `useMatchRoute({ to: item.to, fuzzy: true })`：在 PR-2 阶段没问题（`/types` 不存在，fuzzy 也匹配不到，资产 在 `/` / `/assets/$id` / `/assets/new` 上都 active 是正确的）。但 T35 创建 `/types` 路由后，由于资产 项的 `to: "/"` 加 `fuzzy: true` 会让 `/types` 也命中前缀（`/types` 以 `/` 开头），导致用户在 `/types` 上时资产 也错误地显示 active。T35 必须改 active 检测逻辑——可选方案：
+>    - **方案 A**（推荐）：资产 项用 exact match（`fuzzy: false` 或 `fuzzy` omit），类型 项用 fuzzy；
+>    - **方案 B**：保留 fuzzy 但显式排除——active = matchRoute({ to: item.to, fuzzy: true }) && !matchRoute({ to: "/types", fuzzy: true })`（仅资产 项加排除）；
+>    - **方案 C**：在 NAV_ITEMS 上为每项声明 `match: "exact" | "fuzzy"`，渲染时按声明走。
+>    选 A 或 C。两种实现都需配套测试覆盖三种 path（`/`、`/assets/$id`、`/types`）下哪个 link active。
 
 ---
 

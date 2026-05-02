@@ -1,14 +1,18 @@
-import { type Control } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
 import { DynamicFieldRenderer } from './dynamic-field-renderer';
 import type { FieldDef } from './types';
 
-interface CustomFieldsFormProps {
-  control: Control;
+interface CustomFieldsFormProps<TFieldValues extends FieldValues> {
+  control: Control<TFieldValues>;
   fieldDefs: FieldDef[];
   typeName: string;
 }
 
-export function CustomFieldsForm({ control, fieldDefs, typeName }: CustomFieldsFormProps) {
+export function CustomFieldsForm<TFieldValues extends FieldValues>({
+  control,
+  fieldDefs,
+  typeName,
+}: CustomFieldsFormProps<TFieldValues>) {
   if (fieldDefs.length === 0) {
     return null;
   }

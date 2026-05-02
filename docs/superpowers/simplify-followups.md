@@ -10,6 +10,7 @@
 - [§3 M2c-1 范围（2026-04-27 二轮）](#3-m2c-1-范围2026-04-27二轮)
 - [§4 M1 范围（2026-04-27 二轮）](#4-m1-范围2026-04-27二轮)
 - [§5 M2d 范围（2026-04-29）](#5-m2d-范围2026-04-29)
+- [§6 M2c-4 范围（2026-04-30）](#6-m2c-4-范围2026-04-30)
 
 ---
 
@@ -720,6 +721,131 @@
 | 🟡 等里程碑 | K2 / K3 / K4 / K9 | serve 子命令再扩（doctor / build）或 cmd.py 大改时一并启动 |
 | 🟡 等里程碑 | K5 | M3 status 命令加新字段时启动 |
 | 🔴 暂不动 | K6 / K7 / K8 | 触发条件远未到 |
+
+---
+
+## §6 M2c-4 范围（2026-04-30）
+
+**分支**：`feature/m2c4-form-infra`（PR-2 form infra 阶段，Task 11 code-quality review approve with one ask）
+**审查范围**：A1 合并 `buildCreateSchema` / `buildEditSchema` → `buildAssetSchema(fieldDefs, { mode })`（Plan §Task 10）+ Task 11 迁 asset-create/edit-form
+**视角**：reviewer 单视角（PR-2 quality review）
+
+### J · `buildAssetSchema` 条件 .extend 三元导致 zod inference 丢 type_id
+
+**位置**：`frontend/src/features/assets/form/build-asset-schema.ts` + `asset-create-form.tsx`
+
+**现状**：A1 把 `buildCreateSchema` / `buildEditSchema` 合并为 `buildAssetSchema(fieldDefs, { mode })`。条件三元 `mode === 'create' ? withCustom.extend({ type_id }) : withCustom` 让 zod 的 TS inference 在 `mode='create'` 时丢 `type_id`。
+
+**症状**：`asset-create-form.tsx` 引入 2 处 cast：
+- `resolver: zodResolver(CREATE_EMPTY_SCHEMA) as unknown as Resolver<CreateFormValues>`
+- `parsed.data as CreateFormValues`（onSubmit 内）
+
+EditForm 不需要 cast（`EditFormValues = Omit<CreateFormValues, 'type_id'>` 与 inferred shape 一致）。
+
+**消除方案候选**（M2c-4 review 期评估，最终未选）：
+- **路径 A · 拆 builder**：split 回 `createAssetSchema(fieldDefs)` + `editAssetSchema(fieldDefs)` 两函数，`z.infer` 直接工作。代价：A1 主张的"merged single builder"被回退；但公共 API 仍可分两个窄函数。reviewer 推荐方案。
+- **路径 B · 函数重载 + 条件类型**：`buildAssetSchema<M extends Mode>(...)` + `SchemaFor<M>`。代价：类型体操重 + 函数体内仍需 cast 让 TS 接受三元返回；reviewer 不推荐。
+
+**何时做**：post-M2c-4 单独小 PR，或 `A4 后续清理` 周期。Task 15 (A4) 范围限于 `Control<TFieldValues>`，不会顺手消除这两处 zod-inference cast。
+
+**ROI**：低。2 cast 已加 inline 注释 + 引用 `build-asset-schema.ts` M1/M2 doc + Plan §Task 10。是被 spec 阶段 design 决议预知的 trade-off，不是工程失误。
+
+---
+
+### K · `acquired_at` 顶层字段 vs `custom_data` 写入路径不一致 — **Critical pre-PR bug**
+
+**位置**：`frontend/src/features/assets/form/general-fields-form.tsx:109` 调 `<DateField def={{ key: 'acquired_at', ... }}>` → 经 `FieldShell` 写到 `custom_data.acquired_at`；但 `buildAssetSchema` 把 `acquired_at` 当**顶层字段**。
+
+**现状**：pre-PR 即存在；M2c-4 PR-2 的 `FieldShell` 抽象继承了这个错误绑定但**未引入**新 bug。表单提交时 `buildAssetSchema` 校验拿不到顶层 `acquired_at`，`asset-create-form.tsx::onSubmit` 读 `data.acquired_at` 拿到空值，用户填的日期被丢弃。
+
+**影响**：用户填的 `acquired_at` 写错位置（落到 `custom_data` 命名空间）、提交时被静默丢弃；属于运行时数据丢失类 bug。
+
+**修复方案**：
+- `FieldShell` 加 `pathPrefix?: 'custom_data' | 'root'` prop（默认 `'custom_data'` 兼容现有 8 个 custom-field 用法）
+- `general-fields-form.tsx` 传 `pathPrefix='root'` 给 `DateField` 等通用字段（acquired_at / serial_number / holder / location / notes）
+- 加 unit test 验证 `acquired_at` 写入顶层 path
+
+**何时做**：单独 small PR（涉及 test + `FieldShell` signature change，超 simplify 范围）；M3 排期前**必须**修复。优先级高于其他 follow-up。
+
+**ROI**：高。属于真实功能缺口，用户可触发的运行时数据丢失。
+
+---
+
+### L · `build-asset-schema` 双函数 vs 条件 `.extend`（扩展 §J）
+
+**位置**：`frontend/src/features/assets/form/build-asset-schema.ts`
+
+**现状**：§J 已登记的"条件 `.extend` 三元导致 zod inference 丢 `type_id` → 引入 2 处 cast in `asset-create-form`"。本条是 §J 的延续：明确候选解决方案。
+
+**候选**：拆为 `buildCreateAssetSchema` + `buildEditAssetSchema` 两个窄函数（reviewer 推荐 path A）。公共 base 仍可抽 helper，但对外暴露双函数让 `z.infer` 直接工作。
+
+**何时做**：与 §J 同周期处理；可能是同一 PR。
+
+**ROI**：中。消除 2 cast + 让 TS inference 直接拿到 `type_id` shape。
+
+---
+
+### M · `useWatch` 重复订阅 + `Path<T>` cast 链路
+
+**位置**：
+- `frontend/src/features/assets/form/asset-form-fields.tsx:29-30`（`useWatch` type_id）
+- `frontend/src/features/assets/form/asset-create-form.tsx:44`（同 field 第二处 `useWatch`）
+- `frontend/src/features/assets/form/general-fields-form.tsx`（6 处 `as Path<T>` cast）
+
+**现状**：
+- Edit 模式下 `asset-form-fields` 仍订阅 `type_id` 但 `forceTypeId` 短路；
+- Create 模式下 `asset-create-form` 已 `useWatch type_id`，`asset-form-fields` 又 `useWatch` 同 field — RHF 内部各自 sub，触发两次 re-render。
+- `general-fields-form` 6 处 `as Path<T>` cast 因为泛型 `T extends FieldValues` 太宽，TS 推不出 path 字面量是 `T` 的合法 path。
+
+**候选**：
+- Hoist `type_id` watch 到 `asset-create-form`，通过 prop 传 `selectedType` 给 `asset-form-fields`，删 `asset-form-fields` 内部 `useWatch`
+- `GeneralFieldsForm` 加 `T extends FieldValues & AssetBaseFields` 约束（其中 `AssetBaseFields` 列出 `acquired_at` / `serial_number` 等通用字段），消除 6 处 cast
+
+**何时做**：与 §L 同 PR 处理（一并清理 form-fields 类型链路）。
+
+**ROI**：中。性能微优化（去重一次 sub）+ 类型清晰度提升。
+
+---
+
+### N · `field-${def.key}` id 模板字符串重复 9 处
+
+**位置**：8 个 `field-controls/*.tsx` + `field-shell.tsx` 内的 `htmlFor` 都写 `` `field-${def.key}` ``。
+
+**候选**：`FieldShell` 通过 `children` render-prop 多传一个 `inputId` 形参，`field-controls` 直接消费 `inputId` 而不再各自拼模板。
+
+**何时做**：不紧迫；M3 加新 field-control 时一并做。
+
+**ROI**：低。9 处微重复；当前稳定运行，抽出后 children render-prop 多一个 destructure 字段，可读性微降。
+
+---
+
+### O · `MultiEnumField` checkbox-grid `<div>` 上的 `id` 不可点击 — **a11y 微回归**
+
+**位置**：`frontend/src/features/assets/form/field-controls/multi-enum-field.tsx:31`
+
+**现状**：pre-PR 即存在；T14 重构（用 FieldShell）未引入新 bug。但 `<FormLabel htmlFor="field-${key}">` 指向的是承载 grid 的 `<div>`，div 不 focusable，点击 label 不会聚焦到任何 checkbox（label-input 关联失效）。
+
+**候选**：用 `role="group"` + `aria-labelledby` 替代 `label htmlFor` → grid 容器；或拆出每 checkbox 独立 `<label>`。
+
+**何时做**：与 §N 同周期。
+
+**ROI**：低。a11y 微改善；当前键盘导航仍可工作（Tab 进入第一个 checkbox），仅 click-on-label 失效。
+
+---
+
+### P · NavBar 导航激活态在 `/types` 真实存在后 fuzzy match 出错
+
+**位置**：`frontend/src/components/layout/app-layout.tsx:24` —— `useMatchRoute({ to: '/' as never, fuzzy: true })`
+
+**现状**：PR-2 时 `/types` 路由未注册到 router 类型表（plan §T16 已声明），`as '/'` cast 让 NavBar 用 `/` 路径占位，资产 active 检测正常（fuzzy match 仅匹配 `/` 前缀）。
+
+**风险**：PR-3 T35 加 `/types` 真实路由后，fuzzy match `to: '/'` 会让 `/types` 也命中（任意路径都以 `/` 开头），导致"资产 / 类型"同时 active，激活态视觉错乱。
+
+**候选**：T35 同 PR 内把 `useMatchRoute({ to: item.to })` 的 fuzzy 改为 false（精确匹配），或对 root path `/` 显式 `pathname === '/'`。
+
+**何时做**：**PR-3 T35**（plan 已 memo cleanup memo）。本条仅 cross-ref 一次确保不漏。
+
+**ROI**：中。修复后激活态视觉不再错乱；属于 PR-3 必做项。
 
 ---
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { type Control, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { useAssetTypesQuery } from '@/api/hooks/types';
 import { useAssetDetailQuery, useUpdateAsset } from '@/api/hooks/assets';
 import { toFriendlyMessage } from '@/lib/error';
 import { AssetFormFields } from './asset-form-fields';
-import { buildEditSchema, type EditFormValues } from './build-edit-schema';
+import { buildAssetSchema, type EditFormValues } from './build-asset-schema';
 import { PENDING_TEXT } from './form-toast';
 import type { FieldDef } from './types';
 
@@ -30,7 +30,7 @@ export function AssetEditForm() {
     () => (selectedType?.custom_fields ?? []) as FieldDef[],
     [selectedType],
   );
-  const editSchema = useMemo(() => buildEditSchema(fieldDefs), [fieldDefs]);
+  const editSchema = useMemo(() => buildAssetSchema(fieldDefs, { mode: 'edit' }), [fieldDefs]);
 
   const form = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
@@ -110,8 +110,8 @@ export function AssetEditForm() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-10">
-          <AssetFormFields
-            control={form.control as unknown as Control}
+          <AssetFormFields<EditFormValues>
+            control={form.control}
             types={types}
             mode="edit"
             assetCode={asset.asset_code}
