@@ -22,13 +22,13 @@ import type { components } from '@/api/generated/schema';
 type TypeRead = components['schemas']['TypeRead'];
 
 function RefCountCell({ typeId }: { typeId: string }) {
-  const q = useAssetsQuery({ type: typeId, page: 1, pageSize: 1, sort: undefined });
+  const q = useAssetsQuery({ type: typeId, page: 1, pageSize: 1, sort: 'asset_code' });
   if (q.isLoading) return <Skeleton className="inline-block h-3 w-6" />;
-  const total = q.data?.total ?? 0;
+  const total = q.data?.length ?? 0;
   return (
-    // Task 35 将注册 /assets 路由并完善 search 类型；此处暂用 as never 绕过路由类型检查
+    // Task 35 将注册 /assets 路由；此处 to + search 暂用 as never 绕过路由类型检查
     <Link
-      to="/assets"
+      to={"/assets" as never}
       search={{ type: typeId } as never}
       className="text-primary hover:underline cursor-pointer"
     >
@@ -49,9 +49,9 @@ export function TypesTable({ rows, onDelete }: Props) {
         accessorKey: 'name',
         header: 'name',
         cell: ({ row }) => (
-          // Task 35 将注册 /types/$id 路由；此处暂用 as never 绕过路由类型检查
+          // Task 35 将注册 /types/$id 路由；此处 to + params 暂用 as never 绕过路由类型检查
           <Link
-            to="/types/$id"
+            to={"/types/$id" as never}
             params={{ id: row.original.id } as never}
             className="font-medium hover:underline cursor-pointer"
           >
@@ -90,10 +90,10 @@ export function TypesTable({ rows, onDelete }: Props) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-popover">
+            <DropdownMenuContent align="end" className="bg-popover">
               <DropdownMenuItem
                 onSelect={() => onDelete(row.original)}
-                className="text-destructive cursor-pointer"
+                className="text-destructive focus:text-destructive cursor-pointer"
               >
                 删除…
               </DropdownMenuItem>
