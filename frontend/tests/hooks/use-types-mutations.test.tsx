@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import {
   useTypeQuery,
   useCreateTypeMutation,
@@ -10,7 +11,8 @@ import {
 } from '@/api/hooks/types';
 
 // 复用全局 MSW server（setup.ts 已 listen + afterEach resetHandlers）
-const server = (globalThis as unknown as { __mswServer: { use: (...args: unknown[]) => void } }).__mswServer;
+type MswServer = ReturnType<typeof setupServer>;
+const server = (globalThis as unknown as { __mswServer: MswServer }).__mswServer;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { unwrap } from "@/lib/error";
+import { unwrap, unwrapVoid } from "@/lib/error";
 import type { components } from "@/api/generated/schema";
 
 type TypeRead = components['schemas']['TypeRead'];
@@ -70,8 +70,7 @@ export function useDeleteTypeMutation() {
       const res = await http.DELETE("/api/types/{type_id}", {
         params: { path: { type_id: id } },
       });
-      // 沿用 useDeleteAttachmentMutation 的 204 no-body 处理：手工 throw
-      if (res.error) throw res.error;
+      unwrapVoid(res);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.assetTypes.all });
