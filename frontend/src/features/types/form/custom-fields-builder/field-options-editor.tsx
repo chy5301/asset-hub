@@ -7,9 +7,10 @@ interface Props {
   value: string[];
   onChange: (next: string[]) => void;
   errorPaths?: number[]; // 哪些 index 标红（来自 superRefine）
+  id?: string;
 }
 
-export function FieldOptionsEditor({ value, onChange, errorPaths = [] }: Props) {
+export function FieldOptionsEditor({ value, onChange, errorPaths = [], id }: Props) {
   const [draft, setDraft] = useState('');
   const errorSet = useMemo(() => new Set(errorPaths), [errorPaths]);
 
@@ -47,6 +48,7 @@ export function FieldOptionsEditor({ value, onChange, errorPaths = [] }: Props) 
         ))}
       </div>
       <Input
+        id={id}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}

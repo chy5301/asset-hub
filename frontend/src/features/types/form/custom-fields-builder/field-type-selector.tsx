@@ -22,12 +22,13 @@ const FIELD_TYPE_OPTIONS: { value: FieldDefFormValue['type']; label: string }[] 
 interface Props {
   value: FieldDefFormValue['type'];
   onChange: (next: FieldDefFormValue['type']) => void;
+  id?: string;
 }
 
-export function FieldTypeSelector({ value, onChange }: Props) {
+export function FieldTypeSelector({ value, onChange, id }: Props) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-[220px]">
+      <SelectTrigger id={id} className="w-[220px]">
         <SelectValue placeholder="选择字段类型" />
       </SelectTrigger>
       <SelectContent className="bg-popover">

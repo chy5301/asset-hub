@@ -32,33 +32,32 @@ export function FieldAttributeForm({ control, setValue, index, errors }: Props) 
 
   return (
     <div className="space-y-4 p-4">
-      {/* 通用属性 */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label>key *</Label>
+          <Label htmlFor={`field-${index}-key`}>key *</Label>
           <Controller
             control={control}
             name={`${path}.key` as never}
-            render={({ field }) => <Input {...field} placeholder="snake_case" />}
+            render={({ field }) => <Input id={`field-${index}-key`} {...field} placeholder="snake_case" />}
           />
           {fieldErr?.key && <p className="text-sm text-destructive mt-1">{fieldErr.key.message as string}</p>}
         </div>
         <div>
-          <Label>type *</Label>
+          <Label htmlFor={`field-${index}-type`}>type *</Label>
           <Controller
             control={control}
             name={`${path}.type` as never}
             render={({ field }) => (
-              <FieldTypeSelector value={field.value} onChange={onTypeChange} />
+              <FieldTypeSelector id={`field-${index}-type`} value={field.value} onChange={onTypeChange} />
             )}
           />
         </div>
         <div>
-          <Label>label</Label>
+          <Label htmlFor={`field-${index}-label`}>label</Label>
           <Controller
             control={control}
             name={`${path}.label` as never}
-            render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="显示名" />}
+            render={({ field }) => <Input id={`field-${index}-label`} {...field} value={field.value ?? ''} placeholder="显示名" />}
           />
         </div>
         <div className="flex items-center gap-2 mt-6">
@@ -78,41 +77,41 @@ export function FieldAttributeForm({ control, setValue, index, errors }: Props) 
       </div>
 
       <div>
-        <Label>placeholder</Label>
+        <Label htmlFor={`field-${index}-placeholder`}>placeholder</Label>
         <Controller
           control={control}
           name={`${path}.placeholder` as never}
-          render={({ field }) => <Input {...field} value={field.value ?? ''} />}
+          render={({ field }) => <Input id={`field-${index}-placeholder`} {...field} value={field.value ?? ''} />}
         />
       </div>
 
       <div>
-        <Label>help</Label>
+        <Label htmlFor={`field-${index}-help`}>help</Label>
         <Controller
           control={control}
           name={`${path}.help` as never}
-          render={({ field }) => <Textarea {...field} value={field.value ?? ''} rows={2} />}
+          render={({ field }) => <Textarea id={`field-${index}-help`} {...field} value={field.value ?? ''} rows={2} />}
         />
       </div>
 
-      {/* type-specific 属性 */}
       {(fieldType === 'int' || fieldType === 'float') && (
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label>unit</Label>
+            <Label htmlFor={`field-${index}-unit`}>unit</Label>
             <Controller
               control={control}
               name={`${path}.unit` as never}
-              render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="GB / mm 等" />}
+              render={({ field }) => <Input id={`field-${index}-unit`} {...field} value={field.value ?? ''} placeholder="GB / mm 等" />}
             />
           </div>
           <div>
-            <Label>min</Label>
+            <Label htmlFor={`field-${index}-min`}>min</Label>
             <Controller
               control={control}
               name={`${path}.min` as never}
               render={({ field }) => (
                 <Input
+                  id={`field-${index}-min`}
                   type="number"
                   value={field.value ?? ''}
                   onChange={(e) =>
@@ -123,12 +122,13 @@ export function FieldAttributeForm({ control, setValue, index, errors }: Props) 
             />
           </div>
           <div>
-            <Label>max</Label>
+            <Label htmlFor={`field-${index}-max`}>max</Label>
             <Controller
               control={control}
               name={`${path}.max` as never}
               render={({ field }) => (
                 <Input
+                  id={`field-${index}-max`}
                   type="number"
                   value={field.value ?? ''}
                   onChange={(e) =>
@@ -144,16 +144,19 @@ export function FieldAttributeForm({ control, setValue, index, errors }: Props) 
 
       {(fieldType === 'enum' || fieldType === 'multi-enum') && (
         <div>
-          <Label>options *</Label>
+          <Label htmlFor={`field-${index}-options`}>options *</Label>
           <Controller
             control={control}
             name={`${path}.options` as never}
             render={({ field }) => {
-              const errorIndices = (fieldErr?.options as unknown as { message?: string }[] | undefined)
-                ?.map((e, i) => (e ? i : -1))
-                .filter((i) => i >= 0) ?? [];
+              const errorIndices = Array.isArray(fieldErr?.options)
+                ? (fieldErr.options as { message?: string }[])
+                    .map((e, i) => (e ? i : -1))
+                    .filter((i) => i >= 0)
+                : [];
               return (
                 <FieldOptionsEditor
+                  id={`field-${index}-options`}
                   value={field.value ?? []}
                   onChange={field.onChange}
                   errorPaths={errorIndices}
