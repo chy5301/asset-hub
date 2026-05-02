@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ interface Props {
 
 export function FieldOptionsEditor({ value, onChange, errorPaths = [] }: Props) {
   const [draft, setDraft] = useState('');
-  const errorSet = new Set(errorPaths);
+  const errorSet = useMemo(() => new Set(errorPaths), [errorPaths]);
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && draft.trim()) {
@@ -38,7 +38,7 @@ export function FieldOptionsEditor({ value, onChange, errorPaths = [] }: Props) 
             <button
               type="button"
               onClick={() => removeAt(idx)}
-              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-destructive cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-destructive cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
               aria-label={`删除选项 ${opt}`}
             >
               <X className="h-3 w-3" />
