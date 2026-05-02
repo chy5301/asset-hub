@@ -12,6 +12,9 @@
   --font-heading: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
   --font-mono: "Fira Code", ui-monospace, monospace;
 
+  /* 警告色（D16: amber，类型名冲突提示用） */
+  --color-warning: hsl(var(--warning-hsl));
+
   /* shadcn 色变量 */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -64,6 +67,8 @@
 
 /* ===== Light 模式（默认，§3.5.4 以 MASTER tokens 为锚） ===== */
 :root {
+  --warning-hsl: 38 92% 50%;
+
   --background: oklch(0.984 0.004 247);
   --foreground: oklch(0.262 0.093 261);
 
@@ -122,6 +127,8 @@
 
 /* ===== Dark 模式（独立调，不做 light 反转，§3.5.4） ===== */
 .dark {
+  --warning-hsl: 38 75% 55%;
+
   --background: oklch(0.14 0.02 258);
   --foreground: oklch(0.95 0.01 247);
 
@@ -237,10 +244,28 @@
   }
 }
 
+/* 时刻 3：Collapsible 展开/收起（Radix UI Collapsible 配对） */
+@keyframes collapsible-down {
+  from { height: 0; }
+  to { height: var(--radix-collapsible-content-height); }
+}
+
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height); }
+  to { height: 0; }
+}
+
+@layer utilities {
+  .animate-collapsible-down { animation: collapsible-down 200ms ease-out; }
+  .animate-collapsible-up { animation: collapsible-up 200ms ease-out; }
+}
+
 /* prefers-reduced-motion 降级为无动画 */
 @media (prefers-reduced-motion: reduce) {
   .stagger-row,
-  .tbody-fade {
+  .tbody-fade,
+  .animate-collapsible-down,
+  .animate-collapsible-up {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

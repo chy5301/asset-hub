@@ -11,7 +11,8 @@ import { useAssetTypesQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { AssetHeader } from "./asset-header";
 import { GeneralFields } from "./general-fields";
-import { CustomFields } from "./custom-fields";
+import { CustomDataSection } from "./custom-data-section";
+import type { FieldDef } from "@/features/assets/form/types";
 import { AttachmentGrid } from "./attachment-grid";
 import { CheckoutTimeline } from "./checkout-timeline";
 import { deriveCurrentCheckout } from "./current-checkout";
@@ -107,7 +108,11 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
           onDelete={() => setDeleteOpen(true)}
         />
         <GeneralFields asset={asset} typeName={typeName} />
-        <CustomFields asset={asset} assetType={assetType} />
+        <CustomDataSection
+          customData={(asset.custom_data ?? {}) as Record<string, unknown>}
+          fieldDefs={(assetType?.custom_fields ?? []) as FieldDef[]}
+          assetId={asset.id}
+        />
         <AttachmentGrid
           query={attachmentsQuery}
           onOpen={(att) => setLightboxAttachment(att)}

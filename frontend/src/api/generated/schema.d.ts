@@ -32,7 +32,11 @@ export interface paths {
         delete: operations["delete_type_api_types__type_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Type
+         * @description 部分更新 type。code_prefix immutable（DTO 已不暴露此字段）。
+         */
+        patch: operations["update_type_api_types__type_id__patch"];
         trace?: never;
     };
     "/api/assets": {
@@ -473,6 +477,18 @@ export interface components {
              */
             updated_at: string;
         };
+        /**
+         * TypeUpdate
+         * @description 注意：code_prefix immutable，update DTO 不暴露此字段（D5）。
+         */
+        TypeUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Custom Fields */
+            custom_fields?: components["schemas"]["CustomFieldDef"][] | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -596,6 +612,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_type_api_types__type_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeRead"];
+                };
             };
             /** @description Validation Error */
             422: {
