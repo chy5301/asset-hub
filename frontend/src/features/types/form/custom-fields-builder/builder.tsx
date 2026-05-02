@@ -3,7 +3,7 @@ import type { Control, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FieldCard } from './field-card';
-import type { CreateTypeFormValues } from '../build-type-schema';
+import type { CreateTypeFormValues, FieldDefFormValue } from '../build-type-schema';
 
 interface Props {
   control: Control<CreateTypeFormValues>;
@@ -18,7 +18,7 @@ export function CustomFieldsBuilder({ control, setValue, errors }: Props) {
   });
 
   function handleAdd() {
-    append({ key: '', type: 'string', required: false } as never);
+    append({ key: '', type: 'string', required: false } as FieldDefFormValue);
   }
 
   if (fields.length === 0) {
@@ -37,8 +37,9 @@ export function CustomFieldsBuilder({ control, setValue, errors }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* 卡片间距 var(--space-md) = 16px = space-y-4（F6 修订，原 space-y-2 不符 spec §8.1）*/}
+      {/* 外层 space-y-4：字段列表与底部 "+ 添加字段" CTA 之间的间距 */}
       <div className="space-y-4">
+        {/* 卡片间距 var(--space-md) = 16px = space-y-4（F6 修订，原 space-y-2 不符 spec §8.1）*/}
         {fields.map((f, idx) => (
           <FieldCard
             key={f.id}
@@ -46,7 +47,7 @@ export function CustomFieldsBuilder({ control, setValue, errors }: Props) {
             setValue={setValue}
             index={idx}
             total={fields.length}
-            defaultExpanded={idx === fields.length - 1 && (f as { key?: string }).key === ''}
+            defaultExpanded={idx === fields.length - 1 && f.key === ''}
             onRemove={() => remove(idx)}
             onMoveUp={() => move(idx, idx - 1)}
             onMoveDown={() => move(idx, idx + 1)}
