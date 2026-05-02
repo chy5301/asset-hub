@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
 import { useCreateTypeMutation, useUpdateTypeMutation } from '@/api/hooks/types';
-import { toFriendlyMessage } from '@/lib/error';
+import { toFriendlyMessage, isHttpError } from '@/lib/error';
 import { buildTypeSchema, type CreateTypeFormValues } from './build-type-schema';
 import { CustomFieldsBuilder } from './custom-fields-builder/builder';
 import type { components } from '@/api/generated/schema';
@@ -26,6 +27,7 @@ const EDIT_SCHEMA = buildTypeSchema({ mode: 'edit' });
 
 export function TypeForm({ mode, initial, onSuccess }: Props) {
   const schema = mode === 'create' ? CREATE_SCHEMA : EDIT_SCHEMA;
+  const navigate = useNavigate();
   const createMut = useCreateTypeMutation();
   const updateMut = useUpdateTypeMutation();
   const mutation = mode === 'create' ? createMut : updateMut;
@@ -43,6 +45,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
     ),
   });
 
+  // 异步获取的 initial 到达后回填表单；form 引用 RHF 7.x 内部稳定，仅为满足 exhaustive-deps
   useEffect(() => {
     if (initial) {
       form.reset({
@@ -75,9 +78,10 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
       }
     } catch (e) {
       const msg = toFriendlyMessage(e);
-      if (msg.includes('code_prefix')) {
+      const is409 = isHttpError(e) && e.status === 409;
+      if (is409 && msg.includes('code_prefix')) {
         form.setError('code_prefix' as never, { message: msg });
-      } else if (msg.includes('名称') || msg.includes('name')) {
+      } else if (is409 && (msg.includes('名称') || msg.includes('name'))) {
         form.setError('name', { message: msg });
       } else {
         form.setError('root', { message: msg });
@@ -91,9 +95,8 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
     : '保存';
 
   return (
-    <FormProvider {...form}>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
           {form.formState.errors.root && (
             <InlineErrorBanner message={form.formState.errors.root.message ?? ''} />
           )}
@@ -173,7 +176,8 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           </section>
 
           <div className="flex items-center justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => history.back()}>
+            {/* '/types' route 在 Task 35 注册；as never 桥接，PR-3 全部任务合并后自动消失 */}
+            <Button type="button" variant="outline" onClick={() => navigate({ to: '/types' as never })}>
               取消
             </Button>
             <Button type="submit" disabled={submitting}>
@@ -181,7 +185,6 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
             </Button>
           </div>
         </form>
-      </Form>
-    </FormProvider>
+    </Form>
   );
 }
