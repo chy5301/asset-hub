@@ -12,6 +12,7 @@ export const qk = {
   assetTypes: {
     all: ["assetTypes"] as const,
     list: () => ["assetTypes", "list"] as const,
+    detail: (id: string) => ["assetTypes", "detail", id] as const,
   },
   attachments: {
     byAsset: (assetId: string) =>
