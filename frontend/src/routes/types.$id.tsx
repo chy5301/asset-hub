@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { TypeDetailPage } from '@/features/types/detail/type-detail-page';
 
-function TypeRoute() {
+function TypeDetailRoute() {
   const { id } = Route.useParams();
   return (
     <div className="max-w-3xl">
@@ -11,5 +11,5 @@ function TypeRoute() {
 }
 
 export const Route = createFileRoute('/types/$id')({
-  component: TypeRoute,
+  component: TypeDetailRoute,
 });

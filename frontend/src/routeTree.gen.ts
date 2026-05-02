@@ -9,8 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as TypesRouteImport } from './routes/types'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as TypesNewRouteImport } from './routes/types.new'
 import { Route as TypesIdRouteImport } from './routes/types.$id'
 import { Route as AssetsNewRouteImport } from './routes/assets.new'
@@ -18,25 +18,25 @@ import { Route as AssetsIdRouteImport } from './routes/assets.$id'
 import { Route as AssetsIdIndexRouteImport } from './routes/assets.$id.index'
 import { Route as AssetsIdEditRouteImport } from './routes/assets.$id.edit'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TypesRoute = TypesRouteImport.update({
   id: '/types',
   path: '/types',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TypesNewRoute = TypesNewRouteImport.update({
-  id: '/types/new',
-  path: '/types/new',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TypesNewRoute = TypesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TypesRoute,
+} as any)
 const TypesIdRoute = TypesIdRouteImport.update({
-  id: '/types/$id',
-  path: '/types/$id',
-  getParentRoute: () => rootRouteImport,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => TypesRoute,
 } as any)
 const AssetsNewRoute = AssetsNewRouteImport.update({
   id: '/assets/new',
@@ -61,31 +61,31 @@ const AssetsIdEditRoute = AssetsIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/types': typeof TypesRoute
-  '/types/new': typeof TypesNewRoute
-  '/types/$id': typeof TypesIdRoute
+  '/types': typeof TypesRouteWithChildren
   '/assets/$id': typeof AssetsIdRouteWithChildren
   '/assets/new': typeof AssetsNewRoute
+  '/types/$id': typeof TypesIdRoute
+  '/types/new': typeof TypesNewRoute
   '/assets/$id/edit': typeof AssetsIdEditRoute
   '/assets/$id/': typeof AssetsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/types': typeof TypesRoute
-  '/types/new': typeof TypesNewRoute
-  '/types/$id': typeof TypesIdRoute
+  '/types': typeof TypesRouteWithChildren
   '/assets/new': typeof AssetsNewRoute
+  '/types/$id': typeof TypesIdRoute
+  '/types/new': typeof TypesNewRoute
   '/assets/$id/edit': typeof AssetsIdEditRoute
   '/assets/$id': typeof AssetsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/types': typeof TypesRoute
-  '/types/new': typeof TypesNewRoute
-  '/types/$id': typeof TypesIdRoute
+  '/types': typeof TypesRouteWithChildren
   '/assets/$id': typeof AssetsIdRouteWithChildren
   '/assets/new': typeof AssetsNewRoute
+  '/types/$id': typeof TypesIdRoute
+  '/types/new': typeof TypesNewRoute
   '/assets/$id/edit': typeof AssetsIdEditRoute
   '/assets/$id/': typeof AssetsIdIndexRoute
 }
@@ -94,51 +94,42 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/types'
-    | '/types/new'
-    | '/types/$id'
     | '/assets/$id'
     | '/assets/new'
+    | '/types/$id'
+    | '/types/new'
     | '/assets/$id/edit'
     | '/assets/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/types'
-    | '/types/new'
-    | '/types/$id'
     | '/assets/new'
+    | '/types/$id'
+    | '/types/new'
     | '/assets/$id/edit'
     | '/assets/$id'
   id:
     | '__root__'
     | '/'
     | '/types'
-    | '/types/new'
-    | '/types/$id'
     | '/assets/$id'
     | '/assets/new'
+    | '/types/$id'
+    | '/types/new'
     | '/assets/$id/edit'
     | '/assets/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  TypesRoute: typeof TypesRoute
-  TypesNewRoute: typeof TypesNewRoute
-  TypesIdRoute: typeof TypesIdRoute
+  TypesRoute: typeof TypesRouteWithChildren
   AssetsIdRoute: typeof AssetsIdRouteWithChildren
   AssetsNewRoute: typeof AssetsNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/types': {
       id: '/types'
       path: '/types'
@@ -146,19 +137,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TypesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/types/new': {
       id: '/types/new'
-      path: '/types/new'
+      path: '/new'
       fullPath: '/types/new'
       preLoaderRoute: typeof TypesNewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof TypesRoute
     }
     '/types/$id': {
       id: '/types/$id'
-      path: '/types/$id'
+      path: '/$id'
       fullPath: '/types/$id'
       preLoaderRoute: typeof TypesIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof TypesRoute
     }
     '/assets/new': {
       id: '/assets/new'
@@ -191,6 +189,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface TypesRouteChildren {
+  TypesIdRoute: typeof TypesIdRoute
+  TypesNewRoute: typeof TypesNewRoute
+}
+
+const TypesRouteChildren: TypesRouteChildren = {
+  TypesIdRoute: TypesIdRoute,
+  TypesNewRoute: TypesNewRoute,
+}
+
+const TypesRouteWithChildren = TypesRoute._addFileChildren(TypesRouteChildren)
+
 interface AssetsIdRouteChildren {
   AssetsIdEditRoute: typeof AssetsIdEditRoute
   AssetsIdIndexRoute: typeof AssetsIdIndexRoute
@@ -207,9 +217,7 @@ const AssetsIdRouteWithChildren = AssetsIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  TypesRoute: TypesRoute,
-  TypesNewRoute: TypesNewRoute,
-  TypesIdRoute: TypesIdRoute,
+  TypesRoute: TypesRouteWithChildren,
   AssetsIdRoute: AssetsIdRouteWithChildren,
   AssetsNewRoute: AssetsNewRoute,
 }
