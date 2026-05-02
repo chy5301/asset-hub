@@ -59,4 +59,19 @@ describe('TypeDeleteDialog', () => {
     await user.click(screen.getByRole('button', { name: /永久删除/ }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
   });
+
+  it('refQuery 失败 → 显示错误提示 + 永久删除按钮禁用', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/assets', () =>
+        HttpResponse.json({ detail: 'server error' }, { status: 500 }),
+      ),
+    );
+    render(<TypeDeleteDialog type={T} onClose={() => {}} />, { wrapper });
+    await waitFor(() =>
+      expect(screen.getByText(/无法确认引用数/)).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: /永久删除/ })).toBeDisabled();
+    // confirm input 不应渲染（hasRefs=true 隐藏）
+    expect(screen.queryByPlaceholderText(/请输入完整类型名/)).not.toBeInTheDocument();
+  });
 });

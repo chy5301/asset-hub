@@ -26,20 +26,19 @@ interface Props {
 export function TypeDeleteDialog({ type, onClose, onDeleted }: Props) {
   const [confirmInput, setConfirmInput] = useState('');
 
-  // ref_count 通过资产列表查询计算；GET /api/assets 返回 AssetRead[] flat array，
-  // 取 data.length（不是 data.total），与 RefCountCell 同源教训保持一致。
   const refQuery = useAssetsQuery({
     type: type.id,
+    // page/pageSize/sort 被 toServerParams 过滤不发往后端；服务端总返完整 type 过滤列表。pageSize 取 schema-valid 默认值。
     page: 1,
-    pageSize: 1,
+    pageSize: 50,
     sort: 'asset_code',
   });
   const deleteMut = useDeleteTypeMutation();
 
   const refCount = refQuery.data?.length ?? 0;
-  const hasRefs = refCount > 0;
+  const hasRefs = refCount > 0 || refQuery.isError;
   const inputMatches = confirmInput.trim() === type.name;
-  const canDelete = !hasRefs && inputMatches && !deleteMut.isPending;
+  const canDelete = !hasRefs && inputMatches && !deleteMut.isPending && !refQuery.isLoading;
 
   async function handleDelete() {
     try {
@@ -58,9 +57,11 @@ export function TypeDeleteDialog({ type, onClose, onDeleted }: Props) {
         <DialogHeader>
           <DialogTitle>删除类型 '{type.name}'</DialogTitle>
           <DialogDescription>
-            {hasRefs
-              ? `该类型仍有 ${refCount} 个资产引用，请先删除/迁移所有引用此类型的资产。`
-              : `此操作不可撤销。请输入完整类型名 '${type.name}' 以确认。`}
+            {refQuery.isError
+              ? '无法确认引用数，请关闭后重试。'
+              : hasRefs
+                ? `该类型仍有 ${refCount} 个资产引用，请先删除/迁移所有引用此类型的资产。`
+                : `此操作不可撤销。请输入完整类型名 '${type.name}' 以确认。`}
           </DialogDescription>
         </DialogHeader>
 
