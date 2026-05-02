@@ -13,7 +13,7 @@
   --font-mono: "Fira Code", ui-monospace, monospace;
 
   /* 警告色（D16: amber，类型名冲突提示用） */
-  --color-warning: hsl(var(--color-warning-hsl));
+  --color-warning: hsl(var(--warning-hsl));
 
   /* shadcn 色变量 */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -67,7 +67,7 @@
 
 /* ===== Light 模式（默认，§3.5.4 以 MASTER tokens 为锚） ===== */
 :root {
-  --color-warning-hsl: 38 92% 50%;
+  --warning-hsl: 38 92% 50%;
 
   --background: oklch(0.984 0.004 247);
   --foreground: oklch(0.262 0.093 261);
@@ -127,7 +127,7 @@
 
 /* ===== Dark 模式（独立调，不做 light 反转，§3.5.4） ===== */
 .dark {
-  --color-warning-hsl: 38 75% 55%;
+  --warning-hsl: 38 75% 55%;
 
   --background: oklch(0.14 0.02 258);
   --foreground: oklch(0.95 0.01 247);
@@ -263,7 +263,9 @@
 /* prefers-reduced-motion 降级为无动画 */
 @media (prefers-reduced-motion: reduce) {
   .stagger-row,
-  .tbody-fade {
+  .tbody-fade,
+  .animate-collapsible-down,
+  .animate-collapsible-up {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
