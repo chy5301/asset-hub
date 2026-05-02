@@ -37,24 +37,20 @@ export function CustomFieldsBuilder({ control, setValue, errors }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* 外层 space-y-4：字段列表与底部 "+ 添加字段" CTA 之间的间距 */}
-      <div className="space-y-4">
-        {/* 卡片间距 var(--space-md) = 16px = space-y-4（F6 修订，原 space-y-2 不符 spec §8.1）*/}
-        {fields.map((f, idx) => (
-          <FieldCard
-            key={f.id}
-            control={control}
-            setValue={setValue}
-            index={idx}
-            total={fields.length}
-            defaultExpanded={idx === fields.length - 1 && f.key === ''}
-            onRemove={() => remove(idx)}
-            onMoveUp={() => move(idx, idx - 1)}
-            onMoveDown={() => move(idx, idx + 1)}
-            errors={errors}
-          />
-        ))}
-      </div>
+      {fields.map((f, idx) => (
+        <FieldCard
+          key={f.id}
+          control={control}
+          setValue={setValue}
+          index={idx}
+          total={fields.length}
+          defaultExpanded={idx === fields.length - 1 && f.key === ''}
+          onRemove={() => remove(idx)}
+          onMoveUp={() => move(idx, idx - 1)}
+          onMoveDown={() => move(idx, idx + 1)}
+          errors={errors}
+        />
+      ))}
       <Button type="button" variant="outline" onClick={handleAdd}>
         <Plus className="h-4 w-4 mr-2" />
         添加字段

@@ -883,6 +883,72 @@ function useArrayFieldController<T extends FieldValues>(
 
 ---
 
+### T · `TypesPage` 空状态可复用 `EmptyState` 组件
+
+> **⏳ 待处理（trivial）**：M2c-4 合并后整体 review 新发现（2026-05-03）。
+
+**位置**：`frontend/src/features/types/list/types-page.tsx:37-45`
+
+**现状**：内联 `flex flex-col items-center gap-3 py-16 ...` + `Inbox` icon + `Button asChild Link to="/types/new"`，与 `frontend/src/components/feedback/empty-state.tsx`（已暴露 `title`/`description`/`action` props）逻辑相同。
+
+**候选**：`<EmptyState title="还没有类型" action={<Button asChild><Link to="/types/new">创建第一个类型</Link></Button>} />`
+
+**何时做**：Types 列表下次改 UI 时一并；不紧迫。
+
+**ROI**：低。10 行去重 + 跨 feature 一致性。
+
+---
+
+### U · `NotFoundPanel` 抽到 `components/feedback/`（第 2 次出现，trigger 已 fire）
+
+> **⏳ 待处理（worth-fixing）**：M2c-4 合并后整体 review 新发现（2026-05-03）。
+
+**位置**：
+- `frontend/src/features/assets/detail/not-found-panel.tsx`（首次，asset 专用）
+- `frontend/src/features/types/detail/type-detail-page.tsx:21-31`（M2c-4 PR-3 新增内联同款 `SearchX + h2 + p + 返回 Button`）
+
+**候选**：lift `NotFoundPanel` 到 `frontend/src/components/feedback/not-found-panel.tsx`，参数化 `title`/`description`/`backTo`/`backLabel`，asset/type 详情页都消费。
+
+**何时做**：M3 加第 3 个详情页之前就该做（2 倍化 + 同质度高，trigger 已 fire）。
+
+**ROI**：中。约 15 行去重 + 防 M3 第 3 次 inline 复制。
+
+---
+
+### V · `TypeRead` 类型别名跨 6+ 文件重复声明
+
+> **⏳ 待处理（trivial）**：M2c-4 合并后整体 review 新发现。
+
+**位置**：`api/hooks/types.ts:7` + `features/types/{form/type-form,list/types-page,list/types-table,detail/type-delete-dialog,detail/type-summary-card}.tsx` 各 1 处 + `AssetTypeRead` 在 `asset-form-fields.tsx:8` `general-fields-form.tsx:9`。
+
+**候选**：`frontend/src/features/types/types.ts` 集中 `export type TypeRead = components['schemas']['TypeRead']`。属于 §3 D1（generated-schema-shielding）但 TypeRead 已超阈值。
+
+**何时做**：D1 启动周期顺手；当前不动。
+
+**ROI**：低。
+
+---
+
+### W · Section heading 类名串复制 5 处（`text-sm font-semibold uppercase tracking-wide ... border-b pb-1.5`）
+
+> **⏳ 待处理（trivial）**：M2c-4 合并后整体 review 新发现。
+
+**位置**：`type-form.tsx:142,205`、`asset-form-fields.tsx:41`、`custom-fields-form.tsx:21`、`type-detail-page.tsx:47`（变体）。
+
+**候选**：抽 `<SectionHeading>` 在 `frontend/src/components/ui/`。
+
+**何时做**：M3 表单结构稳定后；当前不动避免过早抽象。
+
+**ROI**：低。
+
+---
+
+### Q-workaround · `useTypeRefCount` hook 已抽（与 §Q 同 PR 周期处理）· ✅ 已实现
+
+**M2c-4 合并后整体 review 落地（2026-05-03）**：`api/hooks/types.ts` 加 `useTypeRefCount(typeId)` hook，`types-table.tsx` `RefCountCell` + `type-delete-dialog.tsx` 都改用同 hook，统一 `pageSize=200`，消除两 callsite 间 50/200 漂移风险。§Q 后端 ref_count 字段落地后只需改 hook 实现，callsite 无需动。
+
+---
+
 ## §6 M2c-4 收尾说明（2026-05-03）
 
 M2c-4 全部三个 PR 均已合并到 main：
@@ -890,19 +956,36 @@ M2c-4 全部三个 PR 均已合并到 main：
 - **PR-2**（feature/m2c4-form-infra，commit db9f946）：A1 buildAssetSchema 合并 + A2 FieldShell + A4 Control 泛型化 + F3 module-level schema 常量 + B nav 行
 - **PR-3**（feature/m2c4-types-ui，commit 3425ecd）：类型管理 web UI（list/detail/create/delete）+ custom_fields 结构化 builder + unknown-key banner + §P NavBar fuzzy match 修复
 
-### 状态总览（J–S 共 10 项）
+### 状态总览（J–W 共 14 项）
 
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| §J condition `.extend` cast | ⏳ 持续 | PR-3 在 type-form.tsx 重现一次（d8e0b82），证明问题存在；M3 周期合 §L |
+| §J condition `.extend` cast | ⏳ 持续 | PR-3 在 type-form.tsx 重现一次（d8e0b82）；M3 周期合 §L |
 | §K `acquired_at` 写错位置 | 🔴 高优待修 | M3 排期前必须修；PR-3 未触碰（不在 scope） |
 | §L 双函数拆分 | ⏳ 持续 | 与 §J 同 PR；type-form 也用同款 union pattern |
 | §M `useWatch` 重订阅 + Path<T> cast | ⏳ 持续 | 与 §L 同 PR |
 | §N `field-${key}` id 模板重复 | ⏳ 持续 | M3 加新 field-control 时合并；PR-3 又新增 11 处（types builder） |
 | §O MultiEnumField label-input 关联 | ⏳ 持续 | 与 §N 同周期 |
 | §P NavBar fuzzy match | ✅ 已修复 | M2c-4 PR-3 Task 35 commit 77caf01 |
-| §Q `TypeRead.ref_count` 后端字段 | ⏳ M3 | PR-3 final review 新发现；解决 N+1 + 列表上限 |
+| §Q `TypeRead.ref_count` 后端字段 | ⏳ M3 | 后端补 ref_count 解决 N+1 + 列表上限；前端 workaround 已统一（见 Q-workaround） |
+| §Q-workaround `useTypeRefCount` hook | ✅ 已实现 | M2c-4 收尾整体 review；callsite 间 pageSize 漂移风险消除 |
 | §R null-field MSW 测覆盖 | ⏳ 防御性 | PR-3 烟测 S5 新发现；防 silent submit failure 复现 |
-| §S `useArrayFieldController` helper | ⏳ 条件触发 | PR-3 final review 新发现；第 4 个 array form 出现时启动 |
+| §S `useArrayFieldController` helper | ⏳ 条件触发 | 第 4 个 array form 出现时启动 |
+| §T `TypesPage` 空状态用 `EmptyState` | ⏳ trivial | 收尾整体 review 新发现 |
+| §U `NotFoundPanel` 抽到 `components/feedback` | ⏳ worth-fixing | 收尾整体 review 新发现，2 倍化 trigger 已 fire |
+| §V `TypeRead` alias 跨 6+ 文件重复 | ⏳ trivial | 收尾整体 review 新发现，合 §3 D1 |
+| §W Section heading 类名串复制 5 处 | ⏳ trivial | 收尾整体 review 新发现 |
+
+### M2c-4 收尾整体 review 已修项（2026-05-03，工作树 clean 状态新 commit）
+
+合并后视角的额外 simplify pass：
+- **架构**：`type_cmd.py` 跨层访问 `svc.repo.count_assets_by_type` → 改走 `svc.count_refs()`，符合 CLAUDE.md §1 "service 层是唯一事实"
+- **DRY**：`asset_type.py::create_type` / `update_type` 重复的 `CustomFieldDef.model_validate` → 抽 `_validate_and_dump_fields` 私有 helper
+- **DRY**：`useUpdateTypeMutation` invalidate `list()` + `detail(id)` 不一致 create/delete 用 `.all` → 统一 `qk.assetTypes.all`，避 M3 加新 query 漏 invalidate
+- **效率**：`type-form.tsx` `useMemo` for `defaultValues` 死优化（RHF 仅初次读取）→ 删 useMemo
+- **可维护**：`coerceFieldDefsForRHF` 8 处手写 `?? undefined` → 抽 `NULLABLE_FIELD_KEYS` 常量 + 循环
+- **未来兼容**：sessionStorage key `m2c4.banner.dismissed` → `unknown-fields-banner.dismissed`（去 milestone 前缀）
+- **质量**：`type-delete-dialog` 三态嵌套三元 → 提到独立 `describeState()` helper
+- **CLAUDE.md 合规**：清理多处 WHAT / task-reference 注释（builder/field-card/field-attribute-form/types-table/type_cmd/type-form）
 
 后续启动重构时按"触发条件"列对照即可，不必重新评估。

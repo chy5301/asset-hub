@@ -90,7 +90,6 @@ export function FieldCard({
           </Button>
         </div>
 
-        {/* 展开态：Radix Collapsible 驱动的真 200ms 动画（F1 修订）*/}
         <CollapsibleContent className="motion-reduce:animate-none border-t border-border">
           <FieldAttributeForm
             control={control}

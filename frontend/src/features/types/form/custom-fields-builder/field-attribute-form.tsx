@@ -22,7 +22,6 @@ export function FieldAttributeForm({ control, setValue, index, errors }: Props) 
 
   function onTypeChange(newType: string) {
     setValue(`${path}.type` as never, newType as never);
-    // 切 type 时清空 type-specific 属性
     setValue(`${path}.unit` as never, undefined as never);
     setValue(`${path}.min` as never, undefined as never);
     setValue(`${path}.max` as never, undefined as never);

@@ -23,6 +23,15 @@ class TypeService:
         self.session = session
         self.repo = TypeRepository(session)
 
+    def _validate_and_dump_fields(self, fields: list) -> list[dict]:
+        try:
+            return [CustomFieldDef.model_validate(f).model_dump() for f in fields]
+        except Exception as e:
+            raise ValidationError(f"custom_fields 结构无效: {e}") from e
+
+    def count_refs(self, type_id: uuid.UUID) -> int:
+        return self.repo.count_assets_by_type(type_id)
+
     def create_type(
         self,
         name: str,
@@ -36,11 +45,7 @@ class TypeService:
                 f"code_prefix 格式不合法：'{code_prefix}'，需要 2-4 个大写字母（^[A-Z]{{2,4}}$）"
             )
 
-        fields = custom_fields or []
-        try:
-            validated_fields = [CustomFieldDef.model_validate(f).model_dump() for f in fields]
-        except Exception as e:
-            raise ValidationError(f"custom_fields 结构无效: {e}") from e
+        validated_fields = self._validate_and_dump_fields(custom_fields or [])
 
         asset_type = AssetType(
             name=name,
@@ -71,7 +76,7 @@ class TypeService:
 
     def delete_type(self, type_id: uuid.UUID) -> None:
         t = self.get_type(type_id)  # 不存在抛 NotFoundError
-        ref_count = self.repo.count_assets_by_type(type_id)
+        ref_count = self.count_refs(type_id)
         if ref_count > 0:
             raise ConflictError(
                 f"该类型仍有 {ref_count} 个资产引用，请先删除/迁移所有引用此类型的资产"
@@ -106,18 +111,13 @@ class TypeService:
             t.description = description
             changed = True
         if custom_fields is not None:
-            try:
-                new_cf = [
-                    CustomFieldDef.model_validate(f).model_dump() for f in custom_fields
-                ]
-            except Exception as e:
-                raise ValidationError(f"custom_fields 结构无效: {e}") from e
+            new_cf = self._validate_and_dump_fields(custom_fields)
             if new_cf != t.custom_fields:
                 t.custom_fields = new_cf
                 changed = True
 
         if not changed:
-            return t  # 无变更：跳过 commit + updated_at 漂移（efficiency simplify F1）
+            return t  # 跳 commit 避免 updated_at 漂移
 
         t.updated_at = datetime.now(UTC)
         try:
@@ -125,5 +125,6 @@ class TypeService:
         except IntegrityError:
             self.session.rollback()
             raise DuplicateError(f"类型名称已存在: {name}") from None
+        # 必需：caller 持 session context，commit 后 expire；CLI 路径会在 session 关闭后访问 t 属性
         self.session.refresh(t)
         return t

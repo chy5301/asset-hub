@@ -17,24 +17,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAssetsQuery } from '@/api/hooks/assets';
+import { useTypeRefCount } from '@/api/hooks/types';
 import type { components } from '@/api/generated/schema';
 
 type TypeRead = components['schemas']['TypeRead'];
 
 function RefCountCell({ typeId }: { typeId: string }) {
-  // pageSize 200：toServerParams 不发往后端，服务端总返完整 type 过滤列表，但 zod schema 要求 ≥10。
-  // M3 排期建议后端在 TypeRead 暴露 ref_count 消除此处 N+1 + 列表上限隐患（PR-3 final review followup）。
-  const q = useAssetsQuery({ type: typeId, page: 1, pageSize: 200, sort: 'asset_code' });
-  if (q.isLoading) return <Skeleton className="inline-block h-3 w-6" />;
-  const total = q.data?.length ?? 0;
+  const { count, isLoading } = useTypeRefCount(typeId);
+  if (isLoading) return <Skeleton className="inline-block h-3 w-6" />;
   return (
     <Link
       to="/"
       search={{ ...ASSETS_DEFAULT_SEARCH, type: typeId }}
       className="text-primary hover:underline cursor-pointer"
     >
-      {total}
+      {count}
     </Link>
   );
 }
@@ -113,7 +110,6 @@ export function TypesTable({ rows, onDelete }: Props) {
   });
 
   return (
-    // rounded-sm / hover:bg-accent/40 与 assets-table 保持一致（source of truth）
     <div className="overflow-x-auto rounded-sm border border-border">
       <table className="w-full text-sm">
         <thead>

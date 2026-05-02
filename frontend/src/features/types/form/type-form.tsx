@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
@@ -30,21 +30,19 @@ type RhfFieldDef = Omit<
   displayAs?: string;
 };
 
-// API 端 nullable 字段（label/placeholder/help/unit/min/max/options/displayAs）在 RHF 端是 optional（undefined），
-// zod fieldDefSchema 拒绝 null。reset 之前归一化避免 silent submit failure（M2c-4 烟测 S5 发现：类型编辑表单点保存无任何反馈）。
+// 必需：API nullable 字段在 zod fieldDefSchema 拒绝 null，reset 前归一化避免 silent submit failure
+const NULLABLE_FIELD_KEYS = [
+  'label', 'placeholder', 'help', 'unit', 'min', 'max', 'options', 'displayAs',
+] as const;
+
 function coerceFieldDefsForRHF(fields: ApiFieldDef[] | null | undefined): RhfFieldDef[] {
-  return (fields ?? []).map((f) => ({
-    ...f,
-    label: f.label ?? undefined,
-    placeholder: f.placeholder ?? undefined,
-    help: f.help ?? undefined,
-    unit: f.unit ?? undefined,
-    min: f.min ?? undefined,
-    max: f.max ?? undefined,
-    options: f.options ?? undefined,
-    displayAs: f.displayAs ?? undefined,
-    // default 字段在 fieldDefSchema 里允许 null（z.union([...z.null()]).optional()），保持原值
-  }));
+  return (fields ?? []).map((f) => {
+    const coerced = { ...f } as Record<string, unknown>;
+    for (const k of NULLABLE_FIELD_KEYS) {
+      if (coerced[k] === null) coerced[k] = undefined;
+    }
+    return coerced as RhfFieldDef;
+  });
 }
 
 interface Props {
@@ -64,23 +62,16 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
   const mutation = mode === 'create' ? createMut : updateMut;
 
   const form = useForm<CreateTypeFormValues>({
-    // 与 asset-create-form 同款 §J/§L cast：buildTypeSchema 条件 .extend 让 zod 推导
-    // 在 'create' 分支的 input/output 类型与手写 CreateTypeFormValues 不完全 unify
-    // （fieldDefSchema 的 required: .default(false) 令 input 为 boolean|undefined，
-    // output 为 boolean；RHF Resolver<TFieldValues,_,TInput> 三参数分离暴露此分歧）
+    // §J/§L: zodResolver 在条件 .extend 下推导出与手写 CreateTypeFormValues 不 unify 的类型
     resolver: zodResolver(schema) as unknown as Resolver<CreateTypeFormValues>,
-    defaultValues: useMemo(
-      () => ({
-        name: initial?.name ?? '',
-        code_prefix: initial?.code_prefix ?? '',
-        description: initial?.description ?? '',
-        custom_fields: coerceFieldDefsForRHF(initial?.custom_fields) as never,
-      }),
-      [initial],
-    ),
+    defaultValues: {
+      name: initial?.name ?? '',
+      code_prefix: initial?.code_prefix ?? '',
+      description: initial?.description ?? '',
+      custom_fields: coerceFieldDefsForRHF(initial?.custom_fields) as never,
+    },
   });
 
-  // 异步获取的 initial 到达后回填表单；form 引用 RHF 7.x 内部稳定，仅为满足 exhaustive-deps
   useEffect(() => {
     if (initial) {
       form.reset({
@@ -108,8 +99,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
         if (values.name !== initial.name) body.name = values.name;
         if ((values.description ?? '') !== (initial.description ?? ''))
           body.description = values.description || null;
-        // custom_fields 形状在运行时与 CustomFieldDef[] 兼容；类型上需 cast（§J/§L）
-        body.custom_fields = values.custom_fields as TypeUpdateBody['custom_fields'];
+        body.custom_fields = values.custom_fields as TypeUpdateBody['custom_fields']; // §J/§L cast
         const res = await updateMut.mutateAsync({ id: initial.id, body });
         onSuccess(res);
       }
@@ -143,7 +133,6 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               基本信息
             </h2>
 
-            {/* FormLabel 的 htmlFor 指向 FormControl 注入的 formItemId，不需要手动 id */}
             <FormField
               control={form.control}
               name="name"
@@ -174,7 +163,6 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               />
             ) : (
               <div>
-                {/* edit 模式 code_prefix 只读展示，不参与表单提交 */}
                 <Label htmlFor="code_prefix-readonly">code_prefix</Label>
                 <Input
                   id="code_prefix-readonly"

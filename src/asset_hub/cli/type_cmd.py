@@ -92,7 +92,7 @@ def type_delete(
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
         t = svc.get_type(uid)  # 先校验存在 — NotFoundError → exit 3
-        ref_count = svc.repo.count_assets_by_type(uid)
+        ref_count = svc.count_refs(uid)
 
         if dry_run:
             if ref_count > 0:
@@ -156,7 +156,6 @@ def type_update(
             exit_code=2,
         )
 
-    # 解析 --from（与 --name/--description 互斥已在上面校验）
     final_name = name
     final_description = description
     final_custom_fields: list | None = None
@@ -165,15 +164,14 @@ def type_update(
         final_name = schema.get("name")
         final_description = schema.get("description")
         final_custom_fields = schema.get("custom_fields")
-        # code_prefix 字段允许出现但被忽略（spec §5.3）
+        # code_prefix 出现也被忽略（spec §5.3 immutable）
 
     if dry_run:
-        # 预览：构造 diff（用 TypeRead DTO，遵守 CLAUDE.md §2 ORM-DTO 隔离）
         with cli_session() as session, handle_domain_errors(json_output):
             svc = TypeService(session)
             current_orm = svc.get_type(uid)
             current = TypeRead.model_validate(current_orm)
-            ref_count = svc.repo.count_assets_by_type(uid)
+            ref_count = svc.count_refs(uid)
 
         diff = _build_diff(current, final_name, final_description, final_custom_fields)
         payload = {"diff": diff, "affected_assets_count": ref_count}
@@ -183,7 +181,6 @@ def type_update(
             message=f"将更新 type '{current.name}' (引用资产数: {ref_count})",
         )
 
-    # 真改：service 层本身用 `is not None` 判断各 kwarg，故无需手动 rebuild kwargs
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
         t = svc.update_type(

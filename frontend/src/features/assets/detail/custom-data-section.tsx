@@ -12,7 +12,7 @@ interface CustomDataSectionProps {
 
 export function CustomDataSection({ customData, fieldDefs, assetId }: CustomDataSectionProps) {
   const report = detectUnknownKeys(customData, fieldDefs);
-  const dismissKey = `m2c4.banner.dismissed.${assetId}`;
+  const dismissKey = `unknown-fields-banner.dismissed.${assetId}`;
   const [dismissed, setDismissed] = useState(
     () => sessionStorage.getItem(dismissKey) === '1',
   );
