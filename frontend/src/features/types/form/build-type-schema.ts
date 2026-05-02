@@ -26,7 +26,6 @@ export const fieldDefSchema = z
     displayAs: z.enum(['radio', 'select']).optional(),
   })
   .superRefine((def, ctx) => {
-    // min ≤ max（int/float）
     if (
       (def.type === 'int' || def.type === 'float') &&
       def.min != null &&
@@ -39,7 +38,6 @@ export const fieldDefSchema = z
         message: `max 不能小于 min（${def.min}）`,
       });
     }
-    // enum/multi-enum 必须有 options 且非空
     if (
       (def.type === 'enum' || def.type === 'multi-enum') &&
       (!def.options || def.options.length === 0)
@@ -50,7 +48,6 @@ export const fieldDefSchema = z
         message: '需要至少 1 个选项',
       });
     }
-    // options 唯一
     if (def.options) {
       const seen = new Set<string>();
       def.options.forEach((opt, i) => {
@@ -97,10 +94,17 @@ export function buildTypeSchema({ mode }: { mode: 'create' | 'edit' }) {
     : base;
 }
 
-export type CreateTypeFormValues = z.infer<
-  ReturnType<typeof buildTypeSchema>
->;
-export type EditTypeFormValues = z.infer<
-  ReturnType<typeof buildTypeSchema>
->;
 export type FieldDefFormValue = z.infer<typeof fieldDefSchema>;
+
+// 类型别名手写而非 z.infer：buildTypeSchema 的条件 .extend 三元让 zod 推导
+// 在 'create' 分支丢失 code_prefix（与 build-asset-schema.ts 的 §J/§L trade-off 同源）。
+// 跨字段校验仍由 superRefine 兜住，类型层只负责让 RHF/TypeForm 看到正确字段集合。
+export type EditTypeFormValues = {
+  name: string;
+  description?: string;
+  custom_fields: FieldDefFormValue[];
+};
+// CreateTypeFormValues = EditTypeFormValues 加上 create-only 字段（code_prefix）
+export type CreateTypeFormValues = EditTypeFormValues & {
+  code_prefix: string;
+};
