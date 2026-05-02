@@ -1,4 +1,5 @@
 import type { components } from '@/api/generated/schema';
+import { formatDateTime } from '@/lib/date';
 
 type TypeRead = components['schemas']['TypeRead'];
 
@@ -19,11 +20,11 @@ export function TypeSummaryCard({ type }: { type: TypeRead }) {
       </div>
       <div>
         <dt className="text-xs uppercase text-muted-foreground">created_at</dt>
-        <dd className="text-muted-foreground">{type.created_at}</dd>
+        <dd className="text-muted-foreground">{formatDateTime(type.created_at)}</dd>
       </div>
       <div>
         <dt className="text-xs uppercase text-muted-foreground">updated_at</dt>
-        <dd className="text-muted-foreground">{type.updated_at}</dd>
+        <dd className="text-muted-foreground">{formatDateTime(type.updated_at)}</dd>
       </div>
     </dl>
   );

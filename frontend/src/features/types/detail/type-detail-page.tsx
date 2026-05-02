@@ -54,7 +54,8 @@ export function TypeDetailPage({ id }: { id: string }) {
       <TypeForm
         mode="edit"
         initial={q.data}
-        onSuccess={() => q.refetch()}
+        // useUpdateTypeMutation.onSuccess 已 invalidate qk.assetTypes.detail；自动 refetch
+        onSuccess={() => {}}
       />
 
       {deleting && (
