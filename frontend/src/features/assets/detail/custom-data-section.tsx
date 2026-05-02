@@ -31,8 +31,14 @@ export function CustomDataSection({ customData, fieldDefs, assetId }: CustomData
     value: customData[k],
   }));
 
+  // 没有任何字段可展示且无 banner 触发 → 隐藏整个 section（与 old custom-fields.tsx 行为一致）
+  if (declaredEntries.length === 0 && orphanEntries.length === 0 && !report.hasIssues) {
+    return null;
+  }
+
   return (
     <section className="space-y-4">
+      <h2 className="mb-3 text-lg font-medium">类型字段</h2>
       {!dismissed && report.hasIssues && (
         <div
           role="alert"
@@ -70,7 +76,7 @@ export function CustomDataSection({ customData, fieldDefs, assetId }: CustomData
               {def.label ?? def.key}
               {def.required && <span className="ml-1 text-destructive">*</span>}
             </dt>
-            <dd>{formatValue(value, def)}</dd>
+            <dd>{formatValue(value)}</dd>
           </div>
         ))}
         {orphanEntries.map(({ key, value }) => (
@@ -87,7 +93,7 @@ export function CustomDataSection({ customData, fieldDefs, assetId }: CustomData
   );
 }
 
-function formatValue(value: unknown, _def: FieldDef): string {
+function formatValue(value: unknown): string {
   if (value == null || value === '') return '—';
   return String(value);
 }
