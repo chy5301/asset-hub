@@ -98,17 +98,26 @@ class TypeService:
         """
         t = self.get_type(type_id)  # 不存在抛 NotFoundError
 
-        if name is not None:
+        changed = False
+        if name is not None and name != t.name:
             t.name = name
-        if description is not None:
+            changed = True
+        if description is not None and description != t.description:
             t.description = description
+            changed = True
         if custom_fields is not None:
             try:
-                t.custom_fields = [
+                new_cf = [
                     CustomFieldDef.model_validate(f).model_dump() for f in custom_fields
                 ]
             except Exception as e:
                 raise ValidationError(f"custom_fields 结构无效: {e}") from e
+            if new_cf != t.custom_fields:
+                t.custom_fields = new_cf
+                changed = True
+
+        if not changed:
+            return t  # 无变更：跳过 commit + updated_at 漂移（efficiency simplify F1）
 
         t.updated_at = datetime.now(UTC)
         try:

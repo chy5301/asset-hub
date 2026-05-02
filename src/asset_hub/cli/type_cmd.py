@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from asset_hub.api.schemas.asset_type import TypeRead
-from asset_hub.cli.deps import cli_session, parse_uuid
+from asset_hub.cli.deps import cli_session, load_schema_from_file, parse_uuid
 from asset_hub.cli.envelope import (
     handle_domain_errors,
     print_dry_run,
@@ -13,7 +13,6 @@ from asset_hub.cli.envelope import (
     print_result,
     to_json_dict,
 )
-from asset_hub.models.asset_type import AssetType
 from asset_hub.services.asset_type import TypeService
 
 type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=True)
@@ -30,7 +29,7 @@ def type_define(
 ) -> None:
     """定义新的资产类型。"""
     if from_file is not None:
-        schema = json.loads(from_file.read_text(encoding="utf-8"))
+        schema = load_schema_from_file(from_file, json_output)
         name = schema["name"]
         prefix = schema.get("code_prefix") or schema.get("prefix") or prefix
         description = schema.get("description")
@@ -157,28 +156,26 @@ def type_update(
             exit_code=2,
         )
 
-    # 解析 --from
-    new_name: str | None = name
-    new_description: str | None = description
-    new_custom_fields: list | None = None
+    # 解析 --from（与 --name/--description 互斥已在上面校验）
+    final_name = name
+    final_description = description
+    final_custom_fields: list | None = None
     if from_file is not None:
-        try:
-            schema = json.loads(from_file.read_text(encoding="utf-8"))
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            print_error(f"JSON 文件读取失败：{from_file}（{e}）", json_output, exit_code=2)
-        new_name = schema.get("name")
-        new_description = schema.get("description")
-        new_custom_fields = schema.get("custom_fields")
+        schema = load_schema_from_file(from_file, json_output)
+        final_name = schema.get("name")
+        final_description = schema.get("description")
+        final_custom_fields = schema.get("custom_fields")
         # code_prefix 字段允许出现但被忽略（spec §5.3）
 
     if dry_run:
-        # 预览：构造 diff
+        # 预览：构造 diff（用 TypeRead DTO，遵守 CLAUDE.md §2 ORM-DTO 隔离）
         with cli_session() as session, handle_domain_errors(json_output):
             svc = TypeService(session)
-            current = svc.get_type(uid)
+            current_orm = svc.get_type(uid)
+            current = TypeRead.model_validate(current_orm)
             ref_count = svc.repo.count_assets_by_type(uid)
 
-        diff = _build_diff(current, new_name, new_description, new_custom_fields)
+        diff = _build_diff(current, final_name, final_description, final_custom_fields)
         payload = {"diff": diff, "affected_assets_count": ref_count}
         print_dry_run(
             payload,
@@ -186,30 +183,28 @@ def type_update(
             message=f"将更新 type '{current.name}' (引用资产数: {ref_count})",
         )
 
-    # 真改
+    # 真改：service 层本身用 `is not None` 判断各 kwarg，故无需手动 rebuild kwargs
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
-        kwargs: dict = {}
-        if new_name is not None:
-            kwargs["name"] = new_name
-        if new_description is not None:
-            kwargs["description"] = new_description
-        if new_custom_fields is not None:
-            kwargs["custom_fields"] = new_custom_fields
-        t = svc.update_type(uid, **kwargs)
+        t = svc.update_type(
+            uid,
+            name=final_name,
+            description=final_description,
+            custom_fields=final_custom_fields,
+        )
     print_result(to_json_dict(TypeRead, t), json_output)
 
 
 def _build_diff(
-    current: AssetType,
+    current: TypeRead,
     new_name: str | None,
     new_description: str | None,
     new_custom_fields: list | None,
 ) -> dict:
     """构造 update --dry-run 的 diff payload。
 
-    注意：current 是 ORM 对象，custom_fields 是 list[dict]（JSON 列）；
-    如改用 DTO 需把 f["key"] 调整为 f.key。
+    注意：current 是 TypeRead DTO，custom_fields 是 list[CustomFieldDef]
+    （Pydantic 模型）；通过属性访问 `f.key`，序列化用 `model_dump()`。
     """
     diff: dict = {}
     if new_name is not None:
@@ -225,7 +220,7 @@ def _build_diff(
             else {"from": current.description, "to": new_description}
         )
     if new_custom_fields is not None:
-        old_keys = {f["key"]: f for f in current.custom_fields}
+        old_keys = {f.key: f.model_dump() for f in current.custom_fields}
         new_keys = {f["key"]: f for f in new_custom_fields}
         added = [f for k, f in new_keys.items() if k not in old_keys]
         removed = [{"key": k} for k in old_keys if k not in new_keys]
