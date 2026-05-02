@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
@@ -77,3 +78,52 @@ class TypeService:
             )
         self.repo.delete(t)
         self.session.commit()
+
+    def update_type(
+        self,
+        type_id: uuid.UUID,
+        name: str | None = None,
+        description: str | None = None,
+        custom_fields: list | None = None,
+    ) -> AssetType:
+        """部分更新 type。code_prefix immutable，故签名不接收。
+
+        参数为 None 表示"未传"，对应字段不动；显式传值才更新。
+        custom_fields 传入时按 CustomFieldDef 校验后**完全替换**（非 merge）。
+
+        v1 设计取舍：本方法不采用 ``AssetService.update_asset`` 的 ``_Unset`` 哨兵
+        模式（CLAUDE.md §5）。``description=None`` 视为"未传"而非"清空为 NULL"。
+        清空 description 请传 ``""``。理由见 spec §4.2（M2c-4 design doc）：
+        v1 不区分 null/未传，前端按需。
+        """
+        t = self.get_type(type_id)  # 不存在抛 NotFoundError
+
+        changed = False
+        if name is not None and name != t.name:
+            t.name = name
+            changed = True
+        if description is not None and description != t.description:
+            t.description = description
+            changed = True
+        if custom_fields is not None:
+            try:
+                new_cf = [
+                    CustomFieldDef.model_validate(f).model_dump() for f in custom_fields
+                ]
+            except Exception as e:
+                raise ValidationError(f"custom_fields 结构无效: {e}") from e
+            if new_cf != t.custom_fields:
+                t.custom_fields = new_cf
+                changed = True
+
+        if not changed:
+            return t  # 无变更：跳过 commit + updated_at 漂移（efficiency simplify F1）
+
+        t.updated_at = datetime.now(UTC)
+        try:
+            self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+            raise DuplicateError(f"类型名称已存在: {name}") from None
+        self.session.refresh(t)
+        return t

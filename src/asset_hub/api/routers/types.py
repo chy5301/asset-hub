@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from asset_hub.api.deps import get_session
-from asset_hub.api.schemas.asset_type import TypeCreate, TypeRead
+from asset_hub.api.schemas.asset_type import TypeCreate, TypeRead, TypeUpdate
 from asset_hub.services.asset_type import TypeService
 
 router = APIRouter()
@@ -47,3 +47,13 @@ def delete_type(
     svc: Annotated[TypeService, Depends(_get_svc)],
 ):
     svc.delete_type(type_id)
+
+
+@router.patch("/{type_id}", response_model=TypeRead)
+def update_type(
+    type_id: uuid.UUID,
+    body: TypeUpdate,
+    svc: Annotated[TypeService, Depends(_get_svc)],
+):
+    """部分更新 type。code_prefix immutable（DTO 已不暴露此字段）。"""
+    return svc.update_type(type_id, **body.model_dump(exclude_unset=True))

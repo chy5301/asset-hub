@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from asset_hub.api.schemas.asset_type import TypeRead
-from asset_hub.cli.deps import cli_session, parse_uuid
+from asset_hub.cli.deps import cli_session, load_schema_from_file, parse_uuid
 from asset_hub.cli.envelope import (
     handle_domain_errors,
     print_dry_run,
@@ -29,7 +29,7 @@ def type_define(
 ) -> None:
     """定义新的资产类型。"""
     if from_file is not None:
-        schema = json.loads(from_file.read_text(encoding="utf-8"))
+        schema = load_schema_from_file(from_file, json_output)
         name = schema["name"]
         prefix = schema.get("code_prefix") or schema.get("prefix") or prefix
         description = schema.get("description")
@@ -126,3 +126,116 @@ def type_delete(
         deleted_payload = {"deleted_id": str(uid), "name": t.name}
 
     print_result(deleted_payload, json_output)
+
+
+@type_app.command("update")
+def type_update(
+    type_id: Annotated[str, typer.Argument(help="要更新的 AssetType id")],
+    from_file: Annotated[Path | None, typer.Option("--from", help="JSON schema 文件路径（整体替换）")] = None,
+    name: Annotated[str | None, typer.Option(help="新类型名称")] = None,
+    description: Annotated[str | None, typer.Option(help="新描述")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="预览不真改")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
+) -> None:
+    """部分更新 AssetType（code_prefix 不可改）。"""
+    uid = parse_uuid(type_id, json_output)
+
+    # 互斥校验
+    if from_file is not None and (name is not None or description is not None):
+        print_error(
+            "--from 与 --name/--description 互斥，请二选一",
+            json_output,
+            exit_code=2,
+        )
+
+    # 至少一个修改源
+    if from_file is None and name is None and description is None:
+        print_error(
+            "必须提供至少一个修改源：--from / --name / --description",
+            json_output,
+            exit_code=2,
+        )
+
+    # 解析 --from（与 --name/--description 互斥已在上面校验）
+    final_name = name
+    final_description = description
+    final_custom_fields: list | None = None
+    if from_file is not None:
+        schema = load_schema_from_file(from_file, json_output)
+        final_name = schema.get("name")
+        final_description = schema.get("description")
+        final_custom_fields = schema.get("custom_fields")
+        # code_prefix 字段允许出现但被忽略（spec §5.3）
+
+    if dry_run:
+        # 预览：构造 diff（用 TypeRead DTO，遵守 CLAUDE.md §2 ORM-DTO 隔离）
+        with cli_session() as session, handle_domain_errors(json_output):
+            svc = TypeService(session)
+            current_orm = svc.get_type(uid)
+            current = TypeRead.model_validate(current_orm)
+            ref_count = svc.repo.count_assets_by_type(uid)
+
+        diff = _build_diff(current, final_name, final_description, final_custom_fields)
+        payload = {"diff": diff, "affected_assets_count": ref_count}
+        print_dry_run(
+            payload,
+            json_output,
+            message=f"将更新 type '{current.name}' (引用资产数: {ref_count})",
+        )
+
+    # 真改：service 层本身用 `is not None` 判断各 kwarg，故无需手动 rebuild kwargs
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TypeService(session)
+        t = svc.update_type(
+            uid,
+            name=final_name,
+            description=final_description,
+            custom_fields=final_custom_fields,
+        )
+    print_result(to_json_dict(TypeRead, t), json_output)
+
+
+def _build_diff(
+    current: TypeRead,
+    new_name: str | None,
+    new_description: str | None,
+    new_custom_fields: list | None,
+) -> dict:
+    """构造 update --dry-run 的 diff payload。
+
+    注意：current 是 TypeRead DTO，custom_fields 是 list[CustomFieldDef]
+    （Pydantic 模型）；通过属性访问 `f.key`，序列化用 `model_dump()`。
+    """
+    diff: dict = {}
+    if new_name is not None:
+        diff["name"] = (
+            {"unchanged": True}
+            if new_name == current.name
+            else {"from": current.name, "to": new_name}
+        )
+    if new_description is not None:
+        diff["description"] = (
+            {"unchanged": True}
+            if new_description == current.description
+            else {"from": current.description, "to": new_description}
+        )
+    if new_custom_fields is not None:
+        old_keys = {f.key: f.model_dump() for f in current.custom_fields}
+        new_keys = {f["key"]: f for f in new_custom_fields}
+        added = [f for k, f in new_keys.items() if k not in old_keys]
+        removed = [{"key": k} for k in old_keys if k not in new_keys]
+        changed = [
+            {"key": k, "from": old_keys[k], "to": new_keys[k]}
+            for k in new_keys
+            if k in old_keys and old_keys[k] != new_keys[k]
+        ]
+        unchanged_count = sum(
+            1 for k in new_keys if k in old_keys and old_keys[k] == new_keys[k]
+        )
+        diff["custom_fields"] = {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "unchanged_count": unchanged_count,
+        }
+    return diff
