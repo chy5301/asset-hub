@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,11 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
   const mutation = mode === 'create' ? createMut : updateMut;
 
   const form = useForm<CreateTypeFormValues>({
-    resolver: zodResolver(schema),
+    // 与 asset-create-form 同款 §J/§L cast：buildTypeSchema 条件 .extend 让 zod 推导
+    // 在 'create' 分支的 input/output 类型与手写 CreateTypeFormValues 不完全 unify
+    // （fieldDefSchema 的 required: .default(false) 令 input 为 boolean|undefined，
+    // output 为 boolean；RHF Resolver<TFieldValues,_,TInput> 三参数分离暴露此分歧）
+    resolver: zodResolver(schema) as unknown as Resolver<CreateTypeFormValues>,
     defaultValues: useMemo(
       () => ({
         name: initial?.name ?? '',
@@ -68,11 +72,13 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
         });
         onSuccess(res);
       } else if (initial) {
-        const body: { name?: string; description?: string | null; custom_fields?: unknown } = {};
+        type TypeUpdateBody = components['schemas']['TypeUpdate'];
+        const body: TypeUpdateBody = {};
         if (values.name !== initial.name) body.name = values.name;
         if ((values.description ?? '') !== (initial.description ?? ''))
           body.description = values.description || null;
-        body.custom_fields = values.custom_fields;
+        // custom_fields 形状在运行时与 CustomFieldDef[] 兼容；类型上需 cast（§J/§L）
+        body.custom_fields = values.custom_fields as TypeUpdateBody['custom_fields'];
         const res = await updateMut.mutateAsync({ id: initial.id, body });
         onSuccess(res);
       }
