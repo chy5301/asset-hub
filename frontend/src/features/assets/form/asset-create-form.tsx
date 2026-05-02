@@ -14,7 +14,7 @@ import { PENDING_TEXT } from './form-toast';
 import type { FieldDef } from './types';
 import { DEFAULT_SORT } from '@/features/assets/list/search-schema';
 
-// 模块级常量：避免每次 render 都重建空 schema（F3 修复）
+// 模块级常量：避免每次 render 都重建空 schema
 const CREATE_EMPTY_SCHEMA = buildAssetSchema([], { mode: 'create' });
 
 export function AssetCreateForm() {
