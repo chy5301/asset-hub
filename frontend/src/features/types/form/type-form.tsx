@@ -182,8 +182,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           </section>
 
           <div className="flex items-center justify-end gap-3">
-            {/* '/types' route 在 Task 35 注册；as never 桥接，PR-3 全部任务合并后自动消失 */}
-            <Button type="button" variant="outline" onClick={() => navigate({ to: '/types' as never })}>
+            <Button type="button" variant="outline" onClick={() => navigate({ to: '/types' })}>
               取消
             </Button>
             <Button type="submit" disabled={submitting}>

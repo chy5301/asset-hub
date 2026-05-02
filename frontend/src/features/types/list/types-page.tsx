@@ -24,9 +24,8 @@ export function TypesPage() {
             <p className="text-sm text-muted-foreground">共 {q.data.length} 个类型</p>
           )}
         </div>
-        {/* Task 35 将注册 /types/new 路由；此处 to + params 暂用 as never 绕过路由类型检查 */}
         <Button asChild>
-          <Link to={"/types/new" as never} params={undefined as never}>
+          <Link to="/types/new">
             <Plus className="h-4 w-4 mr-2" />
             新建类型
           </Link>
@@ -40,8 +39,7 @@ export function TypesPage() {
           <Inbox className="h-10 w-10" />
           <p>还没有类型</p>
           <Button asChild>
-            {/* Task 35 将注册 /types/new 路由；此处 to + params 暂用 as never 绕过路由类型检查 */}
-            <Link to={"/types/new" as never} params={undefined as never}>创建第一个类型</Link>
+            <Link to="/types/new">创建第一个类型</Link>
           </Button>
         </div>
       )}

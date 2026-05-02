@@ -24,8 +24,7 @@ export function TypeDetailPage({ id }: { id: string }) {
           <SearchX className="h-10 w-10" />
           <p>该类型不存在</p>
           <Button asChild variant="outline">
-            {/* Task 35 注册 /types 路由前用 as never 绕过 */}
-            <Link to={"/types" as never}>返回类型列表</Link>
+            <Link to="/types">返回类型列表</Link>
           </Button>
         </div>
       );
@@ -62,7 +61,7 @@ export function TypeDetailPage({ id }: { id: string }) {
         <TypeDeleteDialog
           type={q.data}
           onClose={() => setDeleting(false)}
-          onDeleted={() => navigate({ to: '/types' as never })}
+          onDeleted={() => navigate({ to: '/types' })}
         />
       )}
     </div>

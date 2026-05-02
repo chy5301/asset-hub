@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { ASSETS_DEFAULT_SEARCH } from '@/features/assets/list/search-schema';
 import {
   flexRender,
   getCoreRowModel,
@@ -26,10 +27,9 @@ function RefCountCell({ typeId }: { typeId: string }) {
   if (q.isLoading) return <Skeleton className="inline-block h-3 w-6" />;
   const total = q.data?.length ?? 0;
   return (
-    // Task 35 将注册 /assets 路由；此处 to + search 暂用 as never 绕过路由类型检查
     <Link
-      to={"/assets" as never}
-      search={{ type: typeId } as never}
+      to="/"
+      search={{ ...ASSETS_DEFAULT_SEARCH, type: typeId }}
       className="text-primary hover:underline cursor-pointer"
     >
       {total}
@@ -49,10 +49,9 @@ export function TypesTable({ rows, onDelete }: Props) {
         accessorKey: 'name',
         header: 'name',
         cell: ({ row }) => (
-          // Task 35 将注册 /types/$id 路由；此处 to + params 暂用 as never 绕过路由类型检查
           <Link
-            to={"/types/$id" as never}
-            params={{ id: row.original.id } as never}
+            to="/types/$id"
+            params={{ id: row.original.id }}
             className="font-medium hover:underline cursor-pointer"
           >
             {row.original.name}
