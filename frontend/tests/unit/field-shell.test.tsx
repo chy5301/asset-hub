@@ -5,15 +5,29 @@ import { Form } from '@/components/ui/form';
 import { FieldShell } from '@/features/assets/form/field-controls/field-shell';
 import type { FieldDef } from '@/features/assets/form/types';
 
-function Harness({ def, children }: { def: FieldDef; children?: React.ReactNode }) {
-  const methods = useForm({ defaultValues: { custom_data: { [def.key]: '' } } });
+function Harness({
+  def,
+  layout,
+  defaultValue = '',
+}: {
+  def: FieldDef;
+  layout?: 'block' | 'inline';
+  defaultValue?: unknown;
+}) {
+  const methods = useForm({ defaultValues: { custom_data: { [def.key]: defaultValue } } });
   return (
     <FormProvider {...methods}>
       <Form {...methods}>
-        <FieldShell def={def} control={methods.control}>
-          {(field) => <input {...field} data-testid="control" />}
+        <FieldShell def={def} control={methods.control} layout={layout}>
+          {(field) => (
+            <input
+              type={def.type === 'bool' ? 'checkbox' : 'text'}
+              {...field}
+              value={typeof field.value === 'string' ? field.value : ''}
+              data-testid="control"
+            />
+          )}
         </FieldShell>
-        {children}
       </Form>
     </FormProvider>
   );
@@ -47,7 +61,7 @@ describe('FieldShell', () => {
 
   it('layout="inline" 实际加 flex-row 类 + control 在 label 之前', () => {
     const { container } = render(
-      <HarnessWithLayout def={{ key: 'k', type: 'bool', label: '启用' }} layout="inline" />,
+      <Harness def={{ key: 'k', type: 'bool', label: '启用' }} layout="inline" />,
     );
     // FormItem 容器有 flex-row 类
     const item = container.querySelector('.flex.flex-row');
@@ -67,16 +81,3 @@ describe('FieldShell', () => {
     }
   });
 });
-
-function HarnessWithLayout({ def, layout }: { def: FieldDef; layout?: 'block' | 'inline' }) {
-  const methods = useForm({ defaultValues: { custom_data: { [def.key]: false } } });
-  return (
-    <FormProvider {...methods}>
-      <Form {...methods}>
-        <FieldShell def={def} control={methods.control} layout={layout}>
-          {(field) => <input type="checkbox" {...field} value="" data-testid="control" />}
-        </FieldShell>
-      </Form>
-    </FormProvider>
-  );
-}
