@@ -15,6 +15,37 @@ import { CustomFieldsBuilder } from './custom-fields-builder/builder';
 import type { components } from '@/api/generated/schema';
 
 type TypeRead = components['schemas']['TypeRead'];
+type ApiFieldDef = TypeRead['custom_fields'][number];
+type RhfFieldDef = Omit<
+  ApiFieldDef,
+  'label' | 'placeholder' | 'help' | 'unit' | 'min' | 'max' | 'options' | 'displayAs'
+> & {
+  label?: string;
+  placeholder?: string;
+  help?: string;
+  unit?: string;
+  min?: number;
+  max?: number;
+  options?: string[];
+  displayAs?: string;
+};
+
+// API 端 nullable 字段（label/placeholder/help/unit/min/max/options/displayAs）在 RHF 端是 optional（undefined），
+// zod fieldDefSchema 拒绝 null。reset 之前归一化避免 silent submit failure（M2c-4 烟测 S5 发现：类型编辑表单点保存无任何反馈）。
+function coerceFieldDefsForRHF(fields: ApiFieldDef[] | null | undefined): RhfFieldDef[] {
+  return (fields ?? []).map((f) => ({
+    ...f,
+    label: f.label ?? undefined,
+    placeholder: f.placeholder ?? undefined,
+    help: f.help ?? undefined,
+    unit: f.unit ?? undefined,
+    min: f.min ?? undefined,
+    max: f.max ?? undefined,
+    options: f.options ?? undefined,
+    displayAs: f.displayAs ?? undefined,
+    // default 字段在 fieldDefSchema 里允许 null（z.union([...z.null()]).optional()），保持原值
+  }));
+}
 
 interface Props {
   mode: 'create' | 'edit';
@@ -43,7 +74,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
         name: initial?.name ?? '',
         code_prefix: initial?.code_prefix ?? '',
         description: initial?.description ?? '',
-        custom_fields: (initial?.custom_fields ?? []) as never,
+        custom_fields: coerceFieldDefsForRHF(initial?.custom_fields) as never,
       }),
       [initial],
     ),
@@ -56,7 +87,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
         name: initial.name,
         code_prefix: initial.code_prefix,
         description: initial.description ?? '',
-        custom_fields: (initial.custom_fields ?? []) as never,
+        custom_fields: coerceFieldDefsForRHF(initial.custom_fields) as never,
       });
     }
   }, [initial, form]);
