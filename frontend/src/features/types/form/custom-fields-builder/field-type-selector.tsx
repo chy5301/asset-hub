@@ -1,3 +1,4 @@
+import type { FieldDefFormValue } from '../build-type-schema';
 import {
   Select,
   SelectContent,
@@ -6,7 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const FIELD_TYPE_OPTIONS: { value: string; label: string }[] = [
+const FIELD_TYPE_OPTIONS: { value: FieldDefFormValue['type']; label: string }[] = [
   { value: 'string', label: 'string · 短文本' },
   { value: 'text', label: 'text · 长文本' },
   { value: 'url', label: 'url · 网址' },
@@ -19,8 +20,8 @@ const FIELD_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 interface Props {
-  value: string;
-  onChange: (next: string) => void;
+  value: FieldDefFormValue['type'];
+  onChange: (next: FieldDefFormValue['type']) => void;
 }
 
 export function FieldTypeSelector({ value, onChange }: Props) {
