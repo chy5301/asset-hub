@@ -27,18 +27,20 @@
 
 ---
 
-## M2c-4 · 类型管理 UI（含结构化 custom_fields builder）
+## M2c-4 · 类型管理 UI（含结构化 custom_fields builder）✅ **已完成（2026-05-02）**
 
 **主线**：AssetType 列表 + 编辑 UI；`custom_fields` 从手撸 JSON → 结构化 builder（type 选择器、options 编辑、min/max/required 设置）。
 
+→ ✅ 落地于三个分支合并：`feature/m2c4-backend`（PR-1，commit d47ce91）+ `feature/m2c4-form-infra`（PR-2，commit db9f946）+ `feature/m2c4-types-ui`（PR-3，2026-05-02 合并）。
+
 **主题相关 follow-up**（落在 builder 同一改动面上）：
 
-| 项 | 来源 | 理由 |
-|---|---|---|
-| **A1** 合并 build-create-schema / build-edit-schema | simplify §1.A | builder 输出新 fieldDefs，schema builder 必然碰；顺手合 |
-| **F3** zodResolver 在 CreateForm 每次 render 重建 | simplify §1.F | 与 A1 同 PR |
-| **A2** 抽 `FieldShell` 收敛 9 个 field-control | simplify §1.A | builder 让"加 field type"成为运行时操作，9 外壳的稳定性会被持续打破 |
-| **A4** field-controls 泛型 `Control<TFieldValues>` | simplify §1.A | 已登记"与 A2 一起做最划算"，M2c-4 同周期 |
+| 项 | 来源 | 理由 | 状态 |
+|---|---|---|---|
+| **A1** 合并 build-create-schema / build-edit-schema | simplify §1.A | builder 输出新 fieldDefs，schema builder 必然碰；顺手合 | ✅ 落地于 PR-2（feature/m2c4-form-infra Task 10-11，commit db9f946） |
+| **F3** zodResolver 在 CreateForm 每次 render 重建 | simplify §1.F | 与 A1 同 PR | ✅ 落地于 PR-2（feature/m2c4-form-infra Task 10，commit db9f946） |
+| **A2** 抽 `FieldShell` 收敛 9 个 field-control | simplify §1.A | builder 让"加 field type"成为运行时操作，9 外壳的稳定性会被持续打破 | ✅ 落地于 PR-2（feature/m2c4-form-infra Task 13-14，commit db9f946） |
+| **A4** field-controls 泛型 `Control<TFieldValues>` | simplify §1.A | 已登记"与 A2 一起做最划算"，M2c-4 同周期 | ✅ 落地于 PR-2（feature/m2c4-form-infra Task 15，commit db9f946） |
 
 > A2/A4 是必须项（不是顺手）：builder 让运行时增加 field type 成常态，9 个外壳会被反复触碰。
 
@@ -96,7 +98,7 @@
 | 里程碑 | 主线 | 强搭车项 | 数量 | 状态 |
 |---|---|---|---|---|
 | **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 | ✅ 已完成（2026-04-29） |
-| **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 | ⏳ 待启动 |
+| **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 | ✅ 已完成（2026-05-02） |
 | **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.3、§14.8 | 7 | ⏳ 待启动 |
 | 暂不动 | — | 13 项 | 13 | — |
 
