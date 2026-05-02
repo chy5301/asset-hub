@@ -2,6 +2,7 @@ import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { ErrorBoundary } from "@/components/feedback/error-boundary";
+import { ASSETS_DEFAULT_SEARCH } from "@/features/assets/list/search-schema";
 
 const NAV_ITEMS = [
   // 资产列表实际在 `/`（routes/index.tsx），不是 `/assets`
@@ -29,7 +30,7 @@ function NavBar() {
               // `/` 路由要求显式传 search（TanStack Router strict typing），
               // 复用 assetsSearchSchema 默认值；`/types as '/'` cast 复用同 shape，
               // 运行时点击 404 由 PR-3 T35 路由文件落地后修复。
-              search={{ sort: "asset_code", page: 1, pageSize: 50 }}
+              search={ASSETS_DEFAULT_SEARCH}
               className={
                 active
                   ? "text-sm font-medium text-primary border-b-2 border-primary -mb-px py-2 transition-colors"
