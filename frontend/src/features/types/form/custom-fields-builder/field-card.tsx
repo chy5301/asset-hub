@@ -37,13 +37,12 @@ export function FieldCard({
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
-      <Card className="overflow-hidden">
-        {/* 折叠态行（始终可见）*/}
+      <Card>
         <div className="flex items-center gap-3 p-3">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="text-muted-foreground hover:text-foreground cursor-pointer rounded focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
               aria-label={expanded ? '折叠' : '展开'}
             >
               {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -92,7 +91,7 @@ export function FieldCard({
         </div>
 
         {/* 展开态：Radix Collapsible 驱动的真 200ms 动画（F1 修订）*/}
-        <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none border-t border-border overflow-hidden">
+        <CollapsibleContent className="motion-reduce:animate-none border-t border-border">
           <FieldAttributeForm
             control={control}
             setValue={setValue}
