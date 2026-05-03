@@ -1,45 +1,56 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
-import { useReturnMutation } from '@/api/hooks/checkouts';
-import { toFriendlyMessage } from '@/lib/error';
-import { formatDateTime } from '@/lib/date';
-import {
-  RETURN_DIALOG_TITLE, RETURN_PENDING_TEXT, RETURN_VERB,
-} from './checkout-actions';
-import type { components } from '@/api/generated/schema';
+import { Undo2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { z } from "zod";
 
-type CheckoutRead = components['schemas']['CheckoutRead'];
+import { useRecordTransitionMutation } from "@/api/hooks/transitions";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toFriendlyMessage } from "@/lib/error";
 
 const schema = z.object({
+  to_holder: z.string().optional(),
+  to_location: z.string().optional(),
   note: z.string().optional(),
-  return_location: z.string().max(200).optional(),
-  return_receiver: z.string().max(100).optional(),
 });
-type Values = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>;
 
 interface ReturnDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assetId: string;
-  currentCheckout: CheckoutRead | null;
 }
 
-export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: ReturnDialogProps) {
-  const mutation = useReturnMutation();
-  const form = useForm<Values>({
+export function ReturnDialog({
+  open,
+  onOpenChange,
+  assetId,
+}: ReturnDialogProps) {
+  const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { note: '', return_location: '', return_receiver: '' },
-    mode: 'onSubmit',
+    defaultValues: { to_holder: "", to_location: "", note: "" },
+    mode: "onSubmit",
   });
+  const mutation = useRecordTransitionMutation(assetId);
 
   function handleOpenChange(v: boolean) {
     if (mutation.isPending) return;
@@ -47,21 +58,19 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
     onOpenChange(v);
   }
 
-  async function onSubmit(values: Values) {
-    if (!currentCheckout) return;
+  async function onSubmit(values: FormValues) {
     try {
       await mutation.mutateAsync({
-        assetId,
-        body: {
-          note: values.note?.trim() || null,
-          return_location: values.return_location?.trim() || null,
-          return_receiver: values.return_receiver?.trim() || null,
-        },
+        kind: "RETURN",
+        to_holder: values.to_holder?.trim() || null,
+        to_location: values.to_location?.trim() || null,
+        note: values.note?.trim() || null,
       });
+      toast.success("已归还");
       form.reset();
       onOpenChange(false);
     } catch (err) {
-      form.setError('root', { message: toFriendlyMessage(err) });
+      form.setError("root", { message: toFriendlyMessage(err) });
     }
   }
 
@@ -69,82 +78,76 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{RETURN_DIALOG_TITLE}</DialogTitle>
-          <DialogDescription>确认归还后会在流转历史中记录归还时间与备注。</DialogDescription>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-idle/15 px-2.5 py-1 text-xs font-medium text-status-idle-fg">
+              <Undo2 className="size-3.5" aria-hidden />
+              归还
+            </span>
+          </div>
+          <DialogTitle>归还资产</DialogTitle>
+          <DialogDescription>
+            归还接收人将成为新 holder；不填则资产无 holder（无人值守）。
+          </DialogDescription>
         </DialogHeader>
 
-        {currentCheckout ? (
-          <div className="rounded-sm bg-muted/50 px-3 py-2 text-sm">
-            当前派发给 · <strong>{currentCheckout.holder}</strong>
-            {currentCheckout.location ? <> · {currentCheckout.location}</> : null}
-            <br />
-            派发于 ·{' '}
-            <time className="font-code">{formatDateTime(currentCheckout.checked_out_at)}</time>
-          </div>
-        ) : mutation.isIdle ? (
-          // 仅在用户尚未提交时提示；mutation success/pending 期间不渲染——
-          // 否则成功后 currentCheckout 因 invalidate 变 null，dialog 关闭前会一闪 banner
-          <InlineErrorBanner message="此资产当前无派发中记录，请刷新页面。" />
-        ) : null}
-
         {form.formState.errors.root && (
-          <InlineErrorBanner message={String(form.formState.errors.root.message)} />
+          <InlineErrorBanner
+            message={String(form.formState.errors.root.message)}
+          />
         )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
+              name="to_holder"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>归还给（可选，留空表示无人值守）</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="如：仓管李四"
+                      disabled={mutation.isPending}
+                      autoFocus
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="to_location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>归还位置（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="如：1F-柜 3"
+                      disabled={mutation.isPending}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="note"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>备注</FormLabel>
+                  <FormLabel>备注（可选）</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
-                      disabled={mutation.isPending || !currentCheckout}
+                      disabled={mutation.isPending}
                       rows={3}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="return_location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>归还地点（可选）</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：仓库 A-第 3 排"
-                      disabled={mutation.isPending || !currentCheckout}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="return_receiver"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>接收人（可选）</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：管理员张三"
-                      disabled={mutation.isPending || !currentCheckout}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <DialogFooter>
               <Button
                 type="button"
@@ -154,11 +157,8 @@ export function ReturnDialog({ open, onOpenChange, assetId, currentCheckout }: R
               >
                 取消
               </Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending || !currentCheckout}
-              >
-                {mutation.isPending ? RETURN_PENDING_TEXT : `确认${RETURN_VERB}`}
+              <Button type="submit" disabled={mutation.isPending}>
+                {mutation.isPending ? "归还中…" : "确认归还"}
               </Button>
             </DialogFooter>
           </form>
