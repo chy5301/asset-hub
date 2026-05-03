@@ -10,6 +10,7 @@ from asset_hub.errors import (
     AssetHubError,
     ConflictError,
     DuplicateError,
+    IllegalTransitionError,
     NotFoundError,
     StateError,
     ValidationError,
@@ -20,6 +21,7 @@ _FRONTEND_DIST = Path("frontend/dist")
 _EXC_STATUS: dict[type[AssetHubError], int] = {
     ConflictError: 409,
     DuplicateError: 409,
+    IllegalTransitionError: 409,
     NotFoundError: 404,
     StateError: 409,
     ValidationError: 422,
