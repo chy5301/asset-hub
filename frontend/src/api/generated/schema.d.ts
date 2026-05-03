@@ -70,65 +70,32 @@ export interface paths {
         post?: never;
         /**
          * Delete Asset
-         * @description 删除资产 cascade（CheckoutRecord + Attachment FS+DB）。
+         * @description 删除资产 cascade（StateTransitionRecord + Attachment FS+DB）。
          */
         delete: operations["delete_asset_api_assets__asset_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Asset
-         * @description 整合编辑 + 状态切换。
+         * @description 更新资产非状态字段（name/serial_number/notes/custom_data/acquired_at）。
          *
-         *     status 字段由 service 层 state_machine 校验合法性，非法转换抛 ValidationError → 422。
+         *     状态、holder、location 走 POST /api/assets/{id}/transitions。
          */
         patch: operations["update_asset_api_assets__asset_id__patch"];
         trace?: never;
     };
-    "/api/assets/{asset_id}/checkout": {
+    "/api/assets/{asset_id}/transitions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Transitions */
+        get: operations["list_transitions_api_assets__asset_id__transitions_get"];
         put?: never;
-        /** Checkout Asset */
-        post: operations["checkout_asset_api_assets__asset_id__checkout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/assets/{asset_id}/return": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Return Asset */
-        post: operations["return_asset_api_assets__asset_id__return_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/assets/{asset_id}/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Asset History */
-        get: operations["asset_history_api_assets__asset_id__history_get"];
-        put?: never;
-        post?: never;
+        /** Create Transition */
+        post: operations["create_transition_api_assets__asset_id__transitions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -266,8 +233,6 @@ export interface components {
             };
             /** Acquired At */
             acquired_at: string | null;
-            /** Current Checkout Id */
-            current_checkout_id: string | null;
             /**
              * Created At
              * Format: date-time
@@ -283,21 +248,19 @@ export interface components {
          * AssetStatus
          * @enum {string}
          */
-        AssetStatus: "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED";
+        AssetStatus: "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED" | "DISPOSED";
         /**
          * AssetUpdate
-         * @description 注意：type_id 不暴露——D9 编辑表单禁改 type；asset_code 也不暴露（系统生成、不允许手改）。
+         * @description 注意：
+         *     - type_id 不暴露——D9 编辑表单禁改 type；
+         *     - asset_code 不暴露——系统生成、不允许手改；
+         *     - status/holder/location 不暴露——M3a 后必须走 POST /api/assets/{id}/transitions，经 state machine 校验。
          */
         AssetUpdate: {
             /** Name */
             name?: string | null;
             /** Serial Number */
             serial_number?: string | null;
-            status?: components["schemas"]["AssetStatus"] | null;
-            /** Holder */
-            holder?: string | null;
-            /** Location */
-            location?: string | null;
             /** Notes */
             notes?: string | null;
             /** Custom Data */
@@ -346,56 +309,6 @@ export interface components {
             /** @default other */
             kind: components["schemas"]["AttachmentKind"];
         };
-        /** CheckoutCreate */
-        CheckoutCreate: {
-            /** Holder */
-            holder: string;
-            /** Location */
-            location?: string | null;
-            /** Note */
-            note?: string | null;
-        };
-        /** CheckoutRead */
-        CheckoutRead: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Asset Id
-             * Format: uuid
-             */
-            asset_id: string;
-            /** Holder */
-            holder: string;
-            /** Location */
-            location: string | null;
-            /**
-             * Checked Out At
-             * Format: date-time
-             */
-            checked_out_at: string;
-            /** Returned At */
-            returned_at: string | null;
-            /** Checkout Note */
-            checkout_note: string | null;
-            /** Return Note */
-            return_note: string | null;
-            /** Return Location */
-            return_location: string | null;
-            /** Return Receiver */
-            return_receiver: string | null;
-        };
-        /** CheckoutReturn */
-        CheckoutReturn: {
-            /** Note */
-            note?: string | null;
-            /** Return Location */
-            return_location?: string | null;
-            /** Return Receiver */
-            return_receiver?: string | null;
-        };
         /**
          * CustomFieldDef
          * @description v1 schema：key + label + type + required + options + 扩展属性。
@@ -436,6 +349,58 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** TransitionCreate */
+        TransitionCreate: {
+            kind: components["schemas"]["TransitionKind"];
+            /** To Holder */
+            to_holder?: string | null;
+            /** To Location */
+            to_location?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Due At */
+            due_at?: string | null;
+        };
+        /**
+         * TransitionKind
+         * @enum {string}
+         */
+        TransitionKind: "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL" | "RETURN" | "SEND_TO_MAINTENANCE" | "RECOVER_FROM_MAINTENANCE" | "RETIRE" | "REINSTATE" | "DISPOSE" | "RELOCATE" | "TRANSFER_HOLDER";
+        /** TransitionRead */
+        TransitionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            kind: components["schemas"]["TransitionKind"];
+            from_status: components["schemas"]["AssetStatus"];
+            to_status: components["schemas"]["AssetStatus"];
+            /** From Holder */
+            from_holder: string | null;
+            /** To Holder */
+            to_holder: string | null;
+            /** From Location */
+            from_location: string | null;
+            /** To Location */
+            to_location: string | null;
+            /** Note */
+            note: string | null;
+            /** Due At */
+            due_at: string | null;
+            /** Closes Transition Id */
+            closes_transition_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** TypeCreate */
         TypeCreate: {
@@ -671,6 +636,8 @@ export interface operations {
                 status?: components["schemas"]["AssetStatus"] | null;
                 holder?: string | null;
                 q?: string | null;
+                include_retired?: boolean;
+                include_disposed?: boolean;
             };
             header?: never;
             path?: never;
@@ -826,77 +793,7 @@ export interface operations {
             };
         };
     };
-    checkout_asset_api_assets__asset_id__checkout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                asset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckoutCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CheckoutRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    return_asset_api_assets__asset_id__return_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                asset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckoutReturn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CheckoutRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    asset_history_api_assets__asset_id__history_get: {
+    list_transitions_api_assets__asset_id__transitions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -913,7 +810,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CheckoutRead"][];
+                    "application/json": components["schemas"]["TransitionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transition_api_assets__asset_id__transitions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionRead"];
                 };
             };
             /** @description Validation Error */
