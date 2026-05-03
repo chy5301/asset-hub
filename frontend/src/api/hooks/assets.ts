@@ -105,7 +105,7 @@ export function useChangeAssetStatusMutation(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.assets.all });
       qc.invalidateQueries({ queryKey: qk.assets.detail(id) });
-      qc.invalidateQueries({ queryKey: qk.assets.history(id) });
+      qc.invalidateQueries({ queryKey: qk.assets.transitions(id) });
     },
     // toast 由调用方控制（StateChangeAlert）
   });
