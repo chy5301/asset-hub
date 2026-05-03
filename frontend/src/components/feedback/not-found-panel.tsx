@@ -17,7 +17,7 @@ export function NotFoundPanel({
 }: NotFoundPanelProps) {
   return (
     <div
-      role="alert"
+      role="status"
       className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 py-24 text-center"
     >
       <Icon className="h-12 w-12 text-muted-foreground" aria-hidden />
