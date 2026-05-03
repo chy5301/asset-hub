@@ -1,6 +1,11 @@
+import { ArrowRightFromLine } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { z } from "zod";
+
+import { useRecordTransitionMutation } from "@/api/hooks/transitions";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -21,20 +23,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
-import { useCheckoutMutation } from "@/api/hooks/checkouts";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { toFriendlyMessage } from "@/lib/error";
-import {
-  CHECKOUT_DIALOG_TITLE,
-  CHECKOUT_PENDING_TEXT,
-  CHECKOUT_VERB,
-} from "./checkout-actions";
 
 const schema = z.object({
-  holder: z.string().min(1, "保管人必填"),
-  location: z.string().optional(),
+  kind: z.enum(["CHECKOUT_INTERNAL", "CHECKOUT_EXTERNAL"]),
+  to_holder: z.string().min(1, "请输入派发对象"),
+  to_location: z.string().optional(),
+  due_at: z.string().optional(),
   note: z.string().optional(),
 });
-type Values = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>;
 
 interface CheckoutDialogProps {
   open: boolean;
@@ -47,12 +48,17 @@ export function CheckoutDialog({
   onOpenChange,
   assetId,
 }: CheckoutDialogProps) {
-  const mutation = useCheckoutMutation();
-  const form = useForm<Values>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { holder: "", location: "", note: "" },
+    defaultValues: {
+      kind: "CHECKOUT_INTERNAL",
+      to_holder: "",
+      to_location: "",
+      note: "",
+    },
     mode: "onSubmit",
   });
+  const mutation = useRecordTransitionMutation(assetId);
 
   function handleOpenChange(v: boolean) {
     if (mutation.isPending) return;
@@ -60,16 +66,18 @@ export function CheckoutDialog({
     onOpenChange(v);
   }
 
-  async function onSubmit(values: Values) {
+  async function onSubmit(values: FormValues) {
     try {
       await mutation.mutateAsync({
-        assetId,
-        body: {
-          holder: values.holder.trim(),
-          location: values.location?.trim() || null,
-          note: values.note?.trim() || null,
-        },
+        kind: values.kind,
+        to_holder: values.to_holder.trim(),
+        to_location: values.to_location?.trim() || null,
+        due_at: values.due_at || null,
+        note: values.note?.trim() || null,
       });
+      toast.success(
+        values.kind === "CHECKOUT_INTERNAL" ? "已派发" : "已出借",
+      );
       form.reset();
       onOpenChange(false);
     } catch (err) {
@@ -81,10 +89,14 @@ export function CheckoutDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{CHECKOUT_DIALOG_TITLE}</DialogTitle>
-          <DialogDescription>
-            填写保管人后确认，派发记录会自动写入流转历史。
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-in-use/15 px-2.5 py-1 text-xs font-medium text-status-in-use-fg">
+              <ArrowRightFromLine className="size-3.5" aria-hidden />
+              派发
+            </span>
+          </div>
+          <DialogTitle>派发资产</DialogTitle>
+          <DialogDescription>选择派发类型并填写接收人。</DialogDescription>
         </DialogHeader>
 
         {form.formState.errors.root && (
@@ -97,15 +109,47 @@ export function CheckoutDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="holder"
+              name="kind"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>派发类型</FormLabel>
+                  <FormControl>
+                    <ToggleGroup
+                      type="single"
+                      value={field.value}
+                      onValueChange={(v) => v && field.onChange(v)}
+                      className="justify-start"
+                    >
+                      <ToggleGroupItem
+                        value="CHECKOUT_INTERNAL"
+                        className="data-[state=on]:bg-status-in-use/15 data-[state=on]:text-status-in-use-fg"
+                      >
+                        派发 · 内部使用
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="CHECKOUT_EXTERNAL"
+                        className="data-[state=on]:bg-status-in-use/15 data-[state=on]:text-status-in-use-fg"
+                      >
+                        出借 · 借给外部
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="to_holder"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    保管人 <span className="text-destructive">*</span>
+                    派发给 <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       {...field}
+                      placeholder="保管人/接收方"
                       disabled={mutation.isPending}
                       autoFocus
                     />
@@ -116,14 +160,33 @@ export function CheckoutDialog({
             />
             <FormField
               control={form.control}
-              name="location"
+              name="to_location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>位置</FormLabel>
+                  <FormLabel>位置（可选）</FormLabel>
                   <FormControl>
-                    <Input {...field} disabled={mutation.isPending} />
+                    <Input
+                      {...field}
+                      placeholder="如 1F-工位"
+                      disabled={mutation.isPending}
+                    />
                   </FormControl>
-                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="due_at"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>期望归还时间（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="datetime-local"
+                      {...field}
+                      disabled={mutation.isPending}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -132,7 +195,7 @@ export function CheckoutDialog({
               name="note"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>备注</FormLabel>
+                  <FormLabel>备注（可选）</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
@@ -140,11 +203,9 @@ export function CheckoutDialog({
                       rows={3}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
-
             <DialogFooter>
               <Button
                 type="button"
@@ -155,9 +216,7 @@ export function CheckoutDialog({
                 取消
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending
-                  ? CHECKOUT_PENDING_TEXT
-                  : `确认${CHECKOUT_VERB}`}
+                {mutation.isPending ? "派发中…" : "确认派发"}
               </Button>
             </DialogFooter>
           </form>
