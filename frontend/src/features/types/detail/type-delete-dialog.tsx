@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useDeleteTypeMutation, useTypeRefCount } from '@/api/hooks/types';
+import { useDeleteTypeMutation } from '@/api/hooks/types';
 import { toFriendlyMessage } from '@/lib/error';
 import type { components } from '@/api/generated/schema';
 
@@ -24,13 +24,12 @@ interface Props {
 
 export function TypeDeleteDialog({ type, onClose, onDeleted }: Props) {
   const [confirmInput, setConfirmInput] = useState('');
-
-  const { count: refCount, isLoading: refLoading, isError: refError } = useTypeRefCount(type.id);
   const deleteMut = useDeleteTypeMutation();
 
-  const hasRefs = refCount > 0 || refError;
+  const refCount = type.ref_count;
+  const hasRefs = refCount > 0;
   const inputMatches = confirmInput.trim() === type.name;
-  const canDelete = !hasRefs && inputMatches && !deleteMut.isPending && !refLoading;
+  const canDelete = !hasRefs && inputMatches && !deleteMut.isPending;
 
   async function handleDelete() {
     try {
@@ -48,7 +47,7 @@ export function TypeDeleteDialog({ type, onClose, onDeleted }: Props) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>删除类型 '{type.name}'</DialogTitle>
-          <DialogDescription>{describeState(refError, hasRefs, refCount, type.name)}</DialogDescription>
+          <DialogDescription>{describeState(hasRefs, refCount, type.name)}</DialogDescription>
         </DialogHeader>
 
         {!hasRefs && (
@@ -77,13 +76,7 @@ export function TypeDeleteDialog({ type, onClose, onDeleted }: Props) {
   );
 }
 
-function describeState(
-  isError: boolean,
-  hasRefs: boolean,
-  refCount: number,
-  typeName: string,
-): string {
-  if (isError) return '无法确认引用数，请关闭后重试。';
+function describeState(hasRefs: boolean, refCount: number, typeName: string): string {
   if (hasRefs) return `该类型仍有 ${refCount} 个资产引用，请先删除/迁移所有引用此类型的资产。`;
   return `此操作不可撤销。请输入完整类型名 '${typeName}' 以确认。`;
 }

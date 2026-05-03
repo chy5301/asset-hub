@@ -16,7 +16,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 };
 
-const T = {
+const baseType = {
   id: 'abc',
   name: '笔记本',
   code_prefix: 'NB',
@@ -28,50 +28,36 @@ const T = {
 
 describe('TypeDeleteDialog', () => {
   it('ref_count > 0 → 禁用按钮 + 提示', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/assets', () =>
-        HttpResponse.json([{ id: 'a1' }, { id: 'a2' }, { id: 'a3' }]),
-      ),
+    render(
+      <TypeDeleteDialog type={{ ...baseType, ref_count: 3 }} onClose={() => {}} />,
+      { wrapper },
     );
-    render(<TypeDeleteDialog type={T} onClose={() => {}} />, { wrapper });
-    await waitFor(() =>
-      expect(screen.getByText(/仍有 3 个资产引用/)).toBeInTheDocument(),
-    );
+    expect(screen.getByText(/仍有 3 个资产引用/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /永久删除/ })).toBeDisabled();
+    expect(screen.queryByPlaceholderText(/请输入完整类型名/)).not.toBeInTheDocument();
   });
 
   it('ref_count = 0 → 输入完整 name 后可删', async () => {
     const user = userEvent.setup();
     const onDeleted = vi.fn();
     server.use(
-      http.get('http://localhost:3000/api/assets', () =>
-        HttpResponse.json([]),
-      ),
       http.delete('http://localhost:3000/api/types/abc', () =>
         HttpResponse.text(null, { status: 204 }),
       ),
     );
-    render(<TypeDeleteDialog type={T} onClose={() => {}} onDeleted={onDeleted} />, { wrapper });
-    await waitFor(() => screen.getByPlaceholderText(/请输入完整类型名/));
+    render(
+      <TypeDeleteDialog
+        type={{ ...baseType, ref_count: 0 }}
+        onClose={() => {}}
+        onDeleted={onDeleted}
+      />,
+      { wrapper },
+    );
+    expect(screen.getByPlaceholderText(/请输入完整类型名/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /永久删除/ })).toBeDisabled();
     await user.type(screen.getByPlaceholderText(/请输入完整类型名/), '笔记本');
     expect(screen.getByRole('button', { name: /永久删除/ })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: /永久删除/ }));
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
-  });
-
-  it('refQuery 失败 → 显示错误提示 + 永久删除按钮禁用', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/assets', () =>
-        HttpResponse.json({ detail: 'server error' }, { status: 500 }),
-      ),
-    );
-    render(<TypeDeleteDialog type={T} onClose={() => {}} />, { wrapper });
-    await waitFor(() =>
-      expect(screen.getByText(/无法确认引用数/)).toBeInTheDocument(),
-    );
-    expect(screen.getByRole('button', { name: /永久删除/ })).toBeDisabled();
-    // confirm input 不应渲染（hasRefs=true 隐藏）
-    expect(screen.queryByPlaceholderText(/请输入完整类型名/)).not.toBeInTheDocument();
   });
 });

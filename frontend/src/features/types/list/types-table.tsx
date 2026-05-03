@@ -10,31 +10,15 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useTypeRefCount } from '@/api/hooks/types';
 import type { components } from '@/api/generated/schema';
 
 type TypeRead = components['schemas']['TypeRead'];
-
-function RefCountCell({ typeId }: { typeId: string }) {
-  const { count, isLoading } = useTypeRefCount(typeId);
-  if (isLoading) return <Skeleton className="inline-block h-3 w-6" />;
-  return (
-    <Link
-      to="/"
-      search={{ ...ASSETS_DEFAULT_SEARCH, type: typeId }}
-      className="text-primary hover:underline cursor-pointer"
-    >
-      {count}
-    </Link>
-  );
-}
 
 interface Props {
   rows: TypeRead[];
@@ -76,7 +60,15 @@ export function TypesTable({ rows, onDelete }: Props) {
       {
         id: 'refCount',
         header: '资产引用',
-        cell: ({ row }) => <RefCountCell typeId={row.original.id} />,
+        cell: ({ row }) => (
+          <Link
+            to="/"
+            search={{ ...ASSETS_DEFAULT_SEARCH, type: row.original.id }}
+            className="text-primary hover:underline cursor-pointer"
+          >
+            {row.original.ref_count}
+          </Link>
+        ),
       },
       {
         id: 'actions',

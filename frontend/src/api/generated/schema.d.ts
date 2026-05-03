@@ -467,6 +467,11 @@ export interface components {
             /** Custom Fields */
             custom_fields: components["schemas"]["CustomFieldDef"][];
             /**
+             * Ref Count
+             * @default 0
+             */
+            ref_count: number;
+            /**
              * Created At
              * Format: date-time
              */

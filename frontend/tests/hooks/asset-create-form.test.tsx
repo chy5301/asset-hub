@@ -45,8 +45,16 @@ vi.mock('@/components/ui/calendar', () => ({
 }));
 
 // Radix Select 在 jsdom 用 PointerEvent，jsdom 不支持；用原生 <select> 代理
+type SelectProps = {
+  value?: string;
+  onValueChange?: (v: string) => void;
+  children?: React.ReactNode;
+};
+type ItemProps = { value: string; children?: React.ReactNode };
+type WrapProps = { children?: React.ReactNode };
+
 vi.mock('@/components/ui/select', () => {
-  const Select = ({ value, onValueChange, children }: any) => (
+  const Select = ({ value, onValueChange, children }: SelectProps) => (
     <select
       data-testid="mock-select"
       value={value ?? ''}
@@ -56,8 +64,8 @@ vi.mock('@/components/ui/select', () => {
       {children}
     </select>
   );
-  const passthrough = ({ children }: any) => <>{children}</>;
-  const SelectItem = ({ value, children }: any) => <option value={value}>{children}</option>;
+  const passthrough = ({ children }: WrapProps) => <>{children}</>;
+  const SelectItem = ({ value, children }: ItemProps) => <option value={value}>{children}</option>;
   return {
     Select,
     SelectTrigger: passthrough,
@@ -69,7 +77,7 @@ vi.mock('@/components/ui/select', () => {
 
 // Radix Popover 在 jsdom 默认不渲染 PopoverContent；展开内容供测试访问
 vi.mock('@/components/ui/popover', () => {
-  const passthrough = ({ children }: any) => <>{children}</>;
+  const passthrough = ({ children }: WrapProps) => <>{children}</>;
   return {
     Popover: passthrough,
     PopoverTrigger: passthrough,
