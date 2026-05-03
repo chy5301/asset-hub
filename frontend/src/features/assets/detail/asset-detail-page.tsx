@@ -17,7 +17,7 @@ import { AttachmentGrid } from "./attachment-grid";
 import { CheckoutTimeline } from "./checkout-timeline";
 import { deriveCurrentCheckout } from "./current-checkout";
 import { DetailSkeleton } from "./detail-skeleton";
-import { NotFoundPanel } from "./not-found-panel";
+import { AssetNotFound } from "./asset-not-found";
 import { AttachmentLightbox } from "./attachment-lightbox";
 import { CheckoutDialog } from "./checkout-dialog";
 import { ReturnDialog } from "./return-dialog";
@@ -79,7 +79,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
     isHttpError(assetQuery.error) &&
     assetQuery.error.status === 404
   ) {
-    return <NotFoundPanel />;
+    return <AssetNotFound />;
   }
 
   if (assetQuery.isError || !assetQuery.data) {
