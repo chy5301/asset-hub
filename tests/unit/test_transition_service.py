@@ -223,3 +223,35 @@ def test_list_transitions_returns_desc_order(session, asset_type):
     assert len(rows) == 2
     assert rows[0].kind == TransitionKind.RETURN  # 最新在前
     assert rows[1].kind == TransitionKind.CHECKOUT_INTERNAL
+
+
+def test_recover_from_maintenance_returns_to_idle(session, asset_type):
+    a = _new_asset(session, asset_type.id, status=AssetStatus.MAINTENANCE)
+    rec = TransitionService(session).record_transition(
+        asset_id=a.id, kind=TransitionKind.RECOVER_FROM_MAINTENANCE
+    )
+    assert rec.from_status == AssetStatus.MAINTENANCE
+    assert rec.to_status == AssetStatus.IDLE
+    session.refresh(a)
+    assert a.status == AssetStatus.IDLE
+
+
+def test_reinstate_from_retired_to_idle(session, asset_type):
+    a = _new_asset(session, asset_type.id, status=AssetStatus.RETIRED)
+    rec = TransitionService(session).record_transition(
+        asset_id=a.id, kind=TransitionKind.REINSTATE
+    )
+    assert rec.from_status == AssetStatus.RETIRED
+    assert rec.to_status == AssetStatus.IDLE
+    session.refresh(a)
+    assert a.status == AssetStatus.IDLE
+
+
+def test_optional_location_null_preserves_current(session, asset_type):
+    """spec §3.2: location_rule=optional 时，to_location=None 保留 asset.location（不清空）。"""
+    a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, location="原位置")
+    TransitionService(session).record_transition(
+        asset_id=a.id, kind=TransitionKind.SEND_TO_MAINTENANCE, to_location=None
+    )
+    session.refresh(a)
+    assert a.location == "原位置"
