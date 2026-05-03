@@ -92,21 +92,19 @@ export function useAssetDetailQuery(id: string) {
   });
 }
 
-export function useChangeAssetStatusMutation(id: string) {
-  const qc = useQueryClient();
+/**
+ * @deprecated PR-1 后 status 字段从 AssetUpdate 移除，状态变更必须走 transitions API。
+ * 这个 hook 是兼容壳，task 6-15 会删除该 hook 与所有调用方
+ * （state-change-alert / asset-detail-page），改为 transition dialogs 驱动。
+ *
+ * 当前实现：调用即抛错，避免 PR-1 后误用造成数据写入错乱。
+ */
+export function useChangeAssetStatusMutation(_id: string) {
   return useMutation({
-    mutationFn: async (toStatus: components["schemas"]["AssetStatus"]) => {
-      const res = await http.PATCH("/api/assets/{asset_id}", {
-        params: { path: { asset_id: id } },
-        body: { status: toStatus },
-      });
-      return unwrap(res);
+    mutationFn: async (_toStatus: components["schemas"]["AssetStatus"]) => {
+      throw new Error(
+        "useChangeAssetStatusMutation 已废弃；状态变更请走 transitions API（task 6-15）",
+      );
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.assets.all });
-      qc.invalidateQueries({ queryKey: qk.assets.detail(id) });
-      qc.invalidateQueries({ queryKey: qk.assets.transitions(id) });
-    },
-    // toast 由调用方控制（StateChangeAlert）
   });
 }

@@ -38,23 +38,19 @@ export function AssetEditForm() {
       name: '',
       serial_number: '',
       acquired_at: '',
-      holder: '',
-      location: '',
       notes: '',
       custom_data: {},
     },
     mode: 'onSubmit',
   });
 
-  // 数据到位后 reset 表单
+  // 数据到位后 reset 表单（M3a：holder/location/status 不再走 PATCH，由详情页 transition dialogs 处理）
   useEffect(() => {
     if (asset) {
       form.reset({
         name: asset.name,
         serial_number: asset.serial_number ?? '',
         acquired_at: asset.acquired_at ?? '',
-        holder: asset.holder ?? '',
-        location: asset.location ?? '',
         notes: asset.notes ?? '',
         custom_data: (asset.custom_data ?? {}) as never,
       });
@@ -83,8 +79,6 @@ export function AssetEditForm() {
         name: parsed.data.name,
         serial_number: parsed.data.serial_number || null,
         acquired_at: parsed.data.acquired_at || null,
-        holder: parsed.data.holder || null,
-        location: parsed.data.location || null,
         notes: parsed.data.notes || null,
         custom_data: parsed.data.custom_data ?? {},
       });
