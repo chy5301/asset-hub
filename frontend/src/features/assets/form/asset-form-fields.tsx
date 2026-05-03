@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { type Control, type FieldValues, type Path, useWatch } from 'react-hook-form';
+import { SectionCaption } from '@/components/ui/section-heading';
 import { GeneralFieldsForm } from './general-fields-form';
 import { CustomFieldsForm } from './custom-fields-form';
 import type { FieldDef } from './types';
@@ -38,9 +39,7 @@ export function AssetFormFields<TFieldValues extends FieldValues>({
   return (
     <div className="space-y-10">
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
-          基础信息
-        </h2>
+        <SectionCaption>基础信息</SectionCaption>
         <GeneralFieldsForm
           control={control}
           types={types}

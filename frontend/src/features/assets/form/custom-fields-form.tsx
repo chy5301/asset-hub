@@ -1,4 +1,5 @@
 import type { Control, FieldValues } from 'react-hook-form';
+import { SectionCaption } from '@/components/ui/section-heading';
 import { DynamicFieldRenderer } from './dynamic-field-renderer';
 import type { FieldDef } from './types';
 
@@ -18,12 +19,12 @@ export function CustomFieldsForm<TFieldValues extends FieldValues>({
   }
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
+      <SectionCaption>
         {typeName}
         <span className="ml-2 rounded-full bg-secondary px-2 text-xs font-normal">
           {fieldDefs.length} 个字段
         </span>
-      </h2>
+      </SectionCaption>
       <div className="space-y-4">
         {fieldDefs.map((def) => (
           <DynamicFieldRenderer key={def.key} def={def} control={control} />

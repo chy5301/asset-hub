@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/feedback/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isHttpError } from '@/lib/error';
 import { useTypeQuery } from '@/api/hooks/types';
+import { SectionCaption } from '@/components/ui/section-heading';
 import { TypeSummaryCard } from './type-summary-card';
 import { TypeDeleteDialog } from './type-delete-dialog';
 import { TypeForm } from '../form/type-form';
@@ -44,9 +45,7 @@ export function TypeDetailPage({ id }: { id: string }) {
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-          元信息
-        </h2>
+        <SectionCaption className="text-muted-foreground mb-3">元信息</SectionCaption>
         <TypeSummaryCard type={q.data} />
       </section>
 

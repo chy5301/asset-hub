@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { SectionCaption } from '@/components/ui/section-heading';
 import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
 import { useCreateTypeMutation, useUpdateTypeMutation } from '@/api/hooks/types';
 import { toFriendlyMessage, isHttpError } from '@/lib/error';
@@ -129,9 +130,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           )}
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
-              基本信息
-            </h2>
+            <SectionCaption>基本信息</SectionCaption>
 
             <FormField
               control={form.control}
@@ -190,9 +189,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
-              自定义字段
-            </h2>
+            <SectionCaption>自定义字段</SectionCaption>
             <CustomFieldsBuilder
               control={form.control}
               setValue={form.setValue}
