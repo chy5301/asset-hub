@@ -1,43 +1,111 @@
-"""资产状态转换合法性矩阵（M2c-3 spec §5.5 / D14）。
+"""状态机校验层 SoT（M3a 子 spec §2.6）。
 
-简化路径：
-- MAINTENANCE 仅从 IDLE 进入
-- RETIRED 仅从 IDLE / MAINTENANCE 进入
-- IN_USE 状态下要任何状态切换必须先归还
-- RETIRED 唯一出口"重新启用"回 IDLE
-
-M3 §14.6 audit 化时，把 assert_transition_allowed 升级为同时写
-StateTransitionRecord（不影响 ALLOWED_TRANSITIONS 形态）。
-M3 §14.7 状态枚举完善（加 ARCHIVED）时，扩展 ALLOWED_TRANSITIONS dict。
+TRANSITION_RULES 是合法 from/to + holder/location 必填规则的唯一来源。
+service 层不写 if-block 双层防御（C1 闭环）。
 """
-from asset_hub.errors import ValidationError
-from asset_hub.models.asset import AssetStatus
+from typing import Literal, NamedTuple
 
-ALLOWED_TRANSITIONS: dict[AssetStatus, set[AssetStatus]] = {
-    AssetStatus.IDLE: {
-        AssetStatus.IN_USE,        # 派发
-        AssetStatus.MAINTENANCE,   # 送修
-        AssetStatus.RETIRED,       # 退役
-    },
-    AssetStatus.IN_USE: {
-        AssetStatus.IDLE,          # 归还
-    },
-    AssetStatus.MAINTENANCE: {
-        AssetStatus.IDLE,          # 修好回库
-        AssetStatus.RETIRED,       # 退役
-    },
-    AssetStatus.RETIRED: {
-        AssetStatus.IDLE,          # 重新启用
-    },
+from asset_hub.errors import IllegalTransitionError
+from asset_hub.models.asset import AssetStatus
+from asset_hub.models.state_transition import TransitionKind
+
+HolderRule = Literal["required", "optional", "forced_null", "ignored"]
+LocationRule = Literal["required", "optional", "forced_null"]
+
+
+class TransitionRule(NamedTuple):
+    valid_from: frozenset[AssetStatus]
+    to_status: AssetStatus | None  # None = 同 from（RELOCATE/TRANSFER_HOLDER）
+    holder_rule: HolderRule
+    location_rule: LocationRule
+
+
+_ALL_BUT_DISPOSED = frozenset({
+    AssetStatus.IDLE,
+    AssetStatus.IN_USE,
+    AssetStatus.MAINTENANCE,
+    AssetStatus.RETIRED,
+})
+
+
+TRANSITION_RULES: dict[TransitionKind, TransitionRule] = {
+    TransitionKind.CHECKOUT_INTERNAL: TransitionRule(
+        valid_from=frozenset({AssetStatus.IDLE}),
+        to_status=AssetStatus.IN_USE,
+        holder_rule="required",
+        location_rule="optional",
+    ),
+    TransitionKind.CHECKOUT_EXTERNAL: TransitionRule(
+        valid_from=frozenset({AssetStatus.IDLE}),
+        to_status=AssetStatus.IN_USE,
+        holder_rule="required",
+        location_rule="optional",
+    ),
+    TransitionKind.RETURN: TransitionRule(
+        valid_from=frozenset({AssetStatus.IN_USE}),
+        to_status=AssetStatus.IDLE,
+        holder_rule="optional",
+        location_rule="optional",
+    ),
+    TransitionKind.SEND_TO_MAINTENANCE: TransitionRule(
+        valid_from=frozenset({AssetStatus.IDLE}),
+        to_status=AssetStatus.MAINTENANCE,
+        holder_rule="optional",
+        location_rule="optional",
+    ),
+    TransitionKind.RECOVER_FROM_MAINTENANCE: TransitionRule(
+        valid_from=frozenset({AssetStatus.MAINTENANCE}),
+        to_status=AssetStatus.IDLE,
+        holder_rule="optional",
+        location_rule="optional",
+    ),
+    TransitionKind.RETIRE: TransitionRule(
+        valid_from=frozenset({AssetStatus.IDLE, AssetStatus.MAINTENANCE}),
+        to_status=AssetStatus.RETIRED,
+        holder_rule="optional",
+        location_rule="optional",
+    ),
+    TransitionKind.REINSTATE: TransitionRule(
+        valid_from=frozenset({AssetStatus.RETIRED}),
+        to_status=AssetStatus.IDLE,
+        holder_rule="optional",
+        location_rule="optional",
+    ),
+    TransitionKind.DISPOSE: TransitionRule(
+        valid_from=frozenset({AssetStatus.RETIRED, AssetStatus.MAINTENANCE}),
+        to_status=AssetStatus.DISPOSED,
+        holder_rule="forced_null",
+        location_rule="forced_null",
+    ),
+    TransitionKind.RELOCATE: TransitionRule(
+        valid_from=_ALL_BUT_DISPOSED,
+        to_status=None,
+        holder_rule="ignored",
+        location_rule="required",
+    ),
+    TransitionKind.TRANSFER_HOLDER: TransitionRule(
+        valid_from=_ALL_BUT_DISPOSED,
+        to_status=None,
+        holder_rule="required",
+        location_rule="optional",
+    ),
 }
 
 
-def is_transition_allowed(from_status: AssetStatus, to_status: AssetStatus) -> bool:
-    return to_status in ALLOWED_TRANSITIONS[from_status]
-
-
-def assert_transition_allowed(from_status: AssetStatus, to_status: AssetStatus) -> None:
-    if to_status not in ALLOWED_TRANSITIONS[from_status]:
-        raise ValidationError(
-            f"不允许从 {from_status.value} 转到 {to_status.value}"
+def validate_transition(
+    current_status: AssetStatus,
+    kind: TransitionKind,
+    to_holder: str | None,
+    to_location: str | None,
+) -> AssetStatus:
+    """返回 to_status；非法抛 IllegalTransitionError。"""
+    rule = TRANSITION_RULES[kind]
+    if current_status not in rule.valid_from:
+        raise IllegalTransitionError(
+            f"{kind.value} 不能从 {current_status.value} 出发"
         )
+    if rule.holder_rule == "required" and not to_holder:
+        raise IllegalTransitionError(f"{kind.value} 必须提供 to_holder")
+    if rule.location_rule == "required" and not to_location:
+        raise IllegalTransitionError(f"{kind.value} 必须提供 to_location")
+    return rule.to_status if rule.to_status is not None else current_status
