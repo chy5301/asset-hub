@@ -12,12 +12,14 @@ import type { FieldDef } from '../types';
 export function DateField<TFieldValues extends FieldValues>({
   def,
   control,
+  pathPrefix,
 }: {
   def: FieldDef;
   control: Control<TFieldValues>;
+  pathPrefix?: 'custom_data' | 'root';
 }) {
   return (
-    <FieldShell def={def} control={control}>
+    <FieldShell def={def} control={control} pathPrefix={pathPrefix}>
       {(field) => (
         <Popover>
           <PopoverTrigger asChild>

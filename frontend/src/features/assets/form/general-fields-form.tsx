@@ -108,6 +108,7 @@ export function GeneralFieldsForm<TFieldValues extends FieldValues>({
 
       <DateField
         control={control}
+        pathPrefix="root"
         def={{
           key: 'acquired_at', label: '入账日期', type: 'date',
           help: '业务意义的入账日期；不知道时不填',

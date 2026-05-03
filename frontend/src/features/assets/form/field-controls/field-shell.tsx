@@ -15,6 +15,8 @@ type FieldShellProps<TFieldValues extends FieldValues> = {
   control: Control<TFieldValues>;
   /** 默认 'block'（垂直堆叠）；'inline' 给 bool 类型用横向布局：control 在左，label/help/message 在右 */
   layout?: 'block' | 'inline';
+  /** 写入路径前缀。默认 'custom_data'（写到 custom_data.${def.key}）；'root' 写到顶层 ${def.key}（用于 acquired_at 等通用字段） */
+  pathPrefix?: 'custom_data' | 'root';
   children: (
     field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>,
   ) => ReactNode;
@@ -24,9 +26,12 @@ export function FieldShell<TFieldValues extends FieldValues>({
   def,
   control,
   layout = 'block',
+  pathPrefix = 'custom_data',
   children,
 }: FieldShellProps<TFieldValues>) {
-  const name = `custom_data.${def.key}` as Path<TFieldValues>;
+  const name = (
+    pathPrefix === 'root' ? def.key : `custom_data.${def.key}`
+  ) as Path<TFieldValues>;
   return (
     <FormField
       control={control}
