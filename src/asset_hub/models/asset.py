@@ -16,6 +16,7 @@ class AssetStatus(StrEnum):
     IDLE = "IDLE"
     MAINTENANCE = "MAINTENANCE"
     RETIRED = "RETIRED"
+    DISPOSED = "DISPOSED"
 
 
 class Asset(SQLModel, table=True):
@@ -32,9 +33,6 @@ class Asset(SQLModel, table=True):
     notes: str | None = None
     custom_data: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     acquired_at: date | None = Field(default=None)  # 新；业务入账日期
-    current_checkout_id: uuid.UUID | None = Field(  # 新；§K 反规范化
-        default=None, foreign_key="checkout_records.id", index=True
-    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
