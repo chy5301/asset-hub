@@ -9,7 +9,6 @@
 @theme inline {
   /* 字体（§3.5.3） */
   --font-sans: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
-  --font-heading: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
   --font-mono: "Fira Code", ui-monospace, monospace;
 
   /* 警告色（D16: amber，类型名冲突提示用） */

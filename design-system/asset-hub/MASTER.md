@@ -28,8 +28,9 @@
 
 ### Typography
 
-- **Heading Font:** Fira Code
+- **Heading Font:** Fira Sans（M2 视觉收尾纠偏，2026-05-03；原承诺 Fira Code，但 Fira Code 不渲染中文，全 fallback 到 PingFang，差异化无效；mono 字段保留 Fira Code）
 - **Body Font:** Fira Sans
+- **Mono Font:** Fira Code（asset_code / SN / code_prefix / 时间戳 / `.font-code`）
 - **Mood:** dashboard, data, analytics, code, technical, precise
 - **Google Fonts:** [Fira Code + Fira Sans](https://fonts.google.com/share?selection.family=Fira+Code:wght@400;500;600;700|Fira+Sans:wght@300;400;500;600;700)
 
