@@ -26,5 +26,9 @@ class TypeRepository:
         stmt = select(func.count()).select_from(Asset).where(Asset.type_id == type_id)
         return self.session.exec(stmt).one()
 
+    def count_assets_grouped_by_type(self) -> dict[uuid.UUID, int]:
+        stmt = select(Asset.type_id, func.count()).group_by(Asset.type_id)
+        return {tid: c for tid, c in self.session.exec(stmt).all()}
+
     def delete(self, asset_type: AssetType) -> None:
         self.session.delete(asset_type)

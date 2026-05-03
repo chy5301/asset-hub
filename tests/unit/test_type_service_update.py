@@ -35,9 +35,9 @@ class TestUpdateType:
         ]
         updated = svc.update_type(t.id, custom_fields=new_fields)
         assert len(updated.custom_fields) == 2
-        assert updated.custom_fields[0]["key"] == "cpu"
+        assert updated.custom_fields[0].key == "cpu"
         # 旧字段完全替换（不是合并）
-        assert all(f["key"] != "old" for f in updated.custom_fields)
+        assert all(f.key != "old" for f in updated.custom_fields)
 
     def test_update_combined_all_three(self, svc: TypeService):
         t = svc.create_type(name="C", code_prefix="CC", description="d1")

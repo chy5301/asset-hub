@@ -9,6 +9,8 @@ class TestCreateType:
         assert data["name"] == "笔记本电脑"
         assert data["code_prefix"] == "NB"
         assert "id" in data
+        # §Q：新建 type ref_count = 0
+        assert data["ref_count"] == 0
 
     def test_create_with_fields(self, client: TestClient):
         body = {
@@ -63,7 +65,11 @@ class TestListTypes:
         client.post("/api/types", json={"name": "A", "code_prefix": "AA"})
         client.post("/api/types", json={"name": "B", "code_prefix": "BB"})
         resp = client.get("/api/types")
-        assert len(resp.json()) == 2
+        data = resp.json()
+        assert len(data) == 2
+        # §Q：每条 type 都带 ref_count 字段（初值 0）
+        assert all("ref_count" in t for t in data)
+        assert all(t["ref_count"] == 0 for t in data)
 
 
 class TestGetType:
@@ -72,8 +78,11 @@ class TestGetType:
         type_id = r.json()["id"]
         resp = client.get(f"/api/types/{type_id}")
         assert resp.status_code == 200
-        assert resp.json()["name"] == "硬盘"
-        assert resp.json()["code_prefix"] == "HD"
+        body = resp.json()
+        assert body["name"] == "硬盘"
+        assert body["code_prefix"] == "HD"
+        # §Q：单条 get 也带 ref_count
+        assert body["ref_count"] == 0
 
     def test_get_nonexistent_404(self, client: TestClient):
         from uuid import uuid4

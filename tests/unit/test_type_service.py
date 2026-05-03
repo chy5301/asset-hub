@@ -2,6 +2,7 @@ import pytest
 from sqlmodel import Session
 
 from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
+from asset_hub.services.asset import AssetService
 from asset_hub.services.asset_type import TypeService
 
 
@@ -25,7 +26,7 @@ class TestCreateType:
         ]
         t = svc.create_type(name="笔记本电脑", code_prefix="NB", custom_fields=fields)
         assert len(t.custom_fields) == 2
-        assert t.custom_fields[0]["key"] == "brand"
+        assert t.custom_fields[0].key == "brand"
 
     def test_create_duplicate_name_raises(self, svc: TypeService):
         svc.create_type(name="显卡", code_prefix="GPU")
@@ -77,3 +78,45 @@ class TestListTypes:
         assert len(result) == 2
         names = {t.name for t in result}
         assert names == {"A", "B"}
+
+
+class TestRefCount:
+    """§Q：TypeRead.ref_count 经 service 层批量 GROUP BY 富化"""
+
+    def test_create_returns_zero_ref_count(self, svc: TypeService):
+        t = svc.create_type(name="A", code_prefix="AA")
+        assert t.ref_count == 0
+
+    def test_get_includes_ref_count_zero(self, svc: TypeService):
+        t = svc.create_type(name="A", code_prefix="AA")
+        fetched = svc.get_type(t.id)
+        assert fetched.ref_count == 0
+
+    def test_get_includes_ref_count_with_assets(
+        self, svc: TypeService, session: Session
+    ):
+        t = svc.create_type(name="A", code_prefix="AA")
+        asset_svc = AssetService(session)
+        for i in range(3):
+            asset_svc.register(name=f"asset-{i}", type_id=t.id, custom_data={})
+        fetched = svc.get_type(t.id)
+        assert fetched.ref_count == 3
+
+    def test_list_batch_count_per_type(self, svc: TypeService, session: Session):
+        a = svc.create_type(name="A", code_prefix="AA")
+        b = svc.create_type(name="B", code_prefix="BB")
+        c = svc.create_type(name="C", code_prefix="CC")
+        asset_svc = AssetService(session)
+        asset_svc.register(name="a1", type_id=a.id, custom_data={})
+        asset_svc.register(name="a2", type_id=a.id, custom_data={})
+        asset_svc.register(name="b1", type_id=b.id, custom_data={})
+        # c 无 asset
+        result = {t.name: t.ref_count for t in svc.list_types()}
+        assert result == {"A": 2, "B": 1, "C": 0}
+
+    def test_update_returns_correct_ref_count(self, svc: TypeService, session: Session):
+        t = svc.create_type(name="A", code_prefix="AA")
+        asset_svc = AssetService(session)
+        asset_svc.register(name="x", type_id=t.id, custom_data={})
+        updated = svc.update_type(t.id, description="新描述")
+        assert updated.ref_count == 1

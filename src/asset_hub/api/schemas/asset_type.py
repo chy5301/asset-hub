@@ -54,5 +54,6 @@ class TypeRead(BaseModel):
     code_prefix: str  # 新
     description: str | None
     custom_fields: list[CustomFieldDef]
+    ref_count: int = 0
     created_at: datetime
     updated_at: datetime

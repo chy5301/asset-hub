@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from asset_hub.api.schemas.asset_type import CustomFieldDef
+from asset_hub.api.schemas.asset_type import CustomFieldDef, TypeRead
 from asset_hub.errors import (
     ConflictError,
     DuplicateError,
@@ -29,6 +29,9 @@ class TypeService:
         except Exception as e:
             raise ValidationError(f"custom_fields 结构无效: {e}") from e
 
+    def _to_read(self, t: AssetType, ref_count: int = 0) -> TypeRead:
+        return TypeRead.model_validate(t).model_copy(update={"ref_count": ref_count})
+
     def count_refs(self, type_id: uuid.UUID) -> int:
         return self.repo.count_assets_by_type(type_id)
 
@@ -38,7 +41,7 @@ class TypeService:
         code_prefix: str,
         description: str | None = None,
         custom_fields: list | None = None,
-    ) -> AssetType:
+    ) -> TypeRead:
         normalized_prefix = (code_prefix or "").upper().strip()
         if not _PREFIX_RE.fullmatch(normalized_prefix):
             raise ValidationError(
@@ -63,19 +66,25 @@ class TypeService:
                 raise DuplicateError(f"code_prefix 已存在: {normalized_prefix}") from None
             raise DuplicateError(f"类型名称已存在: {name}") from None
         self.session.refresh(asset_type)
-        return asset_type
+        return self._to_read(asset_type, ref_count=0)
 
-    def get_type(self, type_id: uuid.UUID) -> AssetType:
+    def get_type(self, type_id: uuid.UUID) -> TypeRead:
+        t = self._get_orm(type_id)
+        return self._to_read(t, ref_count=self.count_refs(type_id))
+
+    def _get_orm(self, type_id: uuid.UUID) -> AssetType:
         t = self.repo.get(type_id)
         if t is None:
             raise NotFoundError(f"类型不存在: {type_id}")
         return t
 
-    def list_types(self) -> list[AssetType]:
-        return self.repo.list_all()
+    def list_types(self) -> list[TypeRead]:
+        types = self.repo.list_all()
+        counts = self.repo.count_assets_grouped_by_type()
+        return [self._to_read(t, ref_count=counts.get(t.id, 0)) for t in types]
 
     def delete_type(self, type_id: uuid.UUID) -> None:
-        t = self.get_type(type_id)  # 不存在抛 NotFoundError
+        t = self._get_orm(type_id)  # 不存在抛 NotFoundError
         ref_count = self.count_refs(type_id)
         if ref_count > 0:
             raise ConflictError(
@@ -90,7 +99,7 @@ class TypeService:
         name: str | None = None,
         description: str | None = None,
         custom_fields: list | None = None,
-    ) -> AssetType:
+    ) -> TypeRead:
         """部分更新 type。code_prefix immutable，故签名不接收。
 
         参数为 None 表示"未传"，对应字段不动；显式传值才更新。
@@ -101,7 +110,7 @@ class TypeService:
         清空 description 请传 ``""``。理由见 spec §4.2（M2c-4 design doc）：
         v1 不区分 null/未传，前端按需。
         """
-        t = self.get_type(type_id)  # 不存在抛 NotFoundError
+        t = self._get_orm(type_id)  # 不存在抛 NotFoundError
 
         changed = False
         if name is not None and name != t.name:
@@ -117,7 +126,7 @@ class TypeService:
                 changed = True
 
         if not changed:
-            return t  # 跳 commit 避免 updated_at 漂移
+            return self._to_read(t, ref_count=self.count_refs(type_id))  # 跳 commit 避免 updated_at 漂移
 
         t.updated_at = datetime.now(UTC)
         try:
@@ -125,6 +134,7 @@ class TypeService:
         except IntegrityError:
             self.session.rollback()
             raise DuplicateError(f"类型名称已存在: {name}") from None
-        # 必需：caller 持 session context，commit 后 expire；CLI 路径会在 session 关闭后访问 t 属性
+        # 必需：caller 持 session context，commit 后 expire
         self.session.refresh(t)
-        return t
+        # count_refs 在 commit 后调用避免 autoflush 把 dirty t 提前推送（触发 UNIQUE 冲突误报）
+        return self._to_read(t, ref_count=self.count_refs(type_id))
