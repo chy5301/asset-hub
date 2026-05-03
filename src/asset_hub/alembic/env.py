@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 from asset_hub.config import Settings
 
 # 显式导入所有模型，让 metadata 包含
-from asset_hub.models import asset, asset_type, attachment, checkout  # noqa: F401
+from asset_hub.models import asset, asset_type, attachment, state_transition  # noqa: F401
 
 config = context.config
 
