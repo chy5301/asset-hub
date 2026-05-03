@@ -30,7 +30,7 @@ export function TypesTable({ rows, onDelete }: Props) {
     () => [
       {
         accessorKey: 'name',
-        header: 'name',
+        header: '名称',
         cell: ({ row }) => (
           <Link
             to="/types/$id"
@@ -43,7 +43,7 @@ export function TypesTable({ rows, onDelete }: Props) {
       },
       {
         accessorKey: 'code_prefix',
-        header: 'code_prefix',
+        header: '代号前缀',
         cell: ({ row }) => (
           <span className="font-mono text-xs">{row.original.code_prefix}</span>
         ),

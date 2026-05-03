@@ -95,7 +95,8 @@ python .claude/skills/ui-ux-pro-max/scripts/search.py \
 | CTA / Accent | `#F59E0B`（amber-500） | 关键动作、重要标注 |
 | Background（light） | `#F8FAFC`（slate-50） | light 模式底色 |
 | Text（light） | `#1E3A8A`（navy-900） | light 主文本 |
-| Heading 字体 | Fira Code（Variable 优先） | 标题、`asset_code` 等编号字段 |
+| Heading 字体 | Fira Sans（与 Body 同字型） | 标题层级靠字号区分；M2 视觉收尾决议 ([2026-05-03 spec](../specs/2026-05-03-m2-visual-polish-design.md)) |
+| Mono 字段 | Fira Code | `asset_code` / `serial_number` / `code_prefix` / 时间戳 / 显式 `.font-code` 标记位置 |
 | Body 字体 | Fira Sans（Variable 优先） | 正文；中文 fallback：`"PingFang SC", "Microsoft YaHei UI", system-ui` |
 | 反模式（anti-patterns） | Ornate design、No filtering | 全局红线 |
 | 关键效果 | Hover tooltips、row highlighting、smooth filter animations | 本里程碑必做：row highlighting + filter 平滑过渡 |
@@ -165,8 +166,8 @@ Review 发现的偏差**回写** `design-system/asset-hub/MASTER.md` 或 page ov
 
 | 允许 / 禁止 | 字体 | 备注 |
 | --- | --- | --- |
-| **✓ 允许（主用）** | Fira Code（heading + mono） | 技术感、非通用、与 MASTER 一致 |
-| **✓ 允许（主用）** | Fira Sans（body） | 同上 |
+| **✓ 允许（主用）** | Fira Sans（heading + body） | 技术感、非通用、与 MASTER 一致；M2 视觉收尾决议 ([2026-05-03 spec](../specs/2026-05-03-m2-visual-polish-design.md)) 撤回 heading 走 Fira Code |
+| **✓ 允许（mono）** | Fira Code（asset_code / SN / code_prefix / 时间戳 / `.font-code`） | 仅用于编号/时间戳类 mono 字段 |
 | **✓ 允许（中文 fallback）** | PingFang SC、Microsoft YaHei UI | 有意选择而非 `system-ui` 兜底 |
 | **✗ 禁止** | Inter / Roboto / Arial / Helvetica / Open Sans / SF Pro / system-ui 作为主字体 | frontend-design skill 明令反通用字体 |
 | **✗ 禁止** | Space Grotesk / Geist / Satoshi 作为主字体 | 虽非 Arial 但已是 "AI 生成标配"——同样反通用 |

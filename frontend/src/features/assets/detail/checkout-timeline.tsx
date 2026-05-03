@@ -54,7 +54,7 @@ function Card({ checkout: c }: { checkout: CheckoutRead }) {
           ) : null}
         </p>
         {ongoing && (
-          <span className="shrink-0 rounded-sm bg-[var(--status-active,#16a34a)]/10 px-2 py-0.5 text-xs font-medium text-[var(--status-active,#16a34a)]">
+          <span className="shrink-0 rounded-sm bg-status-in-use px-2 py-0.5 text-xs font-medium text-status-in-use-fg">
             派发中
           </span>
         )}

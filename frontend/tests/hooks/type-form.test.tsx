@@ -31,8 +31,8 @@ describe('TypeForm', () => {
     );
     const onSuccess = vi.fn();
     render(<TypeForm mode="create" onSuccess={onSuccess} />, { wrapper });
-    await user.type(screen.getByLabelText(/name/i), '笔记本');
-    await user.type(screen.getByLabelText(/code_prefix/i), 'NB');
+    await user.type(screen.getByLabelText(/名称/), '笔记本');
+    await user.type(screen.getByLabelText(/代号前缀/), 'NB');
     await user.click(screen.getByRole('button', { name: /保存/ }));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect((body as { name: string }).name).toBe('笔记本');
@@ -72,7 +72,7 @@ describe('TypeForm', () => {
       />,
       { wrapper },
     );
-    const nameInput = screen.getByLabelText(/name/i);
+    const nameInput = screen.getByLabelText(/名称/);
     await user.clear(nameInput);
     await user.type(nameInput, 'New');
     await user.click(screen.getByRole('button', { name: /保存/ }));
@@ -89,8 +89,8 @@ describe('TypeForm', () => {
       ),
     );
     render(<TypeForm mode="create" onSuccess={() => {}} />, { wrapper });
-    await user.type(screen.getByLabelText(/name/i), 'X');
-    await user.type(screen.getByLabelText(/code_prefix/i), 'NB');
+    await user.type(screen.getByLabelText(/名称/), 'X');
+    await user.type(screen.getByLabelText(/代号前缀/), 'NB');
     await user.click(screen.getByRole('button', { name: /保存/ }));
     await waitFor(() =>
       expect(screen.getByText(/code_prefix 已存在/)).toBeInTheDocument(),

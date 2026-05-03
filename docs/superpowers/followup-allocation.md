@@ -61,6 +61,7 @@
 | **H4** `error.ts` `unwrap` 签名抽 `OpenapiFetchResult<T>` | simplify §3.H | 与 D1 同周期（受 openapi 客户端选型驱动） |
 | **§14.3** IDLE 资产显式 location 维护（独立"修改位置" action） | spec | M2d B2 已覆盖归还时 location；§14.3 残值缩小为"派发→归还之间的时段需独立修改位置 action" |
 | **§14.8** timeline 视觉重构（时间渐隐 + 派出类型染色 + 超长派发预警） | spec | 已登记"M3 与 14.1 联动" |
+| **simplify §7（M1/M3/M4）** M2 视觉收尾审计未选项 | M2 视觉审计 | TypesTable motion 决议 / 页面 h1 type scale / attachment transition prop fix；M3 启动时一并扫 |
 
 ---
 

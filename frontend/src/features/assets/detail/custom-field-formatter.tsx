@@ -35,7 +35,7 @@ export function formatCustomFieldValue(
       case "bool":
         return value ? (
           <Check
-            className="inline-block h-4 w-4 text-[var(--status-active,#16a34a)]"
+            className="inline-block h-4 w-4 text-status-in-use-fg"
             aria-label="是"
           />
         ) : (

@@ -11,6 +11,7 @@
 - [§4 M1 范围（2026-04-27 二轮）](#4-m1-范围2026-04-27二轮)
 - [§5 M2d 范围（2026-04-29）](#5-m2d-范围2026-04-29)
 - [§6 M2c-4 范围（2026-04-30）](#6-m2c-4-范围2026-04-30)
+- [§7 M2 视觉收尾审计未选项（2026-05-03）](#7-m2-视觉收尾审计未选项2026-05-03)
 
 ---
 
@@ -961,3 +962,52 @@ M2c-4 全部三个 PR 均已合并到 main：
 - **CLAUDE.md 合规**：清理多处 WHAT / task-reference 注释（builder/field-card/field-attribute-form/types-table/type_cmd/type-form）
 
 后续启动重构时按"触发条件"列对照即可，不必重新评估。
+
+---
+
+## §7 M2 视觉收尾审计未选项（2026-05-03）
+
+**视角**：frontend-design skill 对照 ui-ux-pro-max MASTER + spec §3.5 做的 M2 阶段全栈审计；本 PR（M2 视觉收尾，[2026-05-03 spec](./specs/2026-05-03-m2-visual-polish-design.md)）闭环了 H 类全部 + M2 SectionHeading，以下是当时记录暂不动的项。
+
+### M1 · TypesTable 未接 Motion 三时刻（stagger / tbody-fade）
+
+**位置**：`frontend/src/features/types/list/types-table.tsx:124`
+
+**现状**：资产表 `tbody key={bodyKey} className="tbody-fade"` + `<tr className="stagger-row" style={animationDelay}>`（assets-table.tsx:249-254），类型表 `<tbody>` 干净无 motion。
+
+**ROI**：低。类型 N≪资产 N（v1 类型预计 <20，资产 <500），stagger 对类型表几乎没视觉收益；不接亦不影响 spec §3.5.5 "三时刻"承诺（时刻 1 适用对象本就是"列表首屏"，types 列表首屏可独立判定）。
+
+**风险**：低。接入 5 行 diff，纯前端。
+
+**何时做**：M3 启动时，如类型管理也要做"首屏入场感"统一，再补；若 M3 决定"types 列表故意保持静态"，把决议写进 MASTER 实施期纠偏。
+
+---
+
+### M3 · 页面 H1 字号三档无 type scale token
+
+**位置**：
+- `features/assets/detail/asset-header.tsx:57` `text-2xl font-semibold`
+- `features/types/list/types-page.tsx:22` `text-xl font-semibold`
+- `features/types/detail/type-detail-page.tsx:39` `text-xl font-semibold`
+
+**现状**：每页 h1 字号各凭手感，无统一规则。
+
+**ROI**：中。固化 "列表/详情 h1 字号约定" 防新增页面再加第 4 档；改动 trivial（约 5 行）。
+
+**风险**：低。不动现有视觉效果（除非选定值与现有不一致）。
+
+**何时做**：M3 看板页 + 导出页加 h1 时一并约定，避免每加一页判一次。届时定 utility class（如 `.text-page-title`）或在 `globals.css` 加 type scale 节。
+
+---
+
+### M4 · `attachment-grid` `transition-shadow` 配错 prop 名
+
+**位置**：`frontend/src/features/assets/detail/attachment-grid.tsx:54`
+
+**现状**：`className="... transition-shadow hover:ring-2 hover:ring-primary/40"`。`transition-shadow` 监听 `box-shadow`；hover 用的是 `ring-*`（在浏览器底层是 box-shadow 实现），所以"凑巧能用"，但语义错。
+
+**ROI**：极低。1 行修改；视觉无变化（只是 transition 触发更精准）。
+
+**风险**：极低（trivial）。
+
+**何时做**：M3 任意触碰附件 grid 时顺手吃掉；不值得单独 PR。

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Inbox, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/feedback/empty-state';
 import { ErrorState } from '@/components/feedback/error-state';
 import { useAssetTypesQuery } from '@/api/hooks/types';
 import { TypesTable } from './types-table';
@@ -35,13 +36,15 @@ export function TypesPage() {
       {q.isLoading && <TypesTableSkeleton />}
       {q.isError && <ErrorState error={q.error} onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <Inbox className="h-10 w-10" />
-          <p>还没有类型</p>
-          <Button asChild>
-            <Link to="/types/new">创建第一个类型</Link>
-          </Button>
-        </div>
+        <EmptyState
+          title="还没有类型"
+          description="先创建一个类型，再为该类型登记资产"
+          action={
+            <Button asChild>
+              <Link to="/types/new">创建第一个类型</Link>
+            </Button>
+          }
+        />
       )}
       {q.data && q.data.length > 0 && (
         <TypesTable rows={q.data} onDelete={setDeletingType} />

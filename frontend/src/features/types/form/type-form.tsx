@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { SectionCaption } from '@/components/ui/section-heading';
 import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
 import { useCreateTypeMutation, useUpdateTypeMutation } from '@/api/hooks/types';
 import { toFriendlyMessage, isHttpError } from '@/lib/error';
@@ -129,16 +130,14 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           )}
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
-              基本信息
-            </h2>
+            <SectionCaption>基本信息</SectionCaption>
 
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>name *</FormLabel>
+                  <FormLabel>名称 *</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="如：笔记本" />
                   </FormControl>
@@ -153,7 +152,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
                 name={'code_prefix' as never}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>code_prefix *</FormLabel>
+                    <FormLabel>代号前缀 *</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="2-4 大写字母" className="font-mono" />
                     </FormControl>
@@ -163,7 +162,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               />
             ) : (
               <div>
-                <Label htmlFor="code_prefix-readonly">code_prefix</Label>
+                <Label htmlFor="code_prefix-readonly">代号前缀</Label>
                 <Input
                   id="code_prefix-readonly"
                   value={initial?.code_prefix ?? ''}
@@ -179,7 +178,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>description</FormLabel>
+                  <FormLabel>描述</FormLabel>
                   <FormControl>
                     <Textarea {...field} value={field.value ?? ''} rows={2} />
                   </FormControl>
@@ -190,9 +189,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground border-b pb-1.5">
-              自定义字段
-            </h2>
+            <SectionCaption>自定义字段</SectionCaption>
             <CustomFieldsBuilder
               control={form.control}
               setValue={form.setValue}
