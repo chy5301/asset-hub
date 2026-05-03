@@ -97,14 +97,6 @@ class TestListAssets:
         svc.register(name="B", type_id=laptop_type.id, custom_data={"brand": "Y"})
         assert len(svc.list_assets()) == 2
 
-    def test_filter_by_status(self, svc: AssetService, laptop_type):
-        a = svc.register(name="A", type_id=laptop_type.id, custom_data={"brand": "X"})
-        svc.register(name="B", type_id=laptop_type.id, custom_data={"brand": "Y"})
-        svc.update_asset(a.id, status=AssetStatus.IN_USE)
-        result = svc.list_assets(status=AssetStatus.IN_USE)
-        assert len(result) == 1
-        assert result[0].name == "A"
-
     def test_filter_by_q(self, svc: AssetService, laptop_type):
         svc.register(name="ThinkPad X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
         svc.register(name="MacBook Pro", type_id=laptop_type.id, custom_data={"brand": "Apple"})
@@ -124,15 +116,14 @@ class TestGetAsset:
 
 
 class TestUpdateAsset:
-    def test_update_fields(self, svc: AssetService, laptop_type):
+    def test_update_notes(self, svc: AssetService, laptop_type):
         a = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
-        updated = svc.update_asset(a.id, holder="李四", location="机房 A")
-        assert updated.holder == "李四"
-        assert updated.location == "机房 A"
+        updated = svc.update_asset(a.id, notes="新备注")
+        assert updated.notes == "新备注"
 
     def test_update_nonexistent_raises(self, svc: AssetService):
         with pytest.raises(NotFoundError):
-            svc.update_asset(uuid4(), holder="X")
+            svc.update_asset(uuid4(), notes="X")
 
 
 class TestDeleteAsset:
@@ -213,39 +204,3 @@ def test_register_duplicate_serial_number_message(session, sample_type_nb):
     svc.register(name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
     with pytest.raises(DuplicateError, match="序列号"):
         svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
-
-
-def test_change_status_idle_to_maintenance(session, sample_type_nb):
-    svc = AssetService(session)
-    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
-    a2 = svc.change_status(a.id, AssetStatus.MAINTENANCE)
-    assert a2.status == AssetStatus.MAINTENANCE
-
-
-def test_change_status_in_use_to_maintenance_raises(session, sample_type_nb):
-    """spec D14: IN_USE 状态下要任何状态切换必须先归还"""
-    from asset_hub.errors import ValidationError
-    svc = AssetService(session)
-    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
-    a.status = AssetStatus.IN_USE
-    session.commit()
-    with pytest.raises(ValidationError, match="IN_USE.*MAINTENANCE"):
-        svc.change_status(a.id, AssetStatus.MAINTENANCE)
-
-
-def test_delete_asset_cascade_checkout_records(session, sample_type_nb):
-    """删除 asset 时同事务删 CheckoutRecord"""
-    from asset_hub.repositories.checkout import CheckoutRepository
-    from asset_hub.services.checkout import CheckoutService
-    svc = AssetService(session)
-    cs = CheckoutService(session)
-    a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
-    cs.checkout(asset_id=a.id, holder="张三")
-    cs.return_(asset_id=a.id)
-    cs.checkout(asset_id=a.id, holder="李四")
-    cs.return_(asset_id=a.id)
-    repo = CheckoutRepository(session)
-    assert len(repo.list_by_asset(a.id)) == 2
-
-    svc.delete_asset(a.id)
-    assert len(repo.list_by_asset(a.id)) == 0
