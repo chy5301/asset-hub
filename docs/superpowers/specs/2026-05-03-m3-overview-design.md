@@ -45,11 +45,18 @@ M2 已完成全部 7 个子里程碑（M2a → M2b → M2c-1 → M2c-2 → M2c-3
 
 | status | 中文文案 | 含义 | 可派发 | 可 REINSTATE | 列表默认显示 |
 |---|---|---|---|---|---|
-| `IDLE` | 在库 | 在库可派发 | ✓ | — | ✓ |
-| `IN_USE` | 派发中 | 已派出（kind 区分组内/对外） | ✗ | — | ✓ |
+| `IDLE` | 闲置 | 在库可派发 | ✓ | — | ✓ |
+| `IN_USE` | 在用 | 已派出（kind 区分组内/对外） | ✗ | — | ✓ |
 | `MAINTENANCE` | 维修中 | 维修中，不可派发 | ✗ | — | ✓ |
 | `RETIRED` | 已退役 | 暂时退役（备件 / 转借 / 暂停服役，可复活） | ✗ | ✓ | ✗（toggle 显示） |
 | `DISPOSED` | 已处置 | 彻底处置（卖 / 捐 / 销毁，终态） | ✗ | ✗ | ✗（toggle 显示） |
+
+**M3a 子 spec 修订（2026-05-03）**：5 态文案最终为 IDLE→闲置 / IN_USE→在用 / MAINTENANCE→维修中 / RETIRED→已退役 / DISPOSED→已处置。修订理由：
+- IDLE "在库" → "闲置"——v1 资产位置有家/办公室/仓库多种，"在库"暗示物理仓库；"闲置"中性表达"未投入使用"
+- IN_USE "派发中" → "在用"——"派发中"过于偏向派发动作，忽略 CHECKOUT_EXTERNAL（出借）；"在用" 中性，覆盖派发+出借+任何使用场景
+- MAINTENANCE "维修中"（未变）
+- RETIRED "已退役"（未变）
+- DISPOSED "已处置"（未变）
 
 **主 spec §14 顶部 ⚠️ 文案约定修订**：
 - `RETIRED` 中文文案 → **"已退役"**
@@ -85,6 +92,7 @@ M2 已完成全部 7 个子里程碑（M2a → M2b → M2c-1 → M2c-2 → M2c-3
 - **IN_USE 期间 holder/location 变更算独立 transition**（TRANSFER_HOLDER）—— Q4=A
 - **RELOCATE 走 StateTransitionRecord 单表**（不另开 LocationChangeRecord 表）—— Q5=A
 - **holder 字段在所有非终态都可有值**（Q1=C）：IDLE 仓管 / IN_USE 派发对象 / MAINTENANCE 维修联系人 / RETIRED 备件库管理员 / DISPOSED 无
+- **M3a 子 spec 修订（2026-05-03）**：RETURN 后 `asset.holder = to_holder`（不再清空）—— `to_holder` NULL 表示无人值守仓库；非 NULL 表示归还接收人 / 仓管，他成为新 holder。修订 M2d `CheckoutService.return_()` 强制清 holder 行为，对齐 Q1=C 决议。
 - **MAINTENANCE 在 RELOCATE / TRANSFER_HOLDER 合法 from 内**（Q2=是）：维修台搬迁 / 维修联系人变更是真实场景；禁止会逼用户走假动作污染 timeline
 
 ### 2.3 数据模型：StateTransitionRecord（激进合并方案）
@@ -109,58 +117,65 @@ class StateTransitionRecord(SQLModel, table=True):
     id: UUID = Field(primary_key=True)
     asset_id: UUID = Field(foreign_key="asset.id")
     kind: TransitionKind
-    from_status: AssetStatus | None
-    to_status: AssetStatus | None
+    from_status: AssetStatus       # M3a 修订：NOT NULL（按状态机定义反推）
+    to_status: AssetStatus         # 同上
     from_holder: str | None
     to_holder: str | None
     from_location: str | None
     to_location: str | None
     note: str | None
-    actor: str | None
     created_at: datetime
     # 派发/归还专用扩展字段
     due_at: datetime | None              # 仅 CHECKOUT_* 用：期望归还时间
     closes_transition_id: UUID | None    # 仅 RETURN 用：本次归还关闭的 CHECKOUT_* 行 id
 ```
 
+**M3a 子 spec 修订（2026-05-03）**：
+
+- **删除 `actor: str | None` 字段**——YAGNI。v1 单用户场景无来源区分需求；M5 People 实体化时再加（届时为 FK to Person，字符串字段反正要被替换）
+- `from_status` / `to_status` 改 NOT NULL（M3a 后所有新行都有值；旧 CheckoutRecord 不迁移）
+
 **理由**：
 1. asset-hub 不是高并发 OLTP，宽表 NULL 字段开销可忽略
 2. timeline 是核心 UX（详情页主区），单表 query 实现/优化最简单
 3. service 层只暴露 `record_transition(kind, ...)` 一个接口，避免双层防御争议（直接闭环 simplify C1）
-4. M2a/M2d 已落的 `return_location` / `return_receiver` 字段映射到 `to_location` / `to_holder`，零语义损失
-5. alembic migration 一次性把 checkout_record → state_transition_record 数据搬过来 + drop checkout_record，运维一次性
+4. **M3a 子 spec 修订（2026-05-03）**：旧"M2a/M2d 已落 `return_location` / `return_receiver` 字段映射到 `to_location` / `to_holder`，零语义损失"段作废——M3a 不迁移历史测试数据，PR-1 合并前用户手动清空 db；migration 仅 schema 变更，旧字段映射承诺不再适用。
+5. **M3a 子 spec 修订（2026-05-03）**：旧"alembic migration 一次性把 checkout_record → state_transition_record 数据搬过来"段作废——M3a 不做数据迁移，migration 仅 schema 变更（add `DISPOSED` enum / create `state_transition_records` / drop `checkout_records` / drop `Asset.current_checkout_id`），PR-1 合并前手动清空测试数据库重建。
 
-**Service 层签名**（M3a 子 spec 细化）：
+**Service 层签名**（M3a 子 spec 已细化，签名见 [`2026-05-03-m3a-state-machine-design.md`](./2026-05-03-m3a-state-machine-design.md) §3.1）：
 
 ```python
 def record_transition(
     asset_id: UUID,
     kind: TransitionKind,
     *,
-    to_holder: str | None = _Unset,
-    to_location: str | None = _Unset,
+    to_holder: str | None = None,
+    to_location: str | None = None,
     note: str | None = None,
-    actor: str | None = None,
     due_at: datetime | None = None,  # 仅 CHECKOUT_* 用
 ) -> StateTransitionRecord: ...
 ```
 
-**状态机校验层**（合法 from/to 矩阵）：service 层内的纯函数 `validate_transition(current_status, kind, to_holder, to_location)`，按 §2.2 表强制校验，违法抛 `IllegalTransitionError` → router 422。
+**M3a 子 spec 修订（2026-05-03）**：删除 `actor` 参数（model 字段已删）。
+
+**状态机校验层**（合法 from/to 矩阵）：service 层内的纯函数 `validate_transition(current_status, kind, to_holder, to_location)`，按 §2.2 表强制校验，违法抛 `IllegalTransitionError` → **router 409 Conflict**（M3a 子 spec 修订：从原 422 改 409，与 ConflictError 同语义类；详见 M3a spec §2.7）。
 
 ## 3. 子里程碑边界承诺
 
 ### M3a · 状态机基建
 
-**包**：
-- alembic migration（一次性，render_as_batch=True 给 SQLite）：
+**包**（M3a 子 spec 修订（2026-05-03）：详见 [`2026-05-03-m3a-state-machine-design.md`](./2026-05-03-m3a-state-machine-design.md) §1.1；此处仅保留摘要）：
+- alembic schema migration（**仅 schema 变更，不迁移测试数据**；PR-1 合并前用户手动清空 db）：
   1. `Asset.status` enum 加 `DISPOSED`（5 态）
-  2. 建 `state_transition_record` 表
-  3. 数据搬迁：现有 CheckoutRecord 行转换为 StateTransitionRecord（OPEN → 1 条 `CHECKOUT_INTERNAL`，CLOSED → 1 条 `CHECKOUT_INTERNAL` + 1 条 `RETURN`，kind 默认 internal）；PATCH `status` 历史无 audit 不补造
-  4. 保留旧 `checkout_record` 表 1 个 release 周期作回滚兜底，**M3b 启动前删表**（独立小 migration）
+  2. 建 `state_transition_records` 表
+  3. drop 旧 `checkout_records` 表（PR-1 同 migration 直接删除，不留 1 release 兜底）
+  4. drop `Asset.current_checkout_id` 字段（不再反规范化）
 - StateTransitionRecord 模型 + service `record_transition()` + 状态机校验层（simplify C1 双层防御统一在此层）
 - 后端 API 改造：废 `POST /api/assets/{id}/checkout` / `/return` / 散点 PATCH status，统一为 `POST /api/assets/{id}/transitions { kind, ... }`（**不向后兼容**——见 §4.2）
 - CLI 改造：9 个新子命令覆盖 10 个 transition kind（`asset checkout --kind internal|external` 合并 CHECKOUT_INTERNAL/EXTERNAL；其余 `asset return / send-to-maintenance / recover / retire / reinstate / dispose / relocate / transfer-holder` 各对一个 kind）
-- 前端改造：所有 dialog（CheckoutDialog / ReturnDialog / 详情页 ⋯ 菜单）切到新 transitions 端点；列表默认 filter out RETIRED/DISPOSED + 两个 toggle
+- 前端改造：7 个 dialog 组件（6 独立 + 1 SimpleTransitionDialog 共用，按 status token 染色 + AlertDialog/Dialog 按可逆性区分）+ 列表 2 个 status-token Toggle chip（替代普通 checkbox） + 新增 `--status-disposed` OKLCH token pair
+- 5 态文案修订（在用 / 闲置 / 维修中 / 已退役 / 已处置）；frontend `status-labels.ts` 同步
+- **M3a PR-1 修订 RETURN 后 asset.holder/location 行为**：跟随 to_holder/to_location，不强制清空（修订 M2d `CheckoutService.return_()` 行为）
 - timeline 视觉**沿用 M2c-2 当前形态**（仅 transition 类型扩展，不做 §14.8 重构）
 
 **不包**：§14.8 timeline 视觉重构（→ M3d）；§14.4 People 实体化（→ M5）；看板 / 导出 / SKILL.md；ARCHIVED 状态（已被 RETIRED+DISPOSED 二分覆盖）
@@ -210,11 +225,13 @@ def record_transition(
 
 ### 4.1 数据迁移与回滚
 
-- **M3a alembic migration**（见 §3 M3a）一次性完成 schema 变更 + 数据搬迁
-- **回滚策略**：
-  - M3a 合并后若发现严重问题 → rollback migration（DISPOSED → RETIRED 反向 + drop state_transition_record）+ revert PR；checkout_record 表未删可继续走旧路径
-  - M3a 合并后 M3b/c/d/e 期间发现 M3a 缺陷 → forward-fix（已超出回滚窗口）；checkout_record 表已在 M3b 启动前删
-  - 单子里程碑（M3b/c/d/e）合并后发现问题 → 单 PR revert 即可
+**M3a 子 spec 修订（2026-05-03）**：原"一次性完成 schema 变更 + 数据搬迁 + 1 release 兜底回滚"段作废，整段重写为：
+
+- PR-1 合并前手动清空测试数据（`rm data/asset_hub.db` + 清空 attachments）
+- alembic migration 仅 schema 变更（add `DISPOSED` enum / create `state_transition_records` / drop `checkout_records` / drop `Asset.current_checkout_id`）
+- alembic downgrade 自动反向，但 db 已清空，无现实回滚意义
+- M3a PR-1 即终局，**不留 1 release 兜底**
+- 单子里程碑（M3b/c/d/e）合并后发现问题 → 单 PR revert 即可
 
 ### 4.2 API 演进策略
 
@@ -255,14 +272,17 @@ def record_transition(
 
 | # | 风险 | 等级 | 缓解 |
 |---|---|---|---|
-| R1 | M3a 数据迁移破坏现有 checkout 历史（搬迁逻辑出错） | 高 | 迁移脚本写 unit test 覆盖所有边界（OPEN / CLOSED / 带 return_location / note）；保留旧 checkout_record 表 1 release 周期作回滚兜底；migration 用 batch mode |
-| R2 | M3a 范围过大（5 态 + 10 transition + service 改造 + API 改造 + CLI 9 子命令 + 前端 dialog 改造） | 高 | M3a 子 spec brainstorm 时再拆 phase（建议：phase 1 数据模型 + migration → phase 2 service + state machine → phase 3 API + CLI → phase 4 前端 dialog）；每个 phase 独立 PR |
+| ~~R1~~ | ~~M3a 数据迁移破坏现有 checkout 历史~~ | ~~高~~ | **M3a 子 spec 决议不迁移测试数据；风险消失。整行作废。** |
+| R2 | M3a 范围过大（5 态 + 10 transition + service 改造 + API 改造 + CLI 9 子命令 + 前端 dialog 改造） | 高 | **M3a 子 spec 决议**：拆 PR-1（后端契约 + schema migration）+ PR-2（前端切换 + UX）；PR-1 内顺序 phase 1（migration + model）→ phase 2（service + state machine）→ phase 3（API + CLI），单 PR 内分阶段 commit 但不分 PR |
 | R3 | API 不向后兼容破坏外部消费者 | 低 | v1 GA 前 CLI/Web 是单仓库内全控；SKILL.md 尚未发布；外部 Agent 消费的就是仓库内 CLI |
 | R4 | M3b 看板技术栈选型失误（Tremor 维护节奏 / shadcn-ui chart 不成熟） | 中 | M3b 子 spec brainstorm 时对比；主 spec §13 已登记"Tremor 若推出 Radix/shadcn 原生版本可再评估" |
 | R5 | M3e playwright e2e 跨子里程碑场景脚本维护成本 | 中 | 场景控制在 5-8 个核心流（覆盖 happy path 即可），不追求完整覆盖（覆盖率靠 unit/api/cli 测试） |
 | R6 | K1 envelope 统一改动面隐性扩散（CLI consumer 比预期多） | 低 | M3e SKILL.md 同 PR 时全仓库 grep envelope 字段名（serve.\*\.json / asset \*.json）确认 consumer 边界 |
 | R7 | M3 总周期过长（5 子里程碑串行） | 中 | 子里程碑独立 PR 独立合 main，每个收尾后即可发版；不强求"全部完成才算 v1.0"——v1.0 GA 在 M3e 完成时打 tag |
 | R8 | 状态机模型 RELOCATE/TRANSFER_HOLDER 高频暴露语义边界 case | 低 | M3a 实施期通过单测覆盖各 from-status 组合；UX 边界（菜单显隐）M3d 视觉重构时再调 |
+| R9 | **M3a 子 spec 新增**：5 态文案修订（在用/闲置/维修中/已退役/已处置）破坏现有 UI 视觉一致性 | 低 | M2 视觉收尾后 status-labels.ts 是单一 SoT，修订时 grep 全前端确保无硬编码"派发中"等字面量 |
+| R10 | **M3a 子 spec 新增**：shadcn Toggle 组件未装 / 装时引入 next-themes 残留 | 低 | PR-2 实施期检查（grep `frontend/src/components/ui/toggle.tsx`；如新引入按 M2c-3 §3 4 项审查清单走） |
+| R11 | **M3a 子 spec 新增**：DISPOSED 终态无回滚导致用户误处置 | 低 | DisposeAlertDialog 输入"处置"字符串解锁按钮 + state machine 强制 from RETIRED/MAINTENANCE（IDLE 不可直 DISPOSE） |
 
 ### 5.2 不缓解的已知风险
 
@@ -273,7 +293,7 @@ def record_transition(
 ## 6. 后续工作
 
 - 本文是 M3 总览；各子里程碑独立 brainstorm + spec：
-  - `2026-XX-XX-m3a-state-machine-design.md`（下一步）
+  - [`2026-05-03-m3a-state-machine-design.md`](./2026-05-03-m3a-state-machine-design.md) ✅ **已写入（2026-05-03）**
   - `2026-XX-XX-m3b-dashboard-design.md`
   - `2026-XX-XX-m3c-export-design.md`
   - `2026-XX-XX-m3d-timeline-visual-design.md`
@@ -301,3 +321,20 @@ def record_transition(
 | People 实体化提前到 M3a？ | B | 坚持 M5 |
 | M3e 测试基建口径 | D | playwright e2e 烟测脚本 + 补齐薄弱点 |
 | DISPOSE 合法 from | C | RETIRED / MAINTENANCE → DISPOSED（IDLE 必先 RETIRE） |
+
+**M3a 子 spec 追加（2026-05-03）**：
+
+| 决策点 | 选择 | 备注 |
+|---|---|---|
+| M3a 数据迁移策略 | 不迁移 | 测试数据可清空重建；migration 仅 schema 变更 |
+| StateTransitionRecord 是否含 actor 字段 | 否 | YAGNI；v1 单用户无来源区分需求；M5 People 实体化时再加 |
+| RETURN 后 asset.holder 行为 | 跟随 to_holder | 修订 M2d 行为；NULL 表示无人值守仓库 |
+| IllegalTransitionError HTTP 映射 | 409 Conflict | 与 ConflictError 同语义类；闭环 simplify C1 |
+| 5 态中文文案 | 闲置/在用/维修中/已退役/已处置 | 修订 frontend 现有"在用/闲置/维护/退役"漂移 |
+| M3a PR 拆分 | 2 PR | PR-1 后端契约 + schema migration；PR-2 前端切换 + UX |
+| transition kind 中文 label | 派发/出借/归还/送修/维修完成/退役/重新启用/处置/变更位置/变更保管人 | 简洁 + 风格统一 |
+| API 请求 body 形态 | 单一 body shape | service 层 SoT 校验；不用 discriminated union |
+| API 响应 body 形态 | 仅 transition row | 与项目现有 mutation pattern 一致；TanStack Query 原生范式 |
+| dialog 数量与拆分 | 7 个组件（6 独立 + 1 共用） | 各自视觉差异化；A3 useFormDialog 推迟 M4 |
+| 列表 toggle UX | Toggle chip with status token | 非普通 checkbox |
+| timeline 新 kind 视觉 | 最简文案 + 显式 icon×token 表 | §14.8 高级视觉留 M3d |
