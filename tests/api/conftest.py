@@ -44,3 +44,46 @@ def sample_type_nb_via_api(client):
     })
     assert resp.status_code == 201
     return resp.json()["id"]
+
+
+@pytest.fixture
+def idle_asset(client, sample_type_nb_via_api):
+    """创建一个 IDLE 状态资产，返回 dict 含 id（其他字段也可能用到）。"""
+    resp = client.post(
+        "/api/assets",
+        json={
+            "name": "测试笔记本",
+            "type_id": sample_type_nb_via_api,
+            "custom_data": {},
+        },
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
+def retired_asset(client, sample_type_nb_via_api):
+    resp = client.post(
+        "/api/assets",
+        json={"name": "已退役", "type_id": sample_type_nb_via_api, "custom_data": {}},
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+    r = client.post(f"/api/assets/{aid}/transitions", json={"kind": "RETIRE"})
+    assert r.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
+def disposed_asset(client, sample_type_nb_via_api):
+    resp = client.post(
+        "/api/assets",
+        json={"name": "已处置", "type_id": sample_type_nb_via_api, "custom_data": {}},
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+    r1 = client.post(f"/api/assets/{aid}/transitions", json={"kind": "RETIRE"})
+    assert r1.status_code == 201
+    r2 = client.post(f"/api/assets/{aid}/transitions", json={"kind": "DISPOSE"})
+    assert r2.status_code == 201
+    return resp.json()

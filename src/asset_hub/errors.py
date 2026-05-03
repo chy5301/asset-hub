@@ -30,3 +30,7 @@ class ConflictError(AssetHubError):
     ConflictError 是跨对象引用关系不允许。"""
 
     pass
+
+
+class IllegalTransitionError(AssetHubError):
+    """状态机拒绝当前 transition。映射 HTTP 409 Conflict。"""

@@ -27,12 +27,23 @@ class AssetRepository:
         status: AssetStatus | None = None,
         holder: str | None = None,
         q: str | None = None,
+        include_retired: bool = False,
+        include_disposed: bool = False,
     ) -> list[Asset]:
         stmt = select(Asset)
         if type_id is not None:
             stmt = stmt.where(Asset.type_id == type_id)
         if status is not None:
             stmt = stmt.where(Asset.status == status)
+        else:
+            # 默认隐藏 RETIRED / DISPOSED，按 toggle 决定是否包含
+            excluded = []
+            if not include_retired:
+                excluded.append(AssetStatus.RETIRED)
+            if not include_disposed:
+                excluded.append(AssetStatus.DISPOSED)
+            if excluded:
+                stmt = stmt.where(Asset.status.notin_(excluded))
         if holder is not None:
             stmt = stmt.where(Asset.holder == holder)
         if q is not None:
@@ -40,8 +51,8 @@ class AssetRepository:
                 Asset.name.contains(q)
                 | Asset.serial_number.contains(q)
                 | Asset.notes.contains(q)
-                | Asset.asset_code.contains(q)  # 新：编号也参与全文搜索
+                | Asset.asset_code.contains(q)
             )
-        # 默认按 asset_code 升序——配合前端列表默认 sort
+        # 默认按 asset_code 升序
         stmt = stmt.order_by(Asset.asset_code.asc())
         return list(self.session.exec(stmt).all())
