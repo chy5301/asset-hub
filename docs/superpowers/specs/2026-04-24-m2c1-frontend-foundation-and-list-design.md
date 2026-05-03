@@ -166,8 +166,8 @@ Review 发现的偏差**回写** `design-system/asset-hub/MASTER.md` 或 page ov
 
 | 允许 / 禁止 | 字体 | 备注 |
 | --- | --- | --- |
-| **✓ 允许（主用）** | Fira Code（heading + mono） | 技术感、非通用、与 MASTER 一致 |
-| **✓ 允许（主用）** | Fira Sans（body） | 同上 |
+| **✓ 允许（主用）** | Fira Sans（heading + body） | 技术感、非通用、与 MASTER 一致；M2 视觉收尾决议 ([2026-05-03 spec](../specs/2026-05-03-m2-visual-polish-design.md)) 撤回 heading 走 Fira Code |
+| **✓ 允许（mono）** | Fira Code（asset_code / SN / code_prefix / 时间戳 / `.font-code`） | 仅用于编号/时间戳类 mono 字段 |
 | **✓ 允许（中文 fallback）** | PingFang SC、Microsoft YaHei UI | 有意选择而非 `system-ui` 兜底 |
 | **✗ 禁止** | Inter / Roboto / Arial / Helvetica / Open Sans / SF Pro / system-ui 作为主字体 | frontend-design skill 明令反通用字体 |
 | **✗ 禁止** | Space Grotesk / Geist / Satoshi 作为主字体 | 虽非 Arial 但已是 "AI 生成标配"——同样反通用 |
