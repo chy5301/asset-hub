@@ -5,7 +5,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 
-from asset_hub.api.routers import assets, attachments, checkouts, health, types
+from asset_hub.api.routers import (
+    assets,
+    attachments,
+    checkouts,
+    health,
+    transitions,
+    types,
+)
 from asset_hub.errors import (
     AssetHubError,
     ConflictError,
@@ -39,6 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="asset-hub", version="0.1.0")
     app.include_router(types.router, prefix="/api/types", tags=["types"])
     app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
+    app.include_router(transitions.router, prefix="/api/assets", tags=["transitions"])
     app.include_router(checkouts.router, prefix="/api/assets", tags=["checkouts"])
     app.include_router(attachments.router, prefix="/api", tags=["attachments"])
     app.include_router(health.router, prefix="/api", tags=["health"])

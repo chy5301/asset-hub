@@ -40,8 +40,17 @@ def list_assets(
     status: AssetStatus | None = None,
     holder: str | None = None,
     q: str | None = None,
+    include_retired: bool = False,
+    include_disposed: bool = False,
 ):
-    return svc.list_assets(type_id=type_id, status=status, holder=holder, q=q)
+    return svc.list_assets(
+        type_id=type_id,
+        status=status,
+        holder=holder,
+        q=q,
+        include_retired=include_retired,
+        include_disposed=include_disposed,
+    )
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
@@ -58,9 +67,9 @@ def update_asset(
     body: AssetUpdate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    """整合编辑 + 状态切换。
+    """更新资产非状态字段（name/serial_number/notes/custom_data/acquired_at）。
 
-    status 字段由 service 层 state_machine 校验合法性，非法转换抛 ValidationError → 422。
+    状态、holder、location 走 POST /api/assets/{id}/transitions。
     """
     return svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
 
@@ -70,6 +79,6 @@ def delete_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    """删除资产 cascade（CheckoutRecord + Attachment FS+DB）。"""
+    """删除资产 cascade（StateTransitionRecord + Attachment FS+DB）。"""
     svc.delete_asset(asset_id)
     return Response(status_code=204)

@@ -20,13 +20,14 @@ class AssetCreate(BaseModel):
 
 
 class AssetUpdate(BaseModel):
-    """注意：type_id 不暴露——D9 编辑表单禁改 type；asset_code 也不暴露（系统生成、不允许手改）。"""
+    """注意：
+    - type_id 不暴露——D9 编辑表单禁改 type；
+    - asset_code 不暴露——系统生成、不允许手改；
+    - status/holder/location 不暴露——M3a 后必须走 POST /api/assets/{id}/transitions，经 state machine 校验。
+    """
 
     name: str | None = None
     serial_number: str | None = None
-    status: AssetStatus | None = None
-    holder: str | None = None
-    location: str | None = None
     notes: str | None = None
     custom_data: dict | None = None
     acquired_at: date | None = None  # 新
@@ -47,6 +48,5 @@ class AssetRead(BaseModel):
     notes: str | None
     custom_data: dict
     acquired_at: date | None  # 新
-    current_checkout_id: UUID | None  # 新；§K 反规范化
     created_at: datetime
     updated_at: datetime
