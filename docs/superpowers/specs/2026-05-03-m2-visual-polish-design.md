@@ -51,7 +51,7 @@
 **实施动作**：
 
 1. `frontend/src/styles/globals.css` 删除 `--font-heading` token（与 `--font-sans` 重复，无消费方）
-2. `docs/superpowers/specs/2026-04-15-asset-hub-design.md` §3.5 修订 "Heading 字体" 条目：从 "Heading: Fira Code" 改为 "正文与标题: Fira Sans；Fira Code 仅用于 mono 字段（asset_code / SN / code_prefix / 时间戳 / 显式 `.font-code` 标记位置）"
+2. `docs/superpowers/specs/2026-04-24-m2c1-frontend-foundation-and-list-design.md` §3.5.3 字体合规节修订 "Heading 字体" 条目（行 98）：从 "Heading 字体 | Fira Code（Variable 优先） | 标题、asset_code 等编号字段" 改为 "Heading 字体 | Fira Sans（与 Body 同字型） | 标题层级靠字号区分；Fira Code 仅用于 mono 字段（asset_code / SN / code_prefix / 时间戳 / 显式 `.font-code` 标记位置）"
 3. `design-system/asset-hub/MASTER.md` §Typography "Heading Font" 同步改为 Fira Sans，加注 "原 Fira Code 决议见 2026-05-03 视觉收尾纠偏"
 4. AppLayout brand "小组资产管理工具" 不切 Fira Code（D 路径不引入 utility）
 
