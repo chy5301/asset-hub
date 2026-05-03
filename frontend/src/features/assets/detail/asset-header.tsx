@@ -1,5 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
+import { useState } from "react";
+
+import type { components } from "@/api/generated/schema";
+import { StatusBadge } from "@/components/status/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,36 +18,28 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatDateTime } from "@/lib/date";
-import { StatusBadge } from "@/components/status/status-badge";
-import type { components } from "@/api/generated/schema";
-import { CHECKOUT_VERB, RETURN_VERB } from "./checkout-actions";
+
 import {
-  STATE_CHANGE_ACTIONS,
-  availableStateChanges,
-  type StateChangeKey,
-} from "./state-change-actions";
+  MENU_ACTIONS,
+  PRIMARY_ACTION,
+  type MenuAction,
+} from "./available-transitions";
+import { CheckoutDialog } from "./checkout-dialog";
+import { DisposeAlertDialog } from "./dispose-alert-dialog";
+import { RelocateDialog } from "./relocate-dialog";
+import { RetireAlertDialog } from "./retire-alert-dialog";
+import { ReturnDialog } from "./return-dialog";
+import { SimpleTransitionDialog } from "./simple-transition-dialog";
+import { TransferHolderDialog } from "./transfer-holder-dialog";
 
 type AssetRead = components["schemas"]["AssetRead"];
-type CheckoutRead = components["schemas"]["CheckoutRead"];
 
 interface AssetHeaderProps {
   asset: AssetRead;
-  currentCheckout: CheckoutRead | null;
-  onCheckout: () => void;
-  onReturn: () => void;
-  onChangeStatus: (key: StateChangeKey) => void;
   onDelete: () => void;
 }
 
-export function AssetHeader({
-  asset,
-  currentCheckout,
-  onCheckout,
-  onReturn,
-  onChangeStatus,
-  onDelete,
-}: AssetHeaderProps) {
+export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
   return (
     <header className="flex items-start justify-between gap-4">
       <div className="space-y-1">
@@ -65,83 +61,93 @@ export function AssetHeader({
           </span>
           <StatusBadge status={asset.status} />
         </div>
-        {asset.status === "IN_USE" && currentCheckout && (
+        {asset.holder && (
           <p className="text-sm text-muted-foreground">
-            当前派发给 ·{" "}
-            <span className="text-foreground">{currentCheckout.holder}</span>
-            {currentCheckout.location ? <> · {currentCheckout.location}</> : null}
-            {" · 自 "}
-            <time className="font-code">
-              {formatDateTime(currentCheckout.checked_out_at)}
-            </time>
+            当前保管人 ·{" "}
+            <span className="text-foreground">{asset.holder}</span>
+            {asset.location ? <> · {asset.location}</> : null}
           </p>
         )}
       </div>
-      <ActionArea
-        asset={asset}
-        onCheckout={onCheckout}
-        onReturn={onReturn}
-        onChangeStatus={onChangeStatus}
-        onDelete={onDelete}
-      />
+      <ActionArea asset={asset} onDelete={onDelete} />
     </header>
   );
 }
 
+type DialogKind =
+  | "checkout"
+  | "return"
+  | "send_to_maintenance"
+  | "recover_from_maintenance"
+  | "reinstate"
+  | "retire"
+  | "dispose"
+  | "relocate"
+  | "transfer_holder";
+
 function ActionArea({
   asset,
-  onCheckout,
-  onReturn,
-  onChangeStatus,
   onDelete,
 }: {
   asset: AssetRead;
-  onCheckout: () => void;
-  onReturn: () => void;
-  onChangeStatus: (key: StateChangeKey) => void;
   onDelete: () => void;
 }) {
-  const status = asset.status;
-  const stateChanges = availableStateChanges(status);
   const navigate = useNavigate();
+  const status = asset.status;
+  const primary = PRIMARY_ACTION[status];
+  const menuItems = MENU_ACTIONS[status];
+  const [openDialog, setOpenDialog] = useState<DialogKind | null>(null);
+
+  // DISPOSED 全只读：隐藏主按钮、菜单项里仅显示编辑（且也隐藏）+ 删除
+  const isReadonly = status === "DISPOSED";
+
+  function openMenuAction(action: MenuAction) {
+    switch (action.kind) {
+      case "SEND_TO_MAINTENANCE":
+        return setOpenDialog("send_to_maintenance");
+      case "RETIRE":
+        return setOpenDialog("retire");
+      case "DISPOSE":
+        return setOpenDialog("dispose");
+      case "RELOCATE":
+        return setOpenDialog("relocate");
+      case "TRANSFER_HOLDER":
+        return setOpenDialog("transfer_holder");
+    }
+  }
+
+  function renderPrimaryButton() {
+    if (!primary) return null;
+    if (primary.kind === "DISPATCH_GROUP") {
+      return <Button onClick={() => setOpenDialog("checkout")}>{primary.label}</Button>;
+    }
+    if (primary.kind === "RETURN") {
+      return <Button onClick={() => setOpenDialog("return")}>{primary.label}</Button>;
+    }
+    if (primary.kind === "RECOVER_FROM_MAINTENANCE") {
+      return (
+        <Button
+          onClick={() => setOpenDialog("recover_from_maintenance")}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          {primary.label}
+        </Button>
+      );
+    }
+    if (primary.kind === "REINSTATE") {
+      return (
+        <Button onClick={() => setOpenDialog("reinstate")} variant="outline">
+          {primary.label}
+        </Button>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="flex items-center gap-2">
-      {/* 主按钮：按状态决定 */}
-      {status === "IDLE" && (
-        <Button onClick={onCheckout}>{CHECKOUT_VERB}</Button>
-      )}
-      {status === "IN_USE" && (
-        <Button onClick={onReturn}>{RETURN_VERB}</Button>
-      )}
-      {status === "MAINTENANCE" && (
-        <Button
-          onClick={() => onChangeStatus("return_from_maintenance")}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          {STATE_CHANGE_ACTIONS.return_from_maintenance.verb}
-        </Button>
-      )}
-      {status === "RETIRED" && (
-        <Button
-          onClick={() => onChangeStatus("reactivate")}
-          variant="outline"
-        >
-          {STATE_CHANGE_ACTIONS.reactivate.verb}
-        </Button>
-      )}
+      {renderPrimaryButton()}
 
-      {/* 次按钮：仅 IDLE 显示「送修」 */}
-      {status === "IDLE" && (
-        <Button
-          variant="outline"
-          onClick={() => onChangeStatus("send_to_maintenance")}
-        >
-          {STATE_CHANGE_ACTIONS.send_to_maintenance.verb}
-        </Button>
-      )}
-
-      {/* ⋯ 菜单 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="更多操作">
@@ -149,30 +155,26 @@ function ActionArea({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() =>
-              navigate({ to: "/assets/$id/edit", params: { id: asset.id } })
-            }
-          >
-            编辑
-          </DropdownMenuItem>
+          {!isReadonly && (
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate({ to: "/assets/$id/edit", params: { id: asset.id } })
+              }
+            >
+              编辑
+            </DropdownMenuItem>
+          )}
 
-          {/* 需确认的状态切换项（IDLE/MAINTENANCE 状态下的「退役」；reactivate 已在主按钮位置） */}
-          {stateChanges
-            .filter(
-              (k) =>
-                STATE_CHANGE_ACTIONS[k].needsConfirm && k !== "reactivate",
-            )
-            .map((key) => (
-              <DropdownMenuItem
-                key={key}
-                onSelect={() => onChangeStatus(key)}
-              >
-                {STATE_CHANGE_ACTIONS[key].verb}…
-              </DropdownMenuItem>
-            ))}
+          {menuItems.map((action) => (
+            <DropdownMenuItem
+              key={action.kind}
+              onSelect={() => openMenuAction(action)}
+            >
+              {action.label}…
+            </DropdownMenuItem>
+          ))}
 
-          <DropdownMenuSeparator />
+          {(menuItems.length > 0 || !isReadonly) && <DropdownMenuSeparator />}
 
           {status === "IN_USE" ? (
             <TooltipProvider>
@@ -197,6 +199,58 @@ function ActionArea({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Dialogs（受控 props 风格） */}
+      <CheckoutDialog
+        open={openDialog === "checkout"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+      />
+      <ReturnDialog
+        open={openDialog === "return"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+      />
+      <SimpleTransitionDialog
+        open={openDialog === "send_to_maintenance"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        kind="SEND_TO_MAINTENANCE"
+      />
+      <SimpleTransitionDialog
+        open={openDialog === "recover_from_maintenance"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        kind="RECOVER_FROM_MAINTENANCE"
+      />
+      <SimpleTransitionDialog
+        open={openDialog === "reinstate"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        kind="REINSTATE"
+      />
+      <RetireAlertDialog
+        open={openDialog === "retire"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        assetName={asset.name}
+      />
+      <DisposeAlertDialog
+        open={openDialog === "dispose"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        assetName={asset.name}
+      />
+      <RelocateDialog
+        open={openDialog === "relocate"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+      />
+      <TransferHolderDialog
+        open={openDialog === "transfer_holder"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+      />
     </div>
   );
 }
