@@ -5,7 +5,6 @@ from typing import Annotated
 import typer
 
 from asset_hub.api.schemas.asset import AssetRead
-from asset_hub.api.schemas.checkout import CheckoutRead
 from asset_hub.cli.deps import cli_session, parse_enum, parse_uuid
 from asset_hub.cli.envelope import (
     handle_domain_errors,
@@ -15,7 +14,9 @@ from asset_hub.cli.envelope import (
 )
 from asset_hub.models.asset import AssetStatus
 from asset_hub.services.asset import AssetService
-from asset_hub.services.checkout import CheckoutService
+
+# 注：CheckoutService / CheckoutRead 在 Task 7 移除；
+# Task 8 会用 TransitionService 重写 checkout/return/history 子命令。
 
 asset_app = typer.Typer(name="asset", help="资产管理", no_args_is_help=True)
 
@@ -156,56 +157,6 @@ def asset_delete(
     print_result({"deleted": str(uid)}, json_output)
 
 
-@asset_app.command("checkout")
-def asset_checkout(
-    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
-    to: Annotated[str, typer.Option("--to", help="派发给谁（保管人）")],
-    location: Annotated[str | None, typer.Option(help="位置")] = None,
-    note: Annotated[str | None, typer.Option(help="派发备注")] = None,
-    json_output: Annotated[bool, typer.Option("--json")] = False,
-) -> None:
-    """派发资产给某人。"""
-    uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session, handle_domain_errors(json_output):
-        svc = CheckoutService(session)
-        rec = svc.checkout(asset_id=uid, holder=to, location=location, note=note)
-    print_result(to_json_dict(CheckoutRead, rec), json_output)
-
-
-@asset_app.command("return")
-def asset_return(
-    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
-    note: Annotated[str | None, typer.Option(help="归还备注")] = None,
-    location: Annotated[
-        str | None, typer.Option("--location", help="归还到的物理位置")
-    ] = None,
-    receiver: Annotated[
-        str | None, typer.Option("--receiver", help="归还接收的管理员")
-    ] = None,
-    json_output: Annotated[bool, typer.Option("--json")] = False,
-) -> None:
-    """归还资产（可记录归还地点 + 接收人）。"""
-    uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session, handle_domain_errors(json_output):
-        svc = CheckoutService(session)
-        rec = svc.return_(
-            asset_id=uid,
-            note=note,
-            return_location=location,
-            return_receiver=receiver,
-        )
-    print_result(to_json_dict(CheckoutRead, rec), json_output)
-
-
-@asset_app.command("history")
-def asset_history(
-    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
-    json_output: Annotated[bool, typer.Option("--json")] = False,
-) -> None:
-    """查看资产流转历史。"""
-    uid = parse_uuid(asset_id, json_output)
-    with cli_session() as session, handle_domain_errors(json_output):
-        svc = CheckoutService(session)
-        records = svc.history(asset_id=uid)
-    data = [to_json_dict(CheckoutRead, r) for r in records]
-    print_result(data, json_output, count=len(data))
+# checkout / return / history 命令在 Task 7 移除；Task 8 会基于
+# TransitionService 重写为 transition 子命令（CHECKOUT_INTERNAL/EXTERNAL、
+# RETURN、history 走 GET /api/assets/{id}/transitions）。

@@ -2,7 +2,6 @@
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.asset_type import AssetType
 from asset_hub.models.attachment import Attachment, AttachmentKind
-from asset_hub.models.checkout import CheckoutRecord
 from asset_hub.models.state_transition import StateTransitionRecord, TransitionKind
 
 __all__ = [
@@ -11,7 +10,6 @@ __all__ = [
     "AssetType",
     "Attachment",
     "AttachmentKind",
-    "CheckoutRecord",
     "StateTransitionRecord",
     "TransitionKind",
 ]
