@@ -138,7 +138,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>name *</FormLabel>
+                  <FormLabel>名称 *</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="如：笔记本" />
                   </FormControl>
@@ -153,7 +153,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
                 name={'code_prefix' as never}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>code_prefix *</FormLabel>
+                    <FormLabel>代号前缀 *</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="2-4 大写字母" className="font-mono" />
                     </FormControl>
@@ -163,7 +163,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               />
             ) : (
               <div>
-                <Label htmlFor="code_prefix-readonly">code_prefix</Label>
+                <Label htmlFor="code_prefix-readonly">代号前缀</Label>
                 <Input
                   id="code_prefix-readonly"
                   value={initial?.code_prefix ?? ''}
@@ -179,7 +179,7 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>description</FormLabel>
+                  <FormLabel>描述</FormLabel>
                   <FormControl>
                     <Textarea {...field} value={field.value ?? ''} rows={2} />
                   </FormControl>
