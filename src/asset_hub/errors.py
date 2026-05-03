@@ -32,5 +32,5 @@ class ConflictError(AssetHubError):
     pass
 
 
-class IllegalTransitionError(Exception):
+class IllegalTransitionError(AssetHubError):
     """状态机拒绝当前 transition。映射 HTTP 409 Conflict。"""

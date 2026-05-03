@@ -109,3 +109,13 @@ def validate_transition(
     if rule.location_rule == "required" and not to_location:
         raise IllegalTransitionError(f"{kind.value} 必须提供 to_location")
     return rule.to_status if rule.to_status is not None else current_status
+
+
+def assert_transition_allowed(*args, **kwargs):  # noqa: ARG001
+    """Deprecation shim — Task 2 后旧 4 态 API 留个壳让 import 不破。
+
+    Task 4/5 会清掉 asset.py / checkout.py 对此函数的引用，本 shim 届时一并删除。
+    """
+    raise NotImplementedError(
+        "assert_transition_allowed 已被 validate_transition 替代（M3a Task 2）"
+    )

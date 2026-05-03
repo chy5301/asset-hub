@@ -48,24 +48,9 @@ def test_transfer_holder_returns_same_status_except_disposed(from_status):
 
 @pytest.mark.parametrize(
     "kind,bad_from",
-    [
-        (TransitionKind.CHECKOUT_INTERNAL, AssetStatus.IN_USE),
-        (TransitionKind.CHECKOUT_INTERNAL, AssetStatus.MAINTENANCE),
-        (TransitionKind.CHECKOUT_INTERNAL, AssetStatus.RETIRED),
-        (TransitionKind.CHECKOUT_INTERNAL, AssetStatus.DISPOSED),
-        (TransitionKind.RETURN, AssetStatus.IDLE),
-        (TransitionKind.RETURN, AssetStatus.MAINTENANCE),
-        (TransitionKind.SEND_TO_MAINTENANCE, AssetStatus.IN_USE),
-        (TransitionKind.RECOVER_FROM_MAINTENANCE, AssetStatus.IDLE),
-        (TransitionKind.RETIRE, AssetStatus.IN_USE),
-        (TransitionKind.RETIRE, AssetStatus.RETIRED),
-        (TransitionKind.REINSTATE, AssetStatus.IDLE),
-        (TransitionKind.DISPOSE, AssetStatus.IDLE),
-        (TransitionKind.DISPOSE, AssetStatus.IN_USE),
-        (TransitionKind.DISPOSE, AssetStatus.DISPOSED),
-    ],
+    [(k, s) for k, r in TRANSITION_RULES.items() for s in AssetStatus if s not in r.valid_from],
 )
-def test_illegal_from_raises(kind, bad_from):
+def test_all_illegal_from_combinations_raise(kind, bad_from):
     with pytest.raises(IllegalTransitionError):
         validate_transition(bad_from, kind, to_holder="X", to_location="Y")
 
@@ -89,3 +74,10 @@ def test_dispose_forced_null_rules():
 def test_relocate_holder_ignored_rule():
     rule = TRANSITION_RULES[TransitionKind.RELOCATE]
     assert rule.holder_rule == "ignored"
+
+
+def test_disposed_is_terminal_for_every_kind():
+    for kind, rule in TRANSITION_RULES.items():
+        assert AssetStatus.DISPOSED not in rule.valid_from, (
+            f"{kind} broke DISPOSED terminal invariant"
+        )
