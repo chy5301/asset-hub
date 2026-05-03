@@ -1,10 +1,11 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated
 
 import typer
 
 from asset_hub.api.schemas.asset import AssetRead
+from asset_hub.api.schemas.transition import TransitionRead
 from asset_hub.cli.deps import cli_session, parse_enum, parse_uuid
 from asset_hub.cli.envelope import (
     handle_domain_errors,
@@ -13,10 +14,9 @@ from asset_hub.cli.envelope import (
     to_json_dict,
 )
 from asset_hub.models.asset import AssetStatus
+from asset_hub.models.state_transition import TransitionKind
 from asset_hub.services.asset import AssetService
-
-# 注：CheckoutService / CheckoutRead 在 Task 7 移除；
-# Task 8 会用 TransitionService 重写 checkout/return/history 子命令。
+from asset_hub.services.transition import TransitionService
 
 asset_app = typer.Typer(name="asset", help="资产管理", no_args_is_help=True)
 
@@ -53,24 +53,258 @@ def asset_register(
     print_result(to_json_dict(AssetRead, a), json_output)
 
 
-@asset_app.command("change-status")
-def asset_change_status(
+@asset_app.command("checkout")
+def asset_checkout(
     asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
-    to: Annotated[str, typer.Option("--to", help="目标状态：IDLE/IN_USE/MAINTENANCE/RETIRED")],
+    to: Annotated[str, typer.Option("--to", help="派发给谁（保管人）")],
+    kind: Annotated[
+        str, typer.Option("--kind", help="派发类型：internal=组内派发，external=出借给外部")
+    ] = "internal",
+    location: Annotated[str | None, typer.Option(help="位置")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    due_at: Annotated[
+        str | None, typer.Option("--due-at", help="期望归还时间（ISO8601）")
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """切换资产状态（送修/修好回库/退役/重新启用）。
-
-    派发/归还请用 `asset checkout` / `asset return`——它们会写流转记录；
-    本命令仅适合 §14.5 的 4 个轻量切换。
-    """
+    """派发资产（kind: internal 内部派发 / external 对外出借）。"""
     uid = parse_uuid(asset_id, json_output)
-    parsed_status = parse_enum(AssetStatus, to, json_output)
+    kind_map = {
+        "internal": TransitionKind.CHECKOUT_INTERNAL,
+        "external": TransitionKind.CHECKOUT_EXTERNAL,
+    }
+    if kind not in kind_map:
+        raise typer.BadParameter(f"--kind 必须是 internal 或 external，得到: {kind}")
+    parsed_due = datetime.fromisoformat(due_at) if due_at else None
 
     with cli_session() as session, handle_domain_errors(json_output):
-        svc = AssetService(session)
-        a = svc.change_status(uid, parsed_status)
-    print_result(to_json_dict(AssetRead, a), json_output)
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid,
+            kind=kind_map[kind],
+            to_holder=to,
+            to_location=location,
+            note=note,
+            due_at=parsed_due,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("return")
+def asset_return(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    receiver: Annotated[
+        str | None, typer.Option("--receiver", help="归还接收人/仓管（成为新 holder）")
+    ] = None,
+    location: Annotated[str | None, typer.Option(help="归还位置")] = None,
+    note: Annotated[str | None, typer.Option(help="归还备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """归还资产（--receiver 是归还接收人，归还后成为新 holder；不传则资产无 holder）。"""
+    uid = parse_uuid(asset_id, json_output)
+
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid,
+            kind=TransitionKind.RETURN,
+            to_holder=receiver,
+            to_location=location,
+            note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("history")
+def asset_history(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """查看资产流转历史（10 transition kind 全覆盖）。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TransitionService(session)
+        records = svc.list_transitions(asset_id=uid)
+    data = [to_json_dict(TransitionRead, r) for r in records]
+    print_result(data, json_output, count=len(data))
+
+
+def _record_simple_transition(
+    asset_id: str,
+    kind: TransitionKind,
+    *,
+    holder: str | None = None,
+    location: str | None = None,
+    note: str | None = None,
+    json_output: bool = False,
+) -> None:
+    """通用 transition 命令封装（无特殊参数的 kind 共用）。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid,
+            kind=kind,
+            to_holder=holder,
+            to_location=location,
+            note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("send-to-maintenance")
+def asset_send_to_maintenance(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    holder: Annotated[str | None, typer.Option(help="维修联系人")] = None,
+    location: Annotated[str | None, typer.Option(help="维修地点")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """送修。"""
+    _record_simple_transition(
+        asset_id, TransitionKind.SEND_TO_MAINTENANCE,
+        holder=holder, location=location, note=note, json_output=json_output,
+    )
+
+
+@asset_app.command("recover")
+def asset_recover(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    holder: Annotated[str | None, typer.Option(help="新保管人/仓管")] = None,
+    location: Annotated[str | None, typer.Option(help="新位置")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """维修完成回库。"""
+    _record_simple_transition(
+        asset_id, TransitionKind.RECOVER_FROM_MAINTENANCE,
+        holder=holder, location=location, note=note, json_output=json_output,
+    )
+
+
+@asset_app.command("reinstate")
+def asset_reinstate(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    holder: Annotated[str | None, typer.Option(help="新保管人/仓管")] = None,
+    location: Annotated[str | None, typer.Option(help="新位置")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """重新启用（从已退役回到闲置）。"""
+    _record_simple_transition(
+        asset_id, TransitionKind.REINSTATE,
+        holder=holder, location=location, note=note, json_output=json_output,
+    )
+
+
+@asset_app.command("retire")
+def asset_retire(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    holder: Annotated[str | None, typer.Option(help="备件库管理员")] = None,
+    location: Annotated[str | None, typer.Option(help="存放位置")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    yes: Annotated[bool, typer.Option("--yes", help="跳过确认")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="预览，不实际执行")] = False,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """退役（可通过 reinstate 复活）。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        asset_svc = AssetService(session)
+        a = asset_svc.get_asset(uid)
+
+        if dry_run:
+            print_dry_run(
+                {"would_retire": to_json_dict(AssetRead, a)},
+                json_output,
+                message=f"将退役 {a.name} ({a.id})",
+            )
+            return
+
+        if not yes:
+            confirm = typer.confirm(f"确定退役 {a.name}?")
+            if not confirm:
+                raise typer.Abort()
+
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid, kind=TransitionKind.RETIRE,
+            to_holder=holder, to_location=location, note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("dispose")
+def asset_dispose(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    yes: Annotated[bool, typer.Option("--yes", help="跳过确认")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="预览，不实际执行")] = False,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """处置（终态，不可撤销，holder/location 将被清空）。仅可从 RETIRED/MAINTENANCE 出发。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        asset_svc = AssetService(session)
+        a = asset_svc.get_asset(uid)
+
+        if dry_run:
+            print_dry_run(
+                {"would_dispose": to_json_dict(AssetRead, a)},
+                json_output,
+                message=f"将处置 {a.name} ({a.id})（终态、不可撤销）",
+            )
+            return
+
+        if not yes:
+            confirm = typer.confirm(
+                f"⚠️ 确定处置 {a.name}？此操作不可撤销，holder 与 location 将被清空。"
+            )
+            if not confirm:
+                raise typer.Abort()
+
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid, kind=TransitionKind.DISPOSE, note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("relocate")
+def asset_relocate(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    to_location: Annotated[str, typer.Option("--to-location", help="新位置（必填）")],
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """变更资产位置（不改 status，holder 保持不变）。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid, kind=TransitionKind.RELOCATE,
+            to_location=to_location, note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
+
+
+@asset_app.command("transfer-holder")
+def asset_transfer_holder(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    to_holder: Annotated[str, typer.Option("--to-holder", help="新保管人（必填）")],
+    location: Annotated[str | None, typer.Option(help="同时变更位置")] = None,
+    note: Annotated[str | None, typer.Option(help="备注")] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """变更资产保管人（不改 status，可同时变更位置）。"""
+    uid = parse_uuid(asset_id, json_output)
+    with cli_session() as session, handle_domain_errors(json_output):
+        svc = TransitionService(session)
+        rec = svc.record_transition(
+            asset_id=uid, kind=TransitionKind.TRANSFER_HOLDER,
+            to_holder=to_holder, to_location=location, note=note,
+        )
+    print_result(to_json_dict(TransitionRead, rec), json_output)
 
 
 @asset_app.command("list")
@@ -155,8 +389,3 @@ def asset_delete(
 
         svc.delete_asset(uid)
     print_result({"deleted": str(uid)}, json_output)
-
-
-# checkout / return / history 命令在 Task 7 移除；Task 8 会基于
-# TransitionService 重写为 transition 子命令（CHECKOUT_INTERNAL/EXTERNAL、
-# RETURN、history 走 GET /api/assets/{id}/transitions）。

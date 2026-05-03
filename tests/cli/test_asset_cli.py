@@ -74,40 +74,6 @@ class TestAssetRegisterAcquiredAt:
         assert body["data"]["asset_code"].startswith("NB-")
 
 
-class TestAssetChangeStatus:
-    def test_change_status_to_maintenance(self):
-        type_id = _define_type()
-        create = runner.invoke(app, [
-            "asset", "register",
-            "--name", "X1", "--type-id", type_id,
-            "--json",
-        ])
-        asset_id = json.loads(create.stdout)["data"]["id"]
-
-        resp = runner.invoke(app, [
-            "asset", "change-status", asset_id,
-            "--to", "MAINTENANCE",
-            "--json",
-        ])
-        assert resp.exit_code == 0
-        assert json.loads(resp.stdout)["data"]["status"] == "MAINTENANCE"
-
-    def test_change_status_illegal_returns_exit_1(self):
-        type_id = _define_type()
-        create = runner.invoke(app, [
-            "asset", "register",
-            "--name", "X1", "--type-id", type_id,
-            "--json",
-        ])
-        asset_id = json.loads(create.stdout)["data"]["id"]
-        runner.invoke(app, ["asset", "change-status", asset_id, "--to", "RETIRED", "--json"])
-        resp = runner.invoke(app, ["asset", "change-status", asset_id, "--to", "IN_USE", "--json"])
-        assert resp.exit_code == 1
-        body = json.loads(resp.stdout)
-        assert body["success"] is False
-        assert "不允许" in body["error"]
-
-
 class TestAssetList:
     def test_list_empty(self):
         result = runner.invoke(app, ["asset", "list", "--json"])
@@ -142,7 +108,7 @@ class TestAssetShow:
 
 
 class TestAssetUpdate:
-    def test_update_holder(self):
+    def test_update_notes(self):
         type_id = _define_type()
         r = runner.invoke(app, [
             "asset", "register", "--name", "X1", "--type-id", type_id, "--json",
@@ -150,11 +116,11 @@ class TestAssetUpdate:
         asset_id = json.loads(r.stdout)["data"]["id"]
         result = runner.invoke(app, [
             "asset", "update", asset_id,
-            "--set", '{"holder": "张三"}',
+            "--set", '{"notes": "新备注"}',
             "--json",
         ])
         assert result.exit_code == 0
-        assert json.loads(result.stdout)["data"]["holder"] == "张三"
+        assert json.loads(result.stdout)["data"]["notes"] == "新备注"
 
 
 class TestAssetDelete:

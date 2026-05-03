@@ -99,9 +99,18 @@ class TestUpdateAsset:
         type_id = _create_type(client)
         r = client.post("/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}})
         asset_id = r.json()["id"]
-        resp = client.patch(f"/api/assets/{asset_id}", json={"holder": "张三"})
+        resp = client.patch(f"/api/assets/{asset_id}", json={
+            "name": "X2",
+            "serial_number": "SN-001",
+            "notes": "新备注",
+            "acquired_at": "2025-02-01",
+        })
         assert resp.status_code == 200
-        assert resp.json()["holder"] == "张三"
+        body = resp.json()
+        assert body["name"] == "X2"
+        assert body["serial_number"] == "SN-001"
+        assert body["notes"] == "新备注"
+        assert body["acquired_at"] == "2025-02-01"
 
 
 class TestDeleteAsset:

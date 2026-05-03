@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from asset_hub.errors import (
     ConflictError,
     DuplicateError,
+    IllegalTransitionError,
     NotFoundError,
     StateError,
     ValidationError,
@@ -75,5 +76,11 @@ def handle_domain_errors(json_output: bool) -> Generator[None, None, None]:
         yield
     except NotFoundError as e:
         print_error(str(e), json_output, exit_code=3)
-    except (ConflictError, DuplicateError, StateError, ValidationError) as e:
+    except (
+        ConflictError,
+        DuplicateError,
+        IllegalTransitionError,
+        StateError,
+        ValidationError,
+    ) as e:
         print_error(str(e), json_output, exit_code=1)
