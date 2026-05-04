@@ -133,27 +133,26 @@ function ActionArea({
     }
   }
 
-  function primaryVariant(
-    kind: PrimaryAction["kind"],
-  ): "default" | "outline" {
-    // 视觉层级：CHECKOUT_INTERNAL（派发）是 IDLE 主路径用 default；
-    // CHECKOUT_EXTERNAL（出借）是备选用 outline；REINSTATE 也用 outline
-    // （重新启用是恢复操作，不算正向主路径）。
-    if (kind === "CHECKOUT_EXTERNAL" || kind === "REINSTATE") return "outline";
-    return "default";
-  }
-
   return (
     <div className="flex items-center gap-2">
+      {/* transition 主按钮：所有 transition 等权用 default variant */}
       {primaries.map((p) => (
-        <Button
-          key={p.kind}
-          onClick={() => openPrimary(p)}
-          variant={primaryVariant(p.kind)}
-        >
+        <Button key={p.kind} onClick={() => openPrimary(p)}>
           {p.label}
         </Button>
       ))}
+
+      {/* 编辑：导航操作（非 transition），与 transition 视觉分层用 outline；DISPOSED 全只读时隐藏 */}
+      {!isReadonly && (
+        <Button
+          variant="outline"
+          onClick={() =>
+            navigate({ to: "/assets/$id/edit", params: { id: asset.id } })
+          }
+        >
+          编辑
+        </Button>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -162,16 +161,6 @@ function ActionArea({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {!isReadonly && (
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate({ to: "/assets/$id/edit", params: { id: asset.id } })
-              }
-            >
-              编辑
-            </DropdownMenuItem>
-          )}
-
           {menuItems.map((action) => (
             <DropdownMenuItem
               key={action.kind}
@@ -181,7 +170,7 @@ function ActionArea({
             </DropdownMenuItem>
           ))}
 
-          {(menuItems.length > 0 || !isReadonly) && <DropdownMenuSeparator />}
+          {menuItems.length > 0 && <DropdownMenuSeparator />}
 
           {status === "IN_USE" ? (
             <TooltipProvider>

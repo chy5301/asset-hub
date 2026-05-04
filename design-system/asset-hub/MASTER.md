@@ -525,7 +525,9 @@ DISPOSE 终态不可逆，dialog 内输入"处置"二字解锁主按钮（参考
 
 **修订原因**：M3a 验收发现 dialog 内 toggle discoverability 不足——主按钮就叫"派发"，用户不点开 dialog 看不到出借入口存在。
 
-**新决议**：IDLE 状态详情页主按钮区**并列两个按钮**："派发"（`Button` default variant）+ "出借"（`Button` outline variant）。视觉层级：派发是主路径（团队内部），出借是备选（对外）。CheckoutDialog **共用一个组件 + `kind` prop**，按 kind 切换 icon（ArrowRightFromLine vs Send）/ chip 文案（派发 vs 出借）/ 字段 label（派发给 vs 出借给）/ 描述（派发给团队成员 vs 出借给外部人员）/ 按钮文案 / toast。
+**新决议**：IDLE 状态详情页主按钮区**并列两个按钮**："派发" + "出借"。CheckoutDialog **共用一个组件 + `kind` prop**，按 kind 切换 icon（ArrowRightFromLine vs Send）/ chip 文案（派发 vs 出借）/ 字段 label（派发给 vs 出借给）/ 描述（派发给团队成员 vs 出借给外部人员）/ 按钮文案 / toast。
+
+**视觉决议（二次修订）**：所有 transition 主按钮（派发/出借/归还/维修完成/重新启用）等权用 `default` variant，颜色一致——transition 是同一类操作，不应人为区分主次。**编辑**作为导航操作（非 transition）放主按钮区但用 `outline` variant（视觉分层不抢 transition 主路径）；DISPOSED 全只读时隐藏。⋯ 菜单只承载次要 transition（送修/退役/relocate/transfer-holder/dispose）+ 删除。
 
 `available-transitions.ts`：`PRIMARY_ACTION` rename 为 `PRIMARY_ACTIONS`，类型 `Record<AssetStatus, PrimaryAction[]>`（数组），删除 `DISPATCH_GROUP` 字面量。
 
