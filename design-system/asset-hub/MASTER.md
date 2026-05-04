@@ -492,3 +492,58 @@ frontend-design skill 对 M2a→M2c-4 全栈做了一次设计契约对照审计
 - M1 TypesTable 未接 Motion 三时刻 — M3 决议
 - M3 页面 H1 字号三档无 type scale token — M3 看板/导出加 h1 时一并约定
 - M4 attachment-grid `transition-shadow` 配错 prop 名 — M3 触碰附件 grid 时顺手
+
+---
+
+## 实施期纠偏（M3a，2026-05-04）
+
+frontend-design skill 对 M3a PR-2 改动做合并前对照（spec [§5.11](../../docs/superpowers/specs/2026-05-03-m3a-state-machine-design.md)）。本里程碑新增 override：
+
+### 1. 新增 `--status-disposed` / `--status-disposed-fg` OKLCH token pair
+
+DISPOSED（已处置）状态的 token，完全去色相纯灰（chroma=0），与 RETIRED（保留微弱蓝色相）区分。light/dark 两套 + `@theme inline` 映射。落地于 commit `450c982`。
+
+### 2. Toggle chip 模式（filter 区使用 status token 染色的 Toggle，非普通 checkbox）
+
+列表 filter 区 "已退役" / "已处置" 两个独立 Toggle chip，按 status token 染色（off muted / on `bg-status-X/15` + `text-status-X-fg` + `border-status-X/30`）。视觉与 status pill 体系延续。URL 持久化（`?show_retired=true&show_disposed=true`）。落地于 commit `3defbb2`。
+
+### 3. DisposeAlertDialog 二次确认形态
+
+DISPOSE 终态不可逆，dialog 内输入"处置"二字解锁主按钮（参考 `delete-asset-alert.tsx` pattern）。destructive 红色按钮 + Trash2 icon。落地于 commit `db4ff24`。
+
+### 4. timeline 10 kind icon × token 配置表
+
+`transition-timeline.tsx` 的 KIND_META 表显式列 10 kind 对应的 lucide icon + status token + 文案：CHECKOUT_INTERNAL（ArrowRightFromLine）/ CHECKOUT_EXTERNAL（Send）走 status-in-use；RETURN（Undo2）/ RECOVER_FROM_MAINTENANCE（CheckCircle2）/ REINSTATE（Sun）走 status-idle；SEND_TO_MAINTENANCE（Wrench）走 status-maintenance；RETIRE（Moon）走 status-retired；DISPOSE（Trash2）走 status-disposed；RELOCATE（MapPin）/ TRANSFER_HOLDER（UserCog）走 muted 中性。沿用 M2c-2 卡片堆叠形态，§14.8 高级视觉留 M3d。落地于 commit `c7e6195`。
+
+### 5. RETIRED Icon 从 `MinusCircle` 改 `Moon`
+
+"休眠待复活"语义，与 RETIRE transition kind 在 timeline 的 icon 一致；M2c-1 旧 MinusCircle 弃用。落地于 commit `4f2500a`。
+
+### Pre-Delivery Checklist（M3a PR-2 验证）
+
+- [x] No emojis as icons（全 Lucide SVG）
+- [x] cursor-pointer on clickable elements
+- [x] Hover transitions smooth 150-300ms（`transition-colors`，无 `transform: scale`）
+- [x] Light mode text contrast 4.5:1
+- [x] Focus states visible for keyboard
+- [x] `prefers-reduced-motion` respected（沿用 M2c-1 globals.css）
+- [x] Responsive 1024+
+
+### 红线扫描结果
+
+`grep -rnE 'scale-|animate-spin|animate-pulse|backdrop-blur|bg-gradient-to'` 在 PR-2 新增/修改文件内：**1 命中**（`frontend/src/components/ui/skeleton.tsx:7` 的 `animate-pulse`，shadcn skeleton 标准、早于 M3a 引入）。新文件 0 命中。
+
+### Playwright MCP 烟测（6 场景，2026-05-04）
+
+| # | 场景 | 结果 | 截图 |
+|---|------|------|------|
+| 1 | Happy path 派发→归还→送修→维修完成→退役→重新启用 | ✅ 6 行 timeline 各 kind icon + token 染色 | `smoke-scenario1-happy-path.png` |
+| 2 | DISPOSE 输入"处置"二次确认 + DISPOSED 全只读 | ✅ 按钮 disabled→输入解锁；菜单仅剩"删除" | `smoke-scenario2-disposed-readonly.png` |
+| 3 | 列表 Toggle 显隐 RETIRED/DISPOSED + URL 持久化 | ✅ `?show_retired=true&show_disposed=true` 同步 | `smoke-scenario3-toggle-show-all.png` |
+| 4 | RELOCATE / TRANSFER_HOLDER 走 ⋯ 菜单（IDLE） | ✅ ⋯ 菜单可见 + Relocate dialog 可用 | （内嵌场景 1） |
+| 5 | timeline 10 kind 视觉差异化 | ✅ 9 kind 实跑过；CHECKOUT_EXTERNAL/TRANSFER_HOLDER 同源代码路径 | （场景 1+2 timeline） |
+| 6 | dark mode + light mode + status-disposed token | ✅ 双主题 chip 视觉清晰区分 | `smoke-scenario6-dark-mode-list.png` |
+
+### 烟测发现 followup（非 blocker）
+
+- 列表 Toggle pressed 视觉态较弱（chip 在 on 时与 off 视觉差异不够明显）—— spec §5.10 review 时考虑加重 `data-[state=on]` 边框

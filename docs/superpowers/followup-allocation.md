@@ -50,18 +50,23 @@
 
 **主线**：看板 4 图 + `/api/stats` + CSV/XLSX 导出 + SKILL.md + §14.1 派出类型 + §14.6 audit 化 + §14.7 状态枚举 + 基础测试 + README/部署。
 
+**子里程碑划分**：M3a（状态机基建）→ M3b（看板）→ M3c（导出）→ M3d（高级视觉）→ M3e（部署）。
+
 **已登记 / 主题强相关的 follow-up**：
 
-| 项 | 来源 | 理由 |
+| 项 | 来源 | 理由 / 状态 |
 |---|---|---|
-| **smoketest B1** 状态切换进流转记录 | smoketest | 与 §14.6 audit 化天然合并：14.6 的 `StateTransitionRecord` 直接覆盖 B1 诉求；M2d 前不要单独建 `StatusChangeRecord` 表 |
-| **C1** checkout.py 与 state_machine 双层防御统一 | simplify §1.C | 已登记"M3 §14.6/14.7 状态机升级时一并做" |
-| **C3** detail page 多查 type 列表（detail DTO 补 type_name） | simplify §1.C | 已登记"M3 详情页改动时顺手做" |
-| **D1** generated schema 类型业务化 alias 层 | simplify §1.D | 已登记"M3 openapi 客户端选型决策时一并做"（spec §13） |
-| **H4** `error.ts` `unwrap` 签名抽 `OpenapiFetchResult<T>` | simplify §3.H | 与 D1 同周期（受 openapi 客户端选型驱动） |
-| **§14.3** IDLE 资产显式 location 维护（独立"修改位置" action） | spec | M2d B2 已覆盖归还时 location；§14.3 残值缩小为"派发→归还之间的时段需独立修改位置 action" |
-| **§14.8** timeline 视觉重构（时间渐隐 + 派出类型染色 + 超长派发预警） | spec | 已登记"M3 与 14.1 联动" |
-| **simplify §7（M1/M3/M4）** M2 视觉收尾审计未选项 | M2 视觉审计 | TypesTable motion 决议 / 页面 h1 type scale / attachment transition prop fix；M3 启动时一并扫 |
+| **smoketest B1** 状态切换进流转记录 | smoketest | ✅ M3a 落地（PR-1 commit `e741efb` StateTransitionRecord + `fcdfb47` TransitionService） |
+| **C1** checkout.py 与 state_machine 双层防御统一 | simplify §1.C | ✅ M3a 落地（PR-1 commit `42b6f46`） |
+| **C3** detail page 多查 type 列表（detail DTO 补 type_name） | simplify §1.C | ⏳ M3b 详情页改动时顺手做 |
+| **D1** generated schema 类型业务化 alias 层 | simplify §1.D | ⏳ M3 openapi 客户端选型决策时一并做（spec §13） |
+| **H4** `error.ts` `unwrap` 签名抽 `OpenapiFetchResult<T>` | simplify §3.H | ⏳ 与 D1 同周期 |
+| **§14.3** IDLE 资产显式 location 维护（独立"修改位置" action） | spec | ✅ M3a 落地（RELOCATE transition kind + RelocateDialog） |
+| **§14.6** audit 化（StateTransitionRecord 单表） | spec | ✅ M3a 落地 |
+| **§14.7** 状态枚举完善（5 态 + 10 transition kind） | spec | ✅ M3a 落地 |
+| **§14.8** timeline 视觉重构（时间渐隐 + 派出类型染色 + 超长派发预警） | spec | ⏳ M3d 高级视觉做（M3a 沿用 M2c-2 卡片堆叠） |
+| **§J/§L** form schema cast | simplify §6 | 🟡 M3a PR-2 部分闭环（schema 合一），顶层 Resolver cast 待 RHF/zod 升级 |
+| **simplify §7（M1/M3/M4）** M2 视觉收尾审计未选项 | M2 视觉审计 | ⏳ M3b/M3d 启动时一并扫 |
 
 ---
 
@@ -69,7 +74,7 @@
 
 | 项 | 来源 | 触发条件 |
 |---|---|---|
-| A3 CheckoutDialog/ReturnDialog 合并 | simplify §1.A | 第 3 个 form dialog 出现时（M3 批量调拨等） |
+| A3 CheckoutDialog/ReturnDialog 合并 | simplify §1.A | M3a 引入 7 dialog 后时机到，但决议推迟 M4 UI 打磨期（避免落入 AI 模板脸） |
 | B1（前端）useStateChangeRunner hook | simplify §1.B | 与 A3 同期 |
 | C2 delete_asset cascade 事务边界 | simplify §1.C | 真出现批量删除场景时 |
 | E1 AssetHeader 状态矩阵抽配置数组 | simplify §1.E | M3 状态扩到 5+（§14.7）落地后；不扩则不动 |
@@ -100,7 +105,8 @@
 |---|---|---|---|---|
 | **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 | ✅ 已完成（2026-04-29） |
 | **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 | ✅ 已完成（2026-05-02） |
-| **M3** | 看板/导出/SKILL/14.1/14.6/14.7/测试/部署 | smoketest B1、C1、C3、D1、H4、§14.3、§14.8 | 7 | ⏳ 待启动 |
+| **M3a** | 状态机基建（5 态 + 10 transition kind） | smoketest B1、C1、§14.3、§14.6、§14.7、§J、§L | 7 | ✅ 已完成（2026-05-04，merge `a360e04` + `bc084e5`） |
+| **M3b–M3e** | 看板/导出/SKILL/14.1/14.8/部署 | C3、D1、H4、§14.8、A3（推迟 M4） | 5 | ⏳ 待启动 |
 | 暂不动 | — | 13 项 | 13 | — |
 
 ---

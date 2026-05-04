@@ -216,7 +216,7 @@
 | ✅ 已闭环 | A1 / A2 / A4 / F3 | M2c-4 PR-2（commit db9f946） |
 | 🟢 顺手做 | B1 / C3 / F2 | 下次 form / detail / 上传相关改动时一并做 |
 | 🟡 等里程碑 | A3 | M3 加新 form dialog（第 3 个）时启动 |
-| 🟡 已登记 | C1 | M3 §14.6/14.7 状态机升级时一并做 |
+| ✅ 已闭环 | C1 | M3a PR-1 commit `42b6f46`（state_machine TRANSITION_RULES 单 SoT，service 层不再双层防御） |
 | 🟡 已登记 | D1 | M3 openapi 客户端选型时一并做 |
 | 🔴 暂不动 | C2 / E1 / F1 | 仅在规模放大或状态扩展时才有 ROI |
 
@@ -933,10 +933,10 @@ M2c-4 全部三个 PR 均已合并到 main：
 
 | 条目 | 状态 | 备注 |
 |---|---|---|
-| §J condition `.extend` cast | ⏳ 持续 | PR-3 在 type-form.tsx 重现一次（d8e0b82）；M3 周期合 §L |
+| §J condition `.extend` cast | 🟡 部分闭环 | M3a PR-2 commit `8f91f43` build-asset-schema 合一；asset-create-form 顶层 Resolver cast 因 zod union narrowing 限制保留待 RHF/zod 升级再清 |
 | §K `acquired_at` 写错位置 | ✅ 已修复 | M2 收尾 commit 8c8202f；FieldShell pathPrefix prop |
-| §L 双函数拆分 | ⏳ 持续 | 与 §J 同 PR；type-form 也用同款 union pattern |
-| §M `useWatch` 重订阅 + Path<T> cast | ⏳ 持续 | 与 §L 同 PR |
+| §L 双函数拆分 | ✅ 已闭环 | M3a PR-2 commit `8f91f43`（buildAssetSchema 单 builder + 显式 mode 分支） |
+| §M `useWatch` 重订阅 + Path<T> cast | ⏳ 持续 | 字符串路径泛型限制；M3 后续看板/导出表单重构时再处理 |
 | §N `field-${key}` id 模板重复 | ⏳ 持续 | M3 加新 field-control 时合并；PR-3 又新增 11 处（types builder） |
 | §O MultiEnumField label-input 关联 | ⏳ 持续 | 与 §N 同周期 |
 | §P NavBar fuzzy match | ✅ 已修复 | M2c-4 PR-3 Task 35 commit 77caf01 |
@@ -1011,3 +1011,29 @@ M2c-4 全部三个 PR 均已合并到 main：
 **风险**：极低（trivial）。
 
 **何时做**：M3 任意触碰附件 grid 时顺手吃掉；不值得单独 PR。
+
+---
+
+## §7 M3a 范围（2026-05-04）
+
+M3a 子里程碑（5 态状态机基建）两个 PR 已合并到 main：
+
+- **PR-1**（feat/m3a-pr1-state-machine-backend，merge `a360e04`）：后端 5 态 + 10 transition kind + TransitionService SoT + alembic migration + CLI 9 命令
+- **PR-2**（feat/m3a-pr2-frontend-state-machine，merge `bc084e5`）：前端切换 transitions 端点 + 7 dialog + Toggle chip + 10 kind timeline + simplify §J/§L 清理
+
+### 闭环条目
+
+| 条目 | 状态 | commit ref |
+|---|---|---|
+| §C1 checkout.py vs state_machine 双层防御 | ✅ 已闭环 | M3a PR-1 commit `42b6f46`（TRANSITION_RULES 单 SoT；service 层 record_transition 不再 if-block 双层防御） |
+| §J condition `.extend` cast | 🟡 部分闭环 | M3a PR-2 commit `8f91f43`（schema 合一）；顶层 Resolver cast 因 zod union narrowing 暂保留 |
+| §L 双函数拆分 | ✅ 已闭环 | M3a PR-2 commit `8f91f43` |
+| smoketest B1 状态切换进流转记录 | ✅ 已闭环 | M3a PR-1 commit `e741efb` `StateTransitionRecord` 表 + commit `fcdfb47` TransitionService 写入 |
+
+### A3 推迟说明
+
+A3（CheckoutDialog/ReturnDialog 合并）时机已到——M3a 引入 7 个 dialog 后第 3 个 form dialog 早已出现。**决议推迟到 M4 UI 打磨期**：M3a 优先保 5 态 + 10 transition kind 的功能落地，dialog 抽象层若现在做会延后里程碑且容易落入 frontend-design skill 警告的"AI 模板脸"。
+
+### 烟测发现新登记 follow-up
+
+- **§S 列表 Toggle pressed 视觉态较弱**：on/off chip 视觉差异不明显。M2c-3 §3 ToggleGroup pattern 复用了，但 Toggle 单独使用时缺少 elevation/shadow 区分。下次 list filter UX 改动时一并处理。
