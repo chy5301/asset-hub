@@ -3,12 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAssetsQuery } from "@/api/hooks/assets";
-import { useCheckoutHistoryQuery } from "@/api/hooks/checkouts";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
 import { CheckoutDialog } from "@/features/assets/detail/checkout-dialog";
-import { deriveCurrentCheckout } from "@/features/assets/detail/current-checkout";
 import { DeleteAssetAlert } from "@/features/assets/detail/delete-asset-alert";
 import { ReturnDialog } from "@/features/assets/detail/return-dialog";
 import { AssetsFilters } from "@/features/assets/list/assets-filters";
@@ -40,13 +38,6 @@ function AssetListPage() {
   const handleCheckout = useCallback((row: AssetRow) => setCheckoutRow(row), []);
   const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
   const handleDelete = useCallback((row: AssetRow) => setDeleteRow(row), []);
-
-  // 当 ReturnDialog 打开时挂 history query 以拿到 holder/checked_out_at 等回填字段
-  const returnHistoryQuery = useCheckoutHistoryQuery(returnRow?.id);
-  const currentCheckoutForReturn = deriveCurrentCheckout(
-    returnHistoryQuery.data,
-    returnRow?.current_checkout_id,
-  );
 
   useEffect(() => {
     if (query.data && query.data.length > WARN_THRESHOLD) {
@@ -89,7 +80,6 @@ function AssetListPage() {
         open={!!returnRow}
         onOpenChange={(v) => !v && setReturnRow(null)}
         assetId={returnRow?.id ?? ""}
-        currentCheckout={currentCheckoutForReturn}
       />
       {deleteRow && (
         <DeleteAssetAlert

@@ -13,6 +13,8 @@ function toServerParams(search: AssetsSearch) {
   if (search.status) params.status = search.status;
   if (search.holder) params.holder = search.holder;
   if (search.q) params.q = search.q;
+  if (search.show_retired) params.include_retired = "true";
+  if (search.show_disposed) params.include_disposed = "true";
   return params;
 }
 
