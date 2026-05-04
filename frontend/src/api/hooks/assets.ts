@@ -93,20 +93,3 @@ export function useAssetDetailQuery(id: string) {
     // 404 靠 errorComponent / isError 分支处理，不在此重试
   });
 }
-
-/**
- * @deprecated PR-1 后 status 字段从 AssetUpdate 移除，状态变更必须走 transitions API。
- * 这个 hook 是兼容壳，task 6-15 会删除该 hook 与所有调用方
- * （state-change-alert / asset-detail-page），改为 transition dialogs 驱动。
- *
- * 当前实现：调用即抛错，避免 PR-1 后误用造成数据写入错乱。
- */
-export function useChangeAssetStatusMutation(_id: string) {
-  return useMutation({
-    mutationFn: async (_toStatus: components["schemas"]["AssetStatus"]) => {
-      throw new Error(
-        "useChangeAssetStatusMutation 已废弃；状态变更请走 transitions API（task 6-15）",
-      );
-    },
-  });
-}

@@ -24,9 +24,8 @@ export function AssetCreateForm() {
   const mutation = useCreateAsset();
 
   const form = useForm<CreateFormValues>({
-    // 显式 Resolver<CreateFormValues> 断言：buildAssetSchema 的条件 .extend
-    // 让 zod 在 mode='create' 时无法把 type_id 推进 inferred type（见
-    // build-asset-schema.ts CreateFormValues 注释 / Plan §Task 10）。运行时正确。
+    // zodResolver 推导走 buildAssetSchema 返回 union 的窄分支（不含 type_id），
+    // 与手写 CreateFormValues（强制带 type_id）不 unify——保留最小 cast。
     resolver: zodResolver(CREATE_EMPTY_SCHEMA) as unknown as Resolver<CreateFormValues>,
     defaultValues: {
       name: '',
@@ -86,7 +85,7 @@ export function AssetCreateForm() {
       onInvalid();
       return;
     }
-    // 见上方 resolver 注释：zod 推导丢失 type_id，回到手写类型
+    // schema union 推导窄到 edit 分支（无 type_id），cast 回 CreateFormValues
     const data = parsed.data as CreateFormValues;
     try {
       const created = await mutation.mutateAsync({
