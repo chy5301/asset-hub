@@ -121,7 +121,12 @@ function AssetListPage() {
       return (
         <EmptyState
           title="暂无资产"
-          description="还没有登记任何资产。可以通过 CLI 登记：asset-hub asset register"
+          description="还没有登记任何资产"
+          action={
+            <Button asChild>
+              <Link to="/assets/new">登记第一个资产</Link>
+            </Button>
+          }
         />
       );
     }

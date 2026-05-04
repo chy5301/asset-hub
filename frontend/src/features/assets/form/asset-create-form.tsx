@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { InlineErrorBanner } from '@/components/feedback/inline-error-banner';
@@ -113,14 +113,12 @@ export function AssetCreateForm() {
         <h1 className="text-2xl font-semibold">登记新资产</h1>
         <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950">
           <p className="font-medium">尚未创建任何类型</p>
-          <p className="mt-2 text-muted-foreground">请用 CLI 创建一个类型：</p>
-          <pre className="mt-2 overflow-x-auto rounded bg-background p-2 font-code text-xs">
-{`asset-hub type define \\
-  --name "笔记本电脑" \\
-  --prefix NB \\
-  --fields '[{"key":"cpu","type":"string","required":true}]'`}
-          </pre>
-          <p className="mt-2 text-muted-foreground">或让 Agent 帮你建（"创建一个笔记本电脑类型，前缀 NB"）。</p>
+          <p className="mt-2 text-muted-foreground">
+            资产必须归属于一个类型。请先创建类型，再回来登记资产。
+          </p>
+          <Button asChild className="mt-3">
+            <Link to="/types/new">前往创建类型</Link>
+          </Button>
         </div>
       </div>
     );
