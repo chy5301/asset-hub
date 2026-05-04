@@ -26,10 +26,8 @@ import {
   COLUMN_LABELS,
   type ColumnKey,
 } from "@/features/assets/list/column-visibility";
-import {
-  CHECKOUT_VERB,
-  RETURN_VERB,
-} from "@/features/assets/detail/checkout-actions";
+
+type CheckoutKind = "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL";
 
 export interface AssetRow {
   id: string;
@@ -52,7 +50,7 @@ interface AssetsTableProps {
   visible: Record<ColumnKey, boolean>;
   /** 筛选 / 排序 / 翻页变更时由父组件递增，用于触发 tbody 淡切（§3.5.5 时刻 2） */
   bodyKey: string;
-  onCheckout: (row: AssetRow) => void;
+  onCheckout: (row: AssetRow, kind: CheckoutKind) => void;
   onReturn: (row: AssetRow) => void;
   onDelete: (row: AssetRow) => void;
 }
@@ -282,7 +280,7 @@ function RowActions({
   onDelete,
 }: {
   row: AssetRow;
-  onCheckout: (row: AssetRow) => void;
+  onCheckout: (row: AssetRow, kind: CheckoutKind) => void;
   onReturn: (row: AssetRow) => void;
   onDelete: (row: AssetRow) => void;
 }) {
@@ -313,16 +311,22 @@ function RowActions({
           编辑
         </DropdownMenuItem>
         <DropdownMenuItem
-          onSelect={() => onCheckout(row)}
+          onSelect={() => onCheckout(row, "CHECKOUT_INTERNAL")}
           disabled={row.status !== "IDLE"}
         >
-          {CHECKOUT_VERB}
+          派发
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onCheckout(row, "CHECKOUT_EXTERNAL")}
+          disabled={row.status !== "IDLE"}
+        >
+          出借
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onReturn(row)}
           disabled={row.status !== "IN_USE"}
         >
-          {RETURN_VERB}
+          归还
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

@@ -134,7 +134,7 @@ function AssetListPage() {
           search={search}
           visible={visible}
           bodyKey={bodyKey}
-          onCheckout={(row) => handleCheckout(row, "CHECKOUT_INTERNAL")}
+          onCheckout={handleCheckout}
           onReturn={handleReturn}
           onDelete={handleDelete}
         />
