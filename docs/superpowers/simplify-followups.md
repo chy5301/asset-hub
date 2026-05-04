@@ -1037,3 +1037,11 @@ A3（CheckoutDialog/ReturnDialog 合并）时机已到——M3a 引入 7 个 dia
 ### 烟测发现新登记 follow-up
 
 - **§S 列表 Toggle pressed 视觉态较弱**：on/off chip 视觉差异不明显。M2c-3 §3 ToggleGroup pattern 复用了，但 Toggle 单独使用时缺少 elevation/shadow 区分。下次 list filter UX 改动时一并处理。
+
+### Code review / simplify review 新登记 follow-up
+
+- **§T `IllegalTransitionError` detail 结构化 payload**（M3a code review I3）：当前 `detail` 是中文自然语言字符串（如 "CHECKOUT_INTERNAL 必须提供 to_holder"），前端 `test_post_transition_required_field_missing_returns_409` 类测试按字面 match "to_holder"。后续若 translate 文案会破。改造方案：`detail` 改为 `{ "detail": "...", "code": "missing_holder" | "missing_location" | "illegal_from", "kind": "...", "from_status": "..." }` 结构化 payload，前端 dialog 按 code 渲染本地化文案。**触发时机**：i18n 启动 / 前端 dialog 形态稳定后（M4 后期）。
+- **§U `KIND_META` 跨 3 文件合一**（M3a simplify Agent 1 F2）：`transition-timeline.tsx` `KIND_META`（10 kind label/Icon/bgClass/fgClass）、`simple-transition-dialog.tsx` `META`（3 kind label/description/Icon/bgClass/fgClass）、`checkout-dialog.tsx` `META`（2 kind verb/Icon/audience）三表都按 `TransitionKind` keyed，重复登记 label + Icon。统一抽 `TRANSITION_META: Record<TransitionKind, { label, Icon, bgClass, fgClass }>` 到 `available-transitions.ts`（或新 `transition-meta.ts`），dialog 用 satellite extra 表覆盖 dialog 专属字段（description/audience/holderLabel）。**触发时机**：M3d 高级视觉重构 timeline 时一并做，避免独立 PR 影响面跨 3 文件。
+- **§V `Settings.mode` 字段替代 `os.environ.get`**（M3a simplify Agent 1 F6）：`api/app.py` 用裸 `os.environ.get("ASSET_HUB_MODE")`，`lifecycle.py` 用裸 `os.environ["ASSET_HUB_MODE"] = mode`，是局部破例——项目其他配置统一走 `Settings()`（`config.py` `env_prefix="ASSET_HUB_"`）。改造：`Settings` 加 `mode: Literal["dev","prod"] | None = None` 字段，`api/app.py` 改 `Settings().mode == "dev"`；`lifecycle.py` 仍需 `os.environ` mutation 让子进程继承（or 走 `subprocess.Popen(env={...})` 更干净）。**触发时机**：下次 Settings 加新字段或 serve 命令重构时。
+- **§W types 详情/列表 vs assets 详情/列表面板风格不统一**（用户提）：types-summary-card 居中布局 vs assets-header 左对齐；types 列表 vs assets 列表的 column-visibility / pagination / filter 区视觉风格差异。**触发时机**：M4 UI 打磨期统一规范（与 §S Toggle 视觉、A3 dialog 合并、编辑/删除按钮位置等一并处理）。
+- **§X `dispose-alert-dialog.tsx` 用 useState 而非 RHF**（M3a code review 隐含）：当前 dialog 用 `useState<string>(confirmText)` + `useState<string>(note)` 直接管理表单，与其他 6 个 dialog 用 RHF + zodResolver 风格不一致；但 dispose 字段简单（只有 confirm phrase + note）+ 校验逻辑特殊（unlocked = phrase === "处置"），抽 RHF 价值不大。**触发时机**：仅在 dialog 字段扩多 / 加 zod 校验需求时切换，否则保持现状。
