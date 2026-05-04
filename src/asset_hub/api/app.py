@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -59,7 +60,12 @@ def create_app() -> FastAPI:
     # 路径冲突：vite 默认 assetsDir="assets"，与前端 SPA 路由 /assets/{id} 同前缀；
     # 静态资产名永远带 hash + 扩展名（如 index-B7-2Mqlb.js），SPA 路由不带扩展名
     # （UUID 或 "new"），靠 Path.suffix 区分。
-    if _FRONTEND_DIST.is_dir() and (_FRONTEND_DIST / "index.html").exists():
+    #
+    # ASSET_HUB_MODE=dev 时跳过挂载——避免 backend :8000 兜底回旧 dist SPA，
+    # 让用户访问 :8000 看到的是过期 build；dev 模式应只走 Vite :5173 拿热更代码。
+    # lifecycle.py 启 backend 前注入此变量；测试 / 直跑 uvicorn 不设变量则按原行为。
+    _is_dev_mode = os.environ.get("ASSET_HUB_MODE") == "dev"
+    if not _is_dev_mode and _FRONTEND_DIST.is_dir() and (_FRONTEND_DIST / "index.html").exists():
         index_html = _FRONTEND_DIST / "index.html"
 
         @app.exception_handler(404)

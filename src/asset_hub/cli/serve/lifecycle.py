@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -54,15 +55,20 @@ def start_service(
         raise ServeLifecycleError("serve.port_occupied", f"port {frontend_port} is in use")
 
     # Phase 1 · 构建（仅 prod）
+    #
+    # 默认行为：prod 模式启动总是 rebuild，确保拿到最新前端代码（plan §M2d "生产
+    # 模式 --mode prod 自动 build 前端"）。--skip-build 显式跳过且要求 dist 存在。
+    # 旧逻辑 "dist 已存在则复用" 让 prod 启动后看到旧 build，与"自动 build"承诺矛盾。
     build_ran = False
     if mode == "prod":
         dist_index = Path("frontend/dist/index.html")
-        if not dist_index.exists():
-            if skip_build:
+        if skip_build:
+            if not dist_index.exists():
                 raise ServeLifecycleError(
                     "serve.dist_missing",
                     "frontend/dist not found; omit --skip-build or run 'pnpm --dir frontend build'",
                 )
+        else:
             _run_build()
             build_ran = True
 
@@ -73,6 +79,11 @@ def start_service(
         logs_mod.rotate_log(settings.logs_dir / "frontend.log")
 
     # Phase 3 · 启动子进程
+    #
+    # ASSET_HUB_MODE 注入到当前进程环境，子进程默认继承——backend (api/app.py)
+    # 据此决定是否挂载 frontend/dist SPA fallback：dev 模式跳过，避免 :8000 吃旧 dist。
+    os.environ["ASSET_HUB_MODE"] = mode
+
     started_at = datetime.now(UTC)
     backend_cmd = [
         "uv", "run", "uvicorn", "asset_hub.api.app:app",
@@ -136,8 +147,11 @@ def start_service(
     )
     frontend_info = None
     if mode == "dev" and frontend_pid is not None:
+        # frontend host 显式用 "localhost"——Vite 8.x dev 默认只绑 IPv6 ::1，
+        # 127.0.0.1 (IPv4) 直接拒绝；输出 / probe / status 都应该用 localhost。
+        # backend host 仍是 127.0.0.1（uvicorn 显式绑 IPv4，见 above）。
         frontend_info = ServiceInfo(
-            pid=frontend_pid, port=frontend_port, host=host,
+            pid=frontend_pid, port=frontend_port, host="localhost",
             log=str(settings.logs_dir / "frontend.log"),
         )
     return StartResult(
