@@ -26,8 +26,7 @@ import {
   COLUMN_LABELS,
   type ColumnKey,
 } from "@/features/assets/list/column-visibility";
-
-type CheckoutKind = "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL";
+import type { CheckoutKind } from "@/features/assets/detail/available-transitions";
 
 export interface AssetRow {
   id: string;

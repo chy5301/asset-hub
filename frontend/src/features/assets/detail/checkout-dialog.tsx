@@ -26,41 +26,11 @@ import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toFriendlyMessage } from "@/lib/error";
+import type { CheckoutKind } from "./available-transitions";
 
-type CheckoutKind = "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL";
-
-interface KindMeta {
-  chipLabel: string;
-  Icon: LucideIcon;
-  title: string;
-  description: string;
-  holderLabel: string;
-  submitText: string;
-  pendingText: string;
-  successText: string;
-}
-
-const META: Record<CheckoutKind, KindMeta> = {
-  CHECKOUT_INTERNAL: {
-    chipLabel: "派发",
-    Icon: ArrowRightFromLine,
-    title: "派发资产",
-    description: "派发给团队成员。",
-    holderLabel: "派发给",
-    submitText: "确认派发",
-    pendingText: "派发中…",
-    successText: "已派发",
-  },
-  CHECKOUT_EXTERNAL: {
-    chipLabel: "出借",
-    Icon: Send,
-    title: "出借资产",
-    description: "出借给外部人员。",
-    holderLabel: "出借给",
-    submitText: "确认出借",
-    pendingText: "出借中…",
-    successText: "已出借",
-  },
+const META: Record<CheckoutKind, { verb: string; Icon: LucideIcon; audience: string }> = {
+  CHECKOUT_INTERNAL: { verb: "派发", Icon: ArrowRightFromLine, audience: "团队成员" },
+  CHECKOUT_EXTERNAL: { verb: "出借", Icon: Send, audience: "外部人员" },
 };
 
 const schema = z.object({
@@ -112,7 +82,7 @@ export function CheckoutDialog({
         due_at: values.due_at || null,
         note: values.note?.trim() || null,
       });
-      toast.success(meta.successText);
+      toast.success(`已${meta.verb}`);
       form.reset();
       onOpenChange(false);
     } catch (err) {
@@ -127,11 +97,11 @@ export function CheckoutDialog({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-status-in-use/15 px-2.5 py-1 text-xs font-medium text-status-in-use-fg">
               <Icon className="size-3.5" aria-hidden />
-              {meta.chipLabel}
+              {meta.verb}
             </span>
           </div>
-          <DialogTitle>{meta.title}</DialogTitle>
-          <DialogDescription>{meta.description}</DialogDescription>
+          <DialogTitle>{meta.verb}资产</DialogTitle>
+          <DialogDescription>{meta.verb}给{meta.audience}。</DialogDescription>
         </DialogHeader>
 
         {form.formState.errors.root && (
@@ -148,7 +118,7 @@ export function CheckoutDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    {meta.holderLabel} <span className="text-destructive">*</span>
+                    {meta.verb}给 <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -220,7 +190,7 @@ export function CheckoutDialog({
                 取消
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? meta.pendingText : meta.submitText}
+                {mutation.isPending ? `${meta.verb}中…` : `确认${meta.verb}`}
               </Button>
             </DialogFooter>
           </form>

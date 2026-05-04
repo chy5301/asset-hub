@@ -19,12 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import {
-  MENU_ACTIONS,
-  PRIMARY_ACTIONS,
-  type MenuAction,
-  type PrimaryAction,
-} from "./available-transitions";
+import { MENU_ACTIONS, PRIMARY_ACTIONS } from "./available-transitions";
 import { CheckoutDialog } from "./checkout-dialog";
 import { DisposeAlertDialog } from "./dispose-alert-dialog";
 import { RelocateDialog } from "./relocate-dialog";
@@ -75,17 +70,7 @@ export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
   );
 }
 
-type DialogKind =
-  | "checkout_internal"
-  | "checkout_external"
-  | "return"
-  | "send_to_maintenance"
-  | "recover_from_maintenance"
-  | "reinstate"
-  | "retire"
-  | "dispose"
-  | "relocate"
-  | "transfer_holder";
+type TransitionKind = components["schemas"]["TransitionKind"];
 
 function ActionArea({
   asset,
@@ -98,51 +83,20 @@ function ActionArea({
   const status = asset.status;
   const primaries = PRIMARY_ACTIONS[status];
   const menuItems = MENU_ACTIONS[status];
-  const [openDialog, setOpenDialog] = useState<DialogKind | null>(null);
+  const [openDialog, setOpenDialog] = useState<TransitionKind | null>(null);
 
-  // DISPOSED 全只读：隐藏主按钮、菜单项里仅显示编辑（且也隐藏）+ 删除
   const isReadonly = status === "DISPOSED";
-
-  function openMenuAction(action: MenuAction) {
-    switch (action.kind) {
-      case "SEND_TO_MAINTENANCE":
-        return setOpenDialog("send_to_maintenance");
-      case "RETIRE":
-        return setOpenDialog("retire");
-      case "DISPOSE":
-        return setOpenDialog("dispose");
-      case "RELOCATE":
-        return setOpenDialog("relocate");
-      case "TRANSFER_HOLDER":
-        return setOpenDialog("transfer_holder");
-    }
-  }
-
-  function openPrimary(action: PrimaryAction) {
-    switch (action.kind) {
-      case "CHECKOUT_INTERNAL":
-        return setOpenDialog("checkout_internal");
-      case "CHECKOUT_EXTERNAL":
-        return setOpenDialog("checkout_external");
-      case "RETURN":
-        return setOpenDialog("return");
-      case "RECOVER_FROM_MAINTENANCE":
-        return setOpenDialog("recover_from_maintenance");
-      case "REINSTATE":
-        return setOpenDialog("reinstate");
-    }
-  }
+  const closeDialog = (open: boolean) => !open && setOpenDialog(null);
 
   return (
     <div className="flex items-center gap-2">
-      {/* transition 主按钮：所有 transition 等权用 default variant */}
       {primaries.map((p) => (
-        <Button key={p.kind} onClick={() => openPrimary(p)}>
+        <Button key={p.kind} onClick={() => setOpenDialog(p.kind)}>
           {p.label}
         </Button>
       ))}
 
-      {/* 编辑：导航操作（非 transition），与 transition 视觉分层用 outline；DISPOSED 全只读时隐藏 */}
+      {/* 编辑非 transition，outline 视觉分层；DISPOSED 全只读时隐藏 */}
       {!isReadonly && (
         <Button
           variant="outline"
@@ -164,7 +118,7 @@ function ActionArea({
           {menuItems.map((action) => (
             <DropdownMenuItem
               key={action.kind}
-              onSelect={() => openMenuAction(action)}
+              onSelect={() => setOpenDialog(action.kind)}
             >
               {action.label}…
             </DropdownMenuItem>
@@ -196,64 +150,30 @@ function ActionArea({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Dialogs（受控 props 风格） */}
-      <CheckoutDialog
-        open={openDialog === "checkout_internal"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        kind="CHECKOUT_INTERNAL"
-      />
-      <CheckoutDialog
-        open={openDialog === "checkout_external"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        kind="CHECKOUT_EXTERNAL"
-      />
-      <ReturnDialog
-        open={openDialog === "return"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-      />
-      <SimpleTransitionDialog
-        open={openDialog === "send_to_maintenance"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        kind="SEND_TO_MAINTENANCE"
-      />
-      <SimpleTransitionDialog
-        open={openDialog === "recover_from_maintenance"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        kind="RECOVER_FROM_MAINTENANCE"
-      />
-      <SimpleTransitionDialog
-        open={openDialog === "reinstate"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        kind="REINSTATE"
-      />
-      <RetireAlertDialog
-        open={openDialog === "retire"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        assetName={asset.name}
-      />
-      <DisposeAlertDialog
-        open={openDialog === "dispose"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-        assetName={asset.name}
-      />
-      <RelocateDialog
-        open={openDialog === "relocate"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-      />
-      <TransferHolderDialog
-        open={openDialog === "transfer_holder"}
-        onOpenChange={(o) => !o && setOpenDialog(null)}
-        assetId={asset.id}
-      />
+      {/* dialog 条件渲染：未打开则不实例化，避免每次详情页 render 都跑 9× useForm + useMutation */}
+      {(openDialog === "CHECKOUT_INTERNAL" || openDialog === "CHECKOUT_EXTERNAL") && (
+        <CheckoutDialog open onOpenChange={closeDialog} assetId={asset.id} kind={openDialog} />
+      )}
+      {openDialog === "RETURN" && (
+        <ReturnDialog open onOpenChange={closeDialog} assetId={asset.id} />
+      )}
+      {(openDialog === "SEND_TO_MAINTENANCE" ||
+        openDialog === "RECOVER_FROM_MAINTENANCE" ||
+        openDialog === "REINSTATE") && (
+        <SimpleTransitionDialog open onOpenChange={closeDialog} assetId={asset.id} kind={openDialog} />
+      )}
+      {openDialog === "RETIRE" && (
+        <RetireAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
+      )}
+      {openDialog === "DISPOSE" && (
+        <DisposeAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
+      )}
+      {openDialog === "RELOCATE" && (
+        <RelocateDialog open onOpenChange={closeDialog} assetId={asset.id} />
+      )}
+      {openDialog === "TRANSFER_HOLDER" && (
+        <TransferHolderDialog open onOpenChange={closeDialog} assetId={asset.id} />
+      )}
     </div>
   );
 }

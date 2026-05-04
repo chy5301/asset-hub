@@ -54,11 +54,7 @@ def start_service(
     if mode == "dev" and proc_mod.is_port_in_use(frontend_port):
         raise ServeLifecycleError("serve.port_occupied", f"port {frontend_port} is in use")
 
-    # Phase 1 · 构建（仅 prod）
-    #
-    # 默认行为：prod 模式启动总是 rebuild，确保拿到最新前端代码（plan §M2d "生产
-    # 模式 --mode prod 自动 build 前端"）。--skip-build 显式跳过且要求 dist 存在。
-    # 旧逻辑 "dist 已存在则复用" 让 prod 启动后看到旧 build，与"自动 build"承诺矛盾。
+    # Phase 1 · 构建（仅 prod；默认总是 rebuild 确保拿到最新前端代码，--skip-build 显式跳过）
     build_ran = False
     if mode == "prod":
         dist_index = Path("frontend/dist/index.html")
@@ -78,10 +74,7 @@ def start_service(
     if mode == "dev":
         logs_mod.rotate_log(settings.logs_dir / "frontend.log")
 
-    # Phase 3 · 启动子进程
-    #
-    # ASSET_HUB_MODE 注入到当前进程环境，子进程默认继承——backend (api/app.py)
-    # 据此决定是否挂载 frontend/dist SPA fallback：dev 模式跳过，避免 :8000 吃旧 dist。
+    # Phase 3 · 启动子进程（uvicorn 子进程继承 ASSET_HUB_MODE 环境变量；api/app.py 据此决定 SPA fallback）
     os.environ["ASSET_HUB_MODE"] = mode
 
     started_at = datetime.now(UTC)
@@ -125,10 +118,9 @@ def start_service(
             f"backend failed to start within ~10s; see {backend_log}",
         )
     if mode == "dev":
-        # 用 localhost 而非 127.0.0.1：Vite 8.x 在 Windows 上 dev 默认只绑 IPv6
-        # ::1，IPv4 127.0.0.1 会被拒绝；localhost 由 OS 解析（先 ::1 后回退
-        # 127.0.0.1），与浏览器实际访问行为一致。后端用 127.0.0.1 因为 uvicorn
-        # 显式 --host 绑 IPv4，路径不同。
+        # frontend 用 localhost 而非 127.0.0.1：Vite 8.x dev 默认只绑 IPv6 ::1，
+        # IPv4 127.0.0.1 会被拒绝；localhost 由 OS 解析。后端走 127.0.0.1 因为
+        # uvicorn 显式 --host 绑 IPv4。status / output 同此约定。
         frontend_url = f"http://localhost:{frontend_port}/"
         if not probe_mod.probe_once(frontend_url, timeout=2.0):
             # 前端慢，再试一次更宽松窗
@@ -147,9 +139,7 @@ def start_service(
     )
     frontend_info = None
     if mode == "dev" and frontend_pid is not None:
-        # frontend host 显式用 "localhost"——Vite 8.x dev 默认只绑 IPv6 ::1，
-        # 127.0.0.1 (IPv4) 直接拒绝；输出 / probe / status 都应该用 localhost。
-        # backend host 仍是 127.0.0.1（uvicorn 显式绑 IPv4，见 above）。
+        # frontend host 用 "localhost"，见 Phase 4 注释
         frontend_info = ServiceInfo(
             pid=frontend_pid, port=frontend_port, host="localhost",
             log=str(settings.logs_dir / "frontend.log"),
@@ -308,8 +298,7 @@ def _build_status_info(state, *, no_probe: bool, port_for_probe: int):
         uptime = int((datetime.now(UTC) - state.started_at).total_seconds())
     healthy = False
     if not no_probe:
-        # frontend 用 localhost（Vite IPv6 ::1 binding；详见 start_service 注释）；
-        # backend 用 127.0.0.1（uvicorn 显式绑 IPv4）。
+        # frontend 用 localhost / backend 用 127.0.0.1，详见 start_service 注释
         url = (
             f"http://127.0.0.1:{port_for_probe}/api/healthz"
             if state.service == "backend"

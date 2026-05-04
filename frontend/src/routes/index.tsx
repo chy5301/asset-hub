@@ -6,6 +6,7 @@ import { useAssetsQuery } from "@/api/hooks/assets";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonRow } from "@/components/feedback/skeleton-row";
+import type { CheckoutKind } from "@/features/assets/detail/available-transitions";
 import { CheckoutDialog } from "@/features/assets/detail/checkout-dialog";
 import { DeleteAssetAlert } from "@/features/assets/detail/delete-asset-alert";
 import { ReturnDialog } from "@/features/assets/detail/return-dialog";
@@ -31,7 +32,6 @@ function AssetListPage() {
   const { visible, toggle } = useColumnVisibility();
 
   // Dialog state for ⋯ menu actions
-  type CheckoutKind = "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL";
   const [checkoutRow, setCheckoutRow] = useState<{ row: AssetRow; kind: CheckoutKind } | null>(null);
   const [returnRow, setReturnRow] = useState<AssetRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<AssetRow | null>(null);

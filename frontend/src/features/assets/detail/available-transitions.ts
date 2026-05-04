@@ -3,6 +3,9 @@ import type { AssetStatus } from "@/features/assets/status-labels";
 
 type TransitionKind = components["schemas"]["TransitionKind"];
 
+/** 派发/出借两 kind 的窄类型，CheckoutDialog / 列表行尾菜单 / asset-header 共用。 */
+export type CheckoutKind = Extract<TransitionKind, "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL">;
+
 export interface PrimaryAction {
   kind: TransitionKind;
   label: string;
