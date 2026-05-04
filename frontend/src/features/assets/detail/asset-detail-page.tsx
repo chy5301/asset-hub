@@ -17,6 +17,7 @@ import { CustomDataSection } from "./custom-data-section";
 import { DeleteAssetAlert } from "./delete-asset-alert";
 import { DetailSkeleton } from "./detail-skeleton";
 import { GeneralFields } from "./general-fields";
+import { TransitionTimeline } from "./transition-timeline";
 
 interface AssetDetailPageProps {
   id: string;
@@ -75,8 +76,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
           onOpen={(att) => setLightboxAttachment(att)}
           assetId={asset.id}
         />
-        {/* TODO Task 15: 重写为 TransitionTimeline */}
-        <p className="text-sm text-muted-foreground">流转历史（task 15 重写中）</p>
+        <TransitionTimeline assetId={asset.id} />
       </main>
       <AttachmentLightbox
         attachment={lightboxAttachment}
