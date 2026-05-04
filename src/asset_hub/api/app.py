@@ -74,7 +74,35 @@ def create_app() -> FastAPI:
             looks_like_static_asset = bool(Path(path).suffix)
             if path.startswith("/api/") or looks_like_static_asset:
                 return JSONResponse(status_code=404, content={"detail": "Not Found"})
-            return FileResponse(index_html)
+            return FileResponse(
+                index_html,
+                headers={"Cache-Control": "no-cache, must-revalidate"},
+            )
+
+        # SPA 缓存策略 middleware：
+        # - /assets/* 是 vite hash 文件名（如 index-Csgk9Ll1.js），1 年 immutable
+        # - / 与其他无扩展名 SPA 路由 → no-cache, must-revalidate（强制 conditional
+        #   request 比对 ETag → 304 不下载，但保证版本鲜度）
+        #
+        # 没有此 middleware 时浏览器对无 Cache-Control 的 HTML 走 heuristic 缓存
+        # （约 (Date - Last-Modified) / 10），prod 启动后用户改前端代码 + dist 重新
+        # build + backend 也挂载新 dist，但浏览器仍可能从本地缓存返回旧 HTML（连带
+        # 加载到旧 JS hash 引用）——表现为 'prod 启动旧前端'。
+        @app.middleware("http")
+        async def _add_static_cache_headers(request: Request, call_next):
+            response = await call_next(request)
+            path = request.url.path
+            if path.startswith("/api/"):
+                return response
+            if path.startswith("/assets/") and "." in path:
+                response.headers.setdefault(
+                    "Cache-Control", "public, max-age=31536000, immutable"
+                )
+            elif path == "/" or not Path(path).suffix:
+                response.headers.setdefault(
+                    "Cache-Control", "no-cache, must-revalidate"
+                )
+            return response
 
         app.mount(
             "/",
