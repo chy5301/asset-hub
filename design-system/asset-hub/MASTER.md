@@ -519,6 +519,20 @@ DISPOSE 终态不可逆，dialog 内输入"处置"二字解锁主按钮（参考
 
 "休眠待复活"语义，与 RETIRE transition kind 在 timeline 的 icon 一致；M2c-1 旧 MinusCircle 弃用。落地于 commit `4f2500a`。
 
+### 6. 派发/出借拆为两个主按钮（修订 spec §5.4 决议）
+
+**原决议**：spec §5.4 把 CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 合一为 `DISPATCH_GROUP`，单个"派发"主按钮 + dialog 内 ToggleGroup 选类型。
+
+**修订原因**：M3a 验收发现 dialog 内 toggle discoverability 不足——主按钮就叫"派发"，用户不点开 dialog 看不到出借入口存在。
+
+**新决议**：IDLE 状态详情页主按钮区**并列两个按钮**："派发"（`Button` default variant）+ "出借"（`Button` outline variant）。视觉层级：派发是主路径（团队内部），出借是备选（对外）。CheckoutDialog **共用一个组件 + `kind` prop**，按 kind 切换 icon（ArrowRightFromLine vs Send）/ chip 文案（派发 vs 出借）/ 字段 label（派发给 vs 出借给）/ 描述（派发给团队成员 vs 出借给外部人员）/ 按钮文案 / toast。
+
+`available-transitions.ts`：`PRIMARY_ACTION` rename 为 `PRIMARY_ACTIONS`，类型 `Record<AssetStatus, PrimaryAction[]>`（数组），删除 `DISPATCH_GROUP` 字面量。
+
+列表行尾菜单同步：单"派发"项扩为"派发 / 出借"两项（`onCheckout(row, kind)` 签名）。
+
+落地于 M3a 后续 fix commit。
+
 ### Pre-Delivery Checklist（M3a PR-2 验证）
 
 - [x] No emojis as icons（全 Lucide SVG）

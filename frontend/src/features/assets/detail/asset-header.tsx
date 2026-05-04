@@ -21,8 +21,9 @@ import {
 
 import {
   MENU_ACTIONS,
-  PRIMARY_ACTION,
+  PRIMARY_ACTIONS,
   type MenuAction,
+  type PrimaryAction,
 } from "./available-transitions";
 import { CheckoutDialog } from "./checkout-dialog";
 import { DisposeAlertDialog } from "./dispose-alert-dialog";
@@ -75,7 +76,8 @@ export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
 }
 
 type DialogKind =
-  | "checkout"
+  | "checkout_internal"
+  | "checkout_external"
   | "return"
   | "send_to_maintenance"
   | "recover_from_maintenance"
@@ -94,7 +96,7 @@ function ActionArea({
 }) {
   const navigate = useNavigate();
   const status = asset.status;
-  const primary = PRIMARY_ACTION[status];
+  const primaries = PRIMARY_ACTIONS[status];
   const menuItems = MENU_ACTIONS[status];
   const [openDialog, setOpenDialog] = useState<DialogKind | null>(null);
 
@@ -116,37 +118,42 @@ function ActionArea({
     }
   }
 
-  function renderPrimaryButton() {
-    if (!primary) return null;
-    if (primary.kind === "DISPATCH_GROUP") {
-      return <Button onClick={() => setOpenDialog("checkout")}>{primary.label}</Button>;
+  function openPrimary(action: PrimaryAction) {
+    switch (action.kind) {
+      case "CHECKOUT_INTERNAL":
+        return setOpenDialog("checkout_internal");
+      case "CHECKOUT_EXTERNAL":
+        return setOpenDialog("checkout_external");
+      case "RETURN":
+        return setOpenDialog("return");
+      case "RECOVER_FROM_MAINTENANCE":
+        return setOpenDialog("recover_from_maintenance");
+      case "REINSTATE":
+        return setOpenDialog("reinstate");
     }
-    if (primary.kind === "RETURN") {
-      return <Button onClick={() => setOpenDialog("return")}>{primary.label}</Button>;
-    }
-    if (primary.kind === "RECOVER_FROM_MAINTENANCE") {
-      return (
-        <Button
-          onClick={() => setOpenDialog("recover_from_maintenance")}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          {primary.label}
-        </Button>
-      );
-    }
-    if (primary.kind === "REINSTATE") {
-      return (
-        <Button onClick={() => setOpenDialog("reinstate")} variant="outline">
-          {primary.label}
-        </Button>
-      );
-    }
-    return null;
+  }
+
+  function primaryVariant(
+    kind: PrimaryAction["kind"],
+  ): "default" | "outline" {
+    // 视觉层级：CHECKOUT_INTERNAL（派发）是 IDLE 主路径用 default；
+    // CHECKOUT_EXTERNAL（出借）是备选用 outline；REINSTATE 也用 outline
+    // （重新启用是恢复操作，不算正向主路径）。
+    if (kind === "CHECKOUT_EXTERNAL" || kind === "REINSTATE") return "outline";
+    return "default";
   }
 
   return (
     <div className="flex items-center gap-2">
-      {renderPrimaryButton()}
+      {primaries.map((p) => (
+        <Button
+          key={p.kind}
+          onClick={() => openPrimary(p)}
+          variant={primaryVariant(p.kind)}
+        >
+          {p.label}
+        </Button>
+      ))}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -202,9 +209,16 @@ function ActionArea({
 
       {/* Dialogs（受控 props 风格） */}
       <CheckoutDialog
-        open={openDialog === "checkout"}
+        open={openDialog === "checkout_internal"}
         onOpenChange={(o) => !o && setOpenDialog(null)}
         assetId={asset.id}
+        kind="CHECKOUT_INTERNAL"
+      />
+      <CheckoutDialog
+        open={openDialog === "checkout_external"}
+        onOpenChange={(o) => !o && setOpenDialog(null)}
+        assetId={asset.id}
+        kind="CHECKOUT_EXTERNAL"
       />
       <ReturnDialog
         open={openDialog === "return"}

@@ -31,11 +31,15 @@ function AssetListPage() {
   const { visible, toggle } = useColumnVisibility();
 
   // Dialog state for ⋯ menu actions
-  const [checkoutRow, setCheckoutRow] = useState<AssetRow | null>(null);
+  type CheckoutKind = "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL";
+  const [checkoutRow, setCheckoutRow] = useState<{ row: AssetRow; kind: CheckoutKind } | null>(null);
   const [returnRow, setReturnRow] = useState<AssetRow | null>(null);
   const [deleteRow, setDeleteRow] = useState<AssetRow | null>(null);
 
-  const handleCheckout = useCallback((row: AssetRow) => setCheckoutRow(row), []);
+  const handleCheckout = useCallback(
+    (row: AssetRow, kind: CheckoutKind) => setCheckoutRow({ row, kind }),
+    [],
+  );
   const handleReturn = useCallback((row: AssetRow) => setReturnRow(row), []);
   const handleDelete = useCallback((row: AssetRow) => setDeleteRow(row), []);
 
@@ -71,11 +75,14 @@ function AssetListPage() {
         {renderBody()}
       </section>
 
-      <CheckoutDialog
-        open={!!checkoutRow}
-        onOpenChange={(v) => !v && setCheckoutRow(null)}
-        assetId={checkoutRow?.id ?? ""}
-      />
+      {checkoutRow && (
+        <CheckoutDialog
+          open
+          onOpenChange={(v) => !v && setCheckoutRow(null)}
+          assetId={checkoutRow.row.id}
+          kind={checkoutRow.kind}
+        />
+      )}
       <ReturnDialog
         open={!!returnRow}
         onOpenChange={(v) => !v && setReturnRow(null)}
@@ -127,7 +134,7 @@ function AssetListPage() {
           search={search}
           visible={visible}
           bodyKey={bodyKey}
-          onCheckout={handleCheckout}
+          onCheckout={(row) => handleCheckout(row, "CHECKOUT_INTERNAL")}
           onReturn={handleReturn}
           onDelete={handleDelete}
         />

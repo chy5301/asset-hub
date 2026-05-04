@@ -656,11 +656,12 @@ export const STATUS_META: Record<AssetStatus, StatusMeta> = {
 
 **`Dialog` 形态（form / 可逆）**：
 
-3. **`CheckoutDialog`**（升级现）
-   - 头部 chip：`bg-status-in-use/15 text-status-in-use-fg` + ArrowRightFromLine icon + 文字"派发"
-   - kind 选择器（segment control）：[ 派发 ─ 内部使用 ]  [ 出借 ─ 借给外部 ]（默认派发）
-   - 字段：to_holder（必填）/ to_location / due_at / note
-   - 主按钮蓝绿（status-in-use-fg）
+3. **`CheckoutDialog`**（升级现，共用 + `kind` prop 区分）
+   - **派发/出借在详情页主按钮区拆为两个并列按钮**（CHECKOUT_INTERNAL default variant、CHECKOUT_EXTERNAL outline variant），不在 dialog 内 toggle 选择
+     - 修订原因：原决议 dialog 内 ToggleGroup discoverability 不足，用户从主按钮看不到出借入口
+   - 头部 chip：`bg-status-in-use/15 text-status-in-use-fg` + 按 kind 切 icon（CHECKOUT_INTERNAL=ArrowRightFromLine "派发"；CHECKOUT_EXTERNAL=Send "出借"）
+   - 字段：to_holder（必填，label 按 kind 切"派发给"/"出借给"）/ to_location / due_at / note
+   - 主按钮文案按 kind 切"确认派发"/"确认出借"
 
 4. **`ReturnDialog`**（升级现）
    - 头部 chip：`bg-status-idle/15 text-status-idle-fg` + Undo2 icon + 文字"归还"
