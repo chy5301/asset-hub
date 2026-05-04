@@ -1,6 +1,6 @@
-import { Circle, CircleDot, MinusCircle, Wrench, type LucideIcon } from "lucide-react";
+import { Archive, Circle, CircleDot, Moon, Wrench, type LucideIcon } from "lucide-react";
 
-export type AssetStatus = "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED";
+export type AssetStatus = "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED" | "DISPOSED";
 
 export interface StatusMeta {
   label: string;
@@ -23,15 +23,21 @@ export const STATUS_META: Record<AssetStatus, StatusMeta> = {
     Icon: Circle,
   },
   MAINTENANCE: {
-    label: "维护",
+    label: "维修中",
     bgVar: "--status-maintenance",
     fgVar: "--status-maintenance-fg",
     Icon: Wrench,
   },
   RETIRED: {
-    label: "退役",
+    label: "已退役",
     bgVar: "--status-retired",
     fgVar: "--status-retired-fg",
-    Icon: MinusCircle,
+    Icon: Moon,
+  },
+  DISPOSED: {
+    label: "已处置",
+    bgVar: "--status-disposed",
+    fgVar: "--status-disposed-fg",
+    Icon: Archive,
   },
 };

@@ -1,26 +1,26 @@
-import { Undo2 } from "lucide-react";
+import { Moon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { useRecordTransitionMutation } from "@/api/hooks/transitions";
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
@@ -34,17 +34,19 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-interface ReturnDialogProps {
+interface RetireAlertDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assetId: string;
+  assetName: string;
 }
 
-export function ReturnDialog({
+export function RetireAlertDialog({
   open,
   onOpenChange,
   assetId,
-}: ReturnDialogProps) {
+  assetName,
+}: RetireAlertDialogProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { to_holder: "", to_location: "", note: "" },
@@ -58,15 +60,16 @@ export function ReturnDialog({
     onOpenChange(v);
   }
 
-  async function onSubmit(values: FormValues) {
+  async function onConfirm() {
+    const v = form.getValues();
     try {
       await mutation.mutateAsync({
-        kind: "RETURN",
-        to_holder: values.to_holder?.trim() || null,
-        to_location: values.to_location?.trim() || null,
-        note: values.note?.trim() || null,
+        kind: "RETIRE",
+        to_holder: v.to_holder?.trim() || null,
+        to_location: v.to_location?.trim() || null,
+        note: v.note?.trim() || null,
       });
-      toast.success("已归还");
+      toast.success("已退役");
       form.reset();
       onOpenChange(false);
     } catch (err) {
@@ -75,20 +78,20 @@ export function ReturnDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-idle/15 px-2.5 py-1 text-xs font-medium text-status-idle-fg">
-              <Undo2 className="size-3.5" aria-hidden />
-              归还
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-retired/15 px-2.5 py-1 text-xs font-medium text-status-retired-fg">
+              <Moon className="size-3.5" aria-hidden />
+              退役
             </span>
           </div>
-          <DialogTitle>归还资产</DialogTitle>
-          <DialogDescription>
-            归还接收人将成为新 holder；不填则资产无 holder（无人值守）。
-          </DialogDescription>
-        </DialogHeader>
+          <AlertDialogTitle>退役 {assetName}？</AlertDialogTitle>
+          <AlertDialogDescription>
+            退役后资产可通过"重新启用"恢复至闲置状态。可选填备件库管理员、存放位置。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
         {form.formState.errors.root && (
           <InlineErrorBanner
@@ -97,22 +100,16 @@ export function ReturnDialog({
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4">
             <FormField
               control={form.control}
               name="to_holder"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>归还给（可选，留空表示无人值守）</FormLabel>
+                  <FormLabel>备件库管理员（可选）</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：仓管李四"
-                      disabled={mutation.isPending}
-                      autoFocus
-                    />
+                    <Input {...field} disabled={mutation.isPending} />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -121,13 +118,9 @@ export function ReturnDialog({
               name="to_location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>归还位置（可选）</FormLabel>
+                  <FormLabel>存放位置（可选）</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：1F-柜 3"
-                      disabled={mutation.isPending}
-                    />
+                    <Input {...field} disabled={mutation.isPending} />
                   </FormControl>
                 </FormItem>
               )}
@@ -148,22 +141,18 @@ export function ReturnDialog({
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => handleOpenChange(false)}
-                disabled={mutation.isPending}
-              >
-                取消
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "归还中…" : "确认归还"}
-              </Button>
-            </DialogFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={mutation.isPending}>
+            取消
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={mutation.isPending}>
+            {mutation.isPending ? "退役中…" : "确认退役"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

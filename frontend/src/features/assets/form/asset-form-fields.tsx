@@ -46,6 +46,7 @@ export function AssetFormFields<TFieldValues extends FieldValues>({
           typeReadonly={mode === 'edit'}
           assetCode={assetCode}
           forceTypeName={mode === 'edit' ? selectedType?.name : undefined}
+          hideHolderLocation={mode === 'edit'}
         />
       </section>
 

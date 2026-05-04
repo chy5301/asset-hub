@@ -6,7 +6,7 @@ interface Props {
   className?: string;
 }
 
-/** 详情阅读区 section 标题（GeneralFields / AttachmentGrid / CheckoutTimeline 风格）。 */
+/** 详情阅读区 section 标题（GeneralFields / AttachmentGrid / TransitionTimeline 风格）。 */
 export function SectionTitle({ children, className }: Props) {
   return (
     <h2 className={cn("mb-3 text-lg font-medium", className)}>{children}</h2>

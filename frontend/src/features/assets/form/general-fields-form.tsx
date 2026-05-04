@@ -17,6 +17,11 @@ interface GeneralFieldsFormProps<TFieldValues extends FieldValues> {
   assetCode?: string;
   /** 编辑模式下 type select 用 prop 传，绕过 useWatch（type_id 不在 form values） */
   forceTypeName?: string;
+  /**
+   * M3a：edit 模式不渲染 holder/location 字段（这俩字段不再走 PATCH，
+   * 必须通过详情页的 checkout/return transition dialogs 修改）。
+   */
+  hideHolderLocation?: boolean;
 }
 
 export function GeneralFieldsForm<TFieldValues extends FieldValues>({
@@ -25,6 +30,7 @@ export function GeneralFieldsForm<TFieldValues extends FieldValues>({
   typeReadonly,
   assetCode,
   forceTypeName,
+  hideHolderLocation,
 }: GeneralFieldsFormProps<TFieldValues>) {
   // CreateFormValues / EditFormValues 都含这些 base 字段；用 Path<TFieldValues> 包一层
   // 让 RHF 在不知道具体 TFieldValues 时仍然接受字面量名。
@@ -115,29 +121,33 @@ export function GeneralFieldsForm<TFieldValues extends FieldValues>({
         }}
       />
 
-      <FormField
-        control={control}
-        name={holderField}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>持有人</FormLabel>
-            <FormControl><Input {...field} value={field.value ?? ''} placeholder="可空" /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {!hideHolderLocation && (
+        <>
+          <FormField
+            control={control}
+            name={holderField}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>持有人</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder="可空" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-      <FormField
-        control={control}
-        name={locationField}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>位置</FormLabel>
-            <FormControl><Input {...field} value={field.value ?? ''} placeholder="可空" /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+          <FormField
+            control={control}
+            name={locationField}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>位置</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ''} placeholder="可空" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </>
+      )}
 
       <FormField
         control={control}

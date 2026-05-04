@@ -1,31 +1,68 @@
-import { Undo2 } from "lucide-react";
+import { CheckCircle2, Sun, Wrench, type LucideIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { useRecordTransitionMutation } from "@/api/hooks/transitions";
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toFriendlyMessage } from "@/lib/error";
+
+type SimpleKind =
+  | "SEND_TO_MAINTENANCE"
+  | "RECOVER_FROM_MAINTENANCE"
+  | "REINSTATE";
+
+interface KindMeta {
+  label: string;
+  description: string;
+  Icon: LucideIcon;
+  bgClass: string;
+  fgClass: string;
+}
+
+const META: Record<SimpleKind, KindMeta> = {
+  SEND_TO_MAINTENANCE: {
+    label: "送修",
+    description: "资产送修后状态变为'维修中'，无法派发。",
+    Icon: Wrench,
+    bgClass: "bg-status-maintenance/15",
+    fgClass: "text-status-maintenance-fg",
+  },
+  RECOVER_FROM_MAINTENANCE: {
+    label: "维修完成",
+    description: "维修完成后资产回到'闲置'状态。",
+    Icon: CheckCircle2,
+    bgClass: "bg-status-idle/15",
+    fgClass: "text-status-idle-fg",
+  },
+  REINSTATE: {
+    label: "重新启用",
+    description: "重新启用退役资产，回到'闲置'状态。",
+    Icon: Sun,
+    bgClass: "bg-status-idle/15",
+    fgClass: "text-status-idle-fg",
+  },
+};
 
 const schema = z.object({
   to_holder: z.string().optional(),
@@ -34,23 +71,27 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-interface ReturnDialogProps {
+interface SimpleTransitionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assetId: string;
+  kind: SimpleKind;
 }
 
-export function ReturnDialog({
+export function SimpleTransitionDialog({
   open,
   onOpenChange,
   assetId,
-}: ReturnDialogProps) {
+  kind,
+}: SimpleTransitionDialogProps) {
+  const meta = META[kind];
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { to_holder: "", to_location: "", note: "" },
     mode: "onSubmit",
   });
   const mutation = useRecordTransitionMutation(assetId);
+  const Icon = meta.Icon;
 
   function handleOpenChange(v: boolean) {
     if (mutation.isPending) return;
@@ -58,15 +99,16 @@ export function ReturnDialog({
     onOpenChange(v);
   }
 
-  async function onSubmit(values: FormValues) {
+  async function onConfirm() {
+    const values = form.getValues();
     try {
       await mutation.mutateAsync({
-        kind: "RETURN",
+        kind,
         to_holder: values.to_holder?.trim() || null,
         to_location: values.to_location?.trim() || null,
         note: values.note?.trim() || null,
       });
-      toast.success("已归还");
+      toast.success(`已${meta.label}`);
       form.reset();
       onOpenChange(false);
     } catch (err) {
@@ -75,20 +117,20 @@ export function ReturnDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-idle/15 px-2.5 py-1 text-xs font-medium text-status-idle-fg">
-              <Undo2 className="size-3.5" aria-hidden />
-              归还
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.bgClass} ${meta.fgClass}`}
+            >
+              <Icon className="size-3.5" aria-hidden />
+              {meta.label}
             </span>
           </div>
-          <DialogTitle>归还资产</DialogTitle>
-          <DialogDescription>
-            归还接收人将成为新 holder；不填则资产无 holder（无人值守）。
-          </DialogDescription>
-        </DialogHeader>
+          <AlertDialogTitle>{meta.label}资产</AlertDialogTitle>
+          <AlertDialogDescription>{meta.description}</AlertDialogDescription>
+        </AlertDialogHeader>
 
         {form.formState.errors.root && (
           <InlineErrorBanner
@@ -97,22 +139,16 @@ export function ReturnDialog({
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form className="space-y-4">
             <FormField
               control={form.control}
               name="to_holder"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>归还给（可选，留空表示无人值守）</FormLabel>
+                  <FormLabel>保管人（可选）</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：仓管李四"
-                      disabled={mutation.isPending}
-                      autoFocus
-                    />
+                    <Input {...field} disabled={mutation.isPending} />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -121,13 +157,9 @@ export function ReturnDialog({
               name="to_location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>归还位置（可选）</FormLabel>
+                  <FormLabel>位置（可选）</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="如：1F-柜 3"
-                      disabled={mutation.isPending}
-                    />
+                    <Input {...field} disabled={mutation.isPending} />
                   </FormControl>
                 </FormItem>
               )}
@@ -148,22 +180,21 @@ export function ReturnDialog({
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => handleOpenChange(false)}
-                disabled={mutation.isPending}
-              >
-                取消
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "归还中…" : "确认归还"}
-              </Button>
-            </DialogFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={mutation.isPending}>
+            取消
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? "处理中…" : `确认${meta.label}`}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

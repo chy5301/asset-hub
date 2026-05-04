@@ -63,7 +63,8 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
   const mutation = mode === 'create' ? createMut : updateMut;
 
   const form = useForm<CreateTypeFormValues>({
-    // §J/§L: zodResolver 在条件 .extend 下推导出与手写 CreateTypeFormValues 不 unify 的类型
+    // zodResolver 推导走 buildTypeSchema 返回 union 的窄分支（custom_fields.required 是 optional），
+    // 与手写 CreateTypeFormValues 不 unify——保留最小 cast。
     resolver: zodResolver(schema) as unknown as Resolver<CreateTypeFormValues>,
     defaultValues: {
       name: initial?.name ?? '',
