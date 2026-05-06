@@ -34,7 +34,10 @@ def isolated_db_with_idle_assets(isolated_db):
 
 @pytest.fixture
 def populated_cli_db(isolated_db):
-    """CLI stats 测试 fixture：创若干资产含 IDLE/IN_USE/RETIRED + 1 transition."""
+    """CLI stats 测试 fixture：创若干资产 (3 IDLE / 1 IN_USE / 1 RETIRED).
+
+    无 transition record——idle_top 排序由 created_at fallback 覆盖；
+    Task 8 unit 测试已覆盖含 transition 场景。"""
     from asset_hub.cli.deps import cli_session
     from asset_hub.models.asset import Asset, AssetStatus
     from asset_hub.services.asset_type import TypeService
