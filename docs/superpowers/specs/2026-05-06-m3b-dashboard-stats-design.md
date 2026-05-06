@@ -143,9 +143,9 @@ class StatsService:
 | 类型分布 | `select(Asset.type_id, AssetType.name, func.count(Asset.id)).join(AssetType).group_by(Asset.type_id, AssetType.name)` + `WHERE` 跟 toggle |
 | 状态分布 | `select(Asset.status, func.count()).group_by(Asset.status)` + `WHERE` 跟 toggle；空状态不出现在结果时补 0 |
 | 保管人排行 | `select(Asset.current_holder, func.count()).where(Asset.current_holder.is_not(None)).group_by(Asset.current_holder).order_by(count.desc())` + `WHERE` 跟 toggle |
-| 闲置 Top 10 | 子查询：`select(StateTransitionRecord.asset_id, func.max(recorded_at).label("last_idle_at")).where(to_status="IDLE").group_by(asset_id)`；外层 `select(Asset).join(子查询, isouter=True).where(Asset.status="IDLE").order_by(coalesce(last_idle_at, Asset.created_at).asc()).limit(10)` |
+| 闲置 Top 10 | 子查询：`select(StateTransitionRecord.asset_id, func.max(created_at).label("last_idle_at")).where(to_status="IDLE").group_by(asset_id)`；外层 `select(Asset).join(子查询, isouter=True).where(Asset.status="IDLE").order_by(coalesce(last_idle_at, Asset.created_at).asc()).limit(10)` |
 
-**idle_days 起点**：用 `StateTransitionRecord` 上次 `to_status=IDLE` 的 `recorded_at`；新登记后未发生过 transition 的 IDLE 资产 fallback `Asset.created_at`（决策 §B.idle）。
+**idle_days 起点**：用 `StateTransitionRecord` 上次 `to_status=IDLE` 的 `created_at`；新登记后未发生过 transition 的 IDLE 资产 fallback `Asset.created_at`（决策 §B.idle）。
 
 **为何不用 `Asset.updated_at`**：`updated_at` 任何字段更新都刷新，改备注 / 改 location 都重置 idle 计时——语义脏。
 
@@ -178,7 +178,7 @@ v1 规模 < 200 资产 / < 1000 transition records。**不做缓存**。验收 P
 
 `fields` 子集查询自然省时——service 内部按 fields 跳过未请求段的查询；`summary` 汇总查询单 SQL（`SELECT COUNT(*) FILTER (...)` 等），开销恒定 < 5ms。
 
-未来 Postgres + 资产数破 5000 时考虑给 `state_transition_records (asset_id, recorded_at, to_status)` 加复合索引。
+未来 Postgres + 资产数破 5000 时考虑给 `state_transition_records (asset_id, created_at, to_status)` 加复合索引。
 
 ### 2.6 与 `asset list` 的原子化关系（agent-native C2）
 
@@ -415,7 +415,7 @@ asset-hub stats --fields idle_top,status_distribution   # 任意组合
 
 | follow-up | PR | 改动面 |
 |---|---|---|
-| **C3 detail DTO 补 `type_name`** | PR-1 后端 | `AssetReadDetail` 增字段 + service 跟随返 + test_asset_router 增断言 |
+| ~~C3 detail DTO 补 `type_name`~~ | ~~PR-1~~ | **现状已满足**——M3a 已落 `Asset.type_name @property` + `AssetRead.type_name` 字段（list 与 detail 共用 `AssetRead`，无独立 `AssetReadDetail`）；PR-1 仅在 `tests/api/test_asset_router.py` 加一条 `GET /api/assets/{id}` 含 `type_name` 的回归测试断言锁定行为 |
 | **C3 前端切（删 `useAssetTypesQuery()`）** | PR-2 前端 | `asset-detail-page.tsx` 删 query，改用 `asset.type_name` |
 | **D1 alias 层** | PR-2 前端 | 新建 `features/assets/types.ts` re-export 全部业务类型；grep 全前端 `from '@/api/generated/schema'` 替换 |
 | **H4 OpenapiFetchResult** | PR-2 前端 | 新建 `api/types.ts`，`OpenapiFetchResult<T>` + `unwrap()` 简化签名 |
@@ -464,7 +464,7 @@ asset-hub stats --fields idle_top,status_distribution   # 任意组合
 
 | # | 风险 | 概率 | 缓解 |
 |---|---|---|---|
-| R1 | idle_days 子查询 SQLite 性能 | 低 | v1 < 1000 records；超阈值再加索引 `(asset_id, recorded_at, to_status)` |
+| R1 | idle_days 子查询 SQLite 性能 | 低 | v1 < 1000 records；超阈值再加索引 `(asset_id, created_at, to_status)` |
 | R2 | shadcn/ui charts 与 Tailwind v4 兼容 | 中 | PR-2 第 1 步 spike；不兼容回 Recharts 裸用 |
 | R3 | D1 grep replace 漏改 / 误改 | 中 | 精确正则定位 + `pnpm build`（用 `tsc -b`）+ playwright MCP 主流程页面运行时验证 |
 | R4 | type_id 哈希 6 槽冲突 | 低 | v1 type < 10；同色相邻可接受；spec 写明 |
