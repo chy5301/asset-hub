@@ -58,7 +58,7 @@ PR-1 合并后跑 `pnpm gen:api` 生成新 schema → PR-2 才能开工（物理
 ### 2.1 响应契约
 
 ```json
-GET /api/stats?include_retired=false&include_disposed=false
+GET /api/stats?include_retired=false&include_disposed=false&fields=idle_top,status_distribution
 
 200 OK
 {
@@ -80,7 +80,15 @@ GET /api/stats?include_retired=false&include_disposed=false
       "idle_days": 152,
       "idle_since": "2025-12-04T00:00:00Z"
     }
-  ]
+  ],
+  "summary": {
+    "total_assets": 187,
+    "registered_assets": 182,
+    "idle_count": 78,
+    "include_retired": false,
+    "include_disposed": false,
+    "generated_at": "2026-05-06T10:30:00Z"
+  }
 }
 ```
 
@@ -88,10 +96,30 @@ GET /api/stats?include_retired=false&include_disposed=false
 - `holder_ranking` 全量倒序，`current_holder is null` 跳过；不做 N 截断（决策 §B.2）
 - `idle_top` 严格 ≤ 10；空数组允许（决策 §B.4）
 
+**为何叫 `summary` 不叫 `metadata`**：避免与 CLI envelope 顶层 `metadata`（`took_ms / count`）命名冲突——CLI `--json` 输出会嵌套 `data.summary` 与 envelope `metadata`，两层语义清晰。
+
+**`?fields=` 段选择**（决策 §B.an1，agent-native P3）：逗号分隔段名，可选 `type_distribution / status_distribution / holder_ranking / idle_top` 任意子集。不传 `fields` → 返全部 4 段（向后兼容）。未知段名 → 422。Agent 仅需 idle_top 时，可单段拉，省 token：
+
+```
+GET /api/stats?fields=idle_top    →  仅返 idle_top + summary
+```
+
+`summary` 段始终返回，**不受 `fields` 控制**——汇总数字成本低且 Agent 大概率需要。
+
+**summary 字段**（决策 §B.an2，agent-native P3）：
+
+- `total_assets` — 数据库内全部资产数（含 RETIRED/DISPOSED）
+- `registered_assets` — 在册（不含 RETIRED/DISPOSED）
+- `idle_count` — IDLE 状态资产数
+- `include_retired` / `include_disposed` — 反射本次请求 toggle，让 Agent 缓存判定不混淆
+- `generated_at` — ISO-8601 UTC 时间戳，Agent 缓存判定有效
+
 ### 2.2 Service 层
 
 ```python
 # src/asset_hub/services/stats.py
+StatsField = Literal["type_distribution", "status_distribution", "holder_ranking", "idle_top"]
+
 class StatsService:
     def __init__(self, session: Session): ...
 
@@ -100,10 +128,13 @@ class StatsService:
         *,
         include_retired: bool = False,
         include_disposed: bool = False,
+        fields: set[StatsField] | None = None,   # None = 全 4 段
     ) -> StatsRead: ...
 ```
 
 返回 domain DTO（`api/schemas/stats.py::StatsRead`），不返 ORM 对象（CLAUDE.md ORM/DTO 隔离约束）。
+
+`fields` 未传时返全部 4 段；传子集时其余段在响应里**字段缺省**（Pydantic `exclude_none` 或显式不 set），不返 `null`。`summary` 始终返回，与 `fields` 无关。
 
 ### 2.3 4 段聚合查询
 
@@ -128,21 +159,63 @@ class StatsService:
 def get_stats(
     include_retired: bool = False,
     include_disposed: bool = False,
+    fields: str | None = None,
     session: Session = Depends(get_session),
 ) -> StatsRead:
+    parsed_fields = _parse_fields(fields)   # None | set[StatsField]，未知段名 raise ValidationError → 422
     return StatsService(session).get_dashboard_stats(
         include_retired=include_retired,
         include_disposed=include_disposed,
+        fields=parsed_fields,
     )
 ```
 
-无域异常路径；`bool` query 参数 FastAPI 自动 422，不需要在 `app.py` 加映射。
+`fields` query 接逗号分隔字符串，`_parse_fields()` 校验 + 返 set；未知段名 raise `ValidationError` → 走 `app.py` 现有 422 映射。`bool` 参数 FastAPI 自动 422。
 
 ### 2.5 性能与缓存
 
 v1 规模 < 200 资产 / < 1000 transition records。**不做缓存**。验收 P95 < 200ms（本机 SQLite）。
 
+`fields` 子集查询自然省时——service 内部按 fields 跳过未请求段的查询；`summary` 汇总查询单 SQL（`SELECT COUNT(*) FILTER (...)` 等），开销恒定 < 5ms。
+
 未来 Postgres + 资产数破 5000 时考虑给 `state_transition_records (asset_id, recorded_at, to_status)` 加复合索引。
+
+### 2.6 与 `asset list` 的原子化关系（agent-native C2）
+
+**问题**：`/api/stats` 的 `idle_top` 段是"找闲置 Top N"原子能力——若仅 stats 端点暴露，则违反 agent-native C2（原子化与可组合）：Agent 想灵活查询闲置榜（如"找闲置 > 60 天的 5 件 Laptop"）只能拉 stats 全量再前端过滤。
+
+**现状**（main 当前）：`asset list` 服务 `list_assets` 仅支持 `type_id / status / holder / q / include_retired / include_disposed` 过滤，不支持 `sort` / `limit` / `offset`——`asset-hub asset list --status IDLE --sort idle_days --limit 10` 不可达。
+
+**M3b 修订**（PR-1 内搭车扩 list，决策 §B.an6）：
+
+`asset list` 三层（service / API / CLI）增 3 参数：
+
+| 参数 | 类型 | 默认 | 取值约束 |
+|---|---|---|---|
+| `sort_by` / `--sort` | `str \| None` | `None`（≡ 当前默认 `created_at desc`，保持向后兼容）| 白名单：`name` / `updated_at` / `created_at` / `idle_days` / `acquired_at` / `asset_code`；未列入 raise `ValidationError` → 422 |
+| `sort_order` / `--order` | `Literal["asc","desc"]` | `desc` | `asc` / `desc` 二选一 |
+| `limit` / `--limit` | `int \| None` | `None`（不截断）| `1 ≤ limit ≤ 1000`；超界 422 |
+| `offset` / `--offset` | `int \| None` | `None` ≡ 0 | `≥ 0`；超界 422 |
+
+**idle_days 子查询封装**：service 抽 `_idle_days_subquery(session)` helper，返回可挂在 `select(...).join(...)` 的子查询表达式；`list_assets` 与 `StatsService.get_dashboard_stats` 都调用该 helper，单一来源。
+
+**等价性验证**：
+
+```
+# 用 list 等价获取 idle_top
+asset-hub asset list --status IDLE --sort idle_days --order desc --limit 10 --json
+≡  GET /api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=10
+```
+
+**收益**：
+
+1. C2 原子化合规——Agent 可用 list 任意组合替代 stats idle_top
+2. stats 退化为"4 段聚合便利"，不垄断原子能力
+3. 列表页未来 sort 列功能（M4+）也提前就位
+
+**改动面**：~6 文件（service / repo / API router / CLI / 2 个 schema 更新）+ ~12 个新测试 case；估 0.5 天。
+
+**不在本里程碑做**：list 命令本身的 `--fields` 字段掩码（与 stats `--fields` 同 P3 思路），登记到 M3e SKILL.md 同期统一所有 CLI 的字段掩码标准。
 
 ## 3. 前端看板
 
@@ -318,11 +391,25 @@ asset-hub stats --include-disposed
 asset-hub stats --json                  # K1 envelope
 ```
 
+```bash
+asset-hub stats --fields idle_top                       # 仅 idle_top 段（agent-native P3）
+asset-hub stats --fields idle_top,status_distribution   # 任意组合
+```
+
 - `src/asset_hub/cli/stats.py` 新建，Typer command
 - `from asset_hub.services.stats import StatsService`（CLAUDE.md 三层分离）
-- `--json` 输出 envelope `{success, data, metadata: {took_ms}, error}`
-- 人类输出用 `rich` 双列表格：左列 类型分布 + 状态分布；右列 保管人持有 + 闲置 Top 10
-- 退出码：0 成功 / 1 一般错误（兜底）
+- `--fields` 透传 service `fields` 参数；未知段名 `Typer` 内 raise + exit 2
+- `--json` 输出**沿用项目当前 envelope 形态**（M2d `serve` 等命令已落形态：`{success, data, metadata, error}`）；K1 envelope 统一为 M3e 主线 follow-up（HIGH 优先级），届时与其它 CLI 命令一锅端，**M3b 不规约新 error 结构**
+- 人类输出用 `rich` 双列表格：左列 类型分布 + 状态分布；右列 保管人持有 + 闲置 Top 10；当 `--fields` 限定时，未请求段不渲染（不显示空表）
+- 退出码：0 成功 / 1 一般错误（兜底）/ 2 用法错误（`--fields` 未知段名 / bool 解析失败 / `--limit` 越界等）
+
+**命令命名例外说明**（决策 §B.an5）：`asset-hub stats` 是**单 token 名词**，不严格遵循项目其它命令 `<resource> <action>` 模式（如 `asset list`、`type define`、`serve start`）。这是有意例外——
+
+- 单 token 在 CLI 惯例里是聚合查询的常见形态（参考 `git stats` / `npm stats`）
+- 加 `show` 子命令冗余（无 `stats list` 等需对偶的兄弟动作）
+- 未来若需扩展（如 `stats refresh` 缓存触发），届时再升为 `<resource> <action>` 模式
+
+**`--help` 内容标准**：M3b 不在本 spec 规约 `--help` 详细内容；项目级 `--help` 标准统一在 **M3e SKILL.md 完善期**与所有 CLI 命令一并补全（搭车 follow-up 已登记）。M3b 内仅保证 `stats --help` 不比项目其它命令差。
 
 ## 5. Follow-up 落点
 
@@ -333,6 +420,7 @@ asset-hub stats --json                  # K1 envelope
 | **D1 alias 层** | PR-2 前端 | 新建 `features/assets/types.ts` re-export 全部业务类型；grep 全前端 `from '@/api/generated/schema'` 替换 |
 | **H4 OpenapiFetchResult** | PR-2 前端 | 新建 `api/types.ts`，`OpenapiFetchResult<T>` + `unwrap()` 简化签名 |
 | **搭车 AssetRead.idle_days** | PR-1 后端 | `AssetRead` 增 `idle_days: int \| None` + helper 复用 stats 子查询逻辑 |
+| **搭车 list 三参数（agent-native C2，§2.6）** | PR-1 后端 | `list_assets` service / repo / API router / CLI 增 `sort_by` / `sort_order` / `limit` / `offset` 4 个新参数；idle_days 子查询封装 `_idle_days_subquery` helper 双方共用；测试 unit + api + cli 各 3-5 case |
 
 ### 5.1 PR-2 内 commit 顺序
 
@@ -350,11 +438,14 @@ asset-hub stats --json                  # K1 envelope
 
 | 层 | 文件 | 覆盖 |
 |---|---|---|
-| 后端 unit | `tests/unit/test_stats_service.py` | 4 段聚合各 3-5 case：0/1/N 资产 / Top N 截断 / toggle 双向 / idle_days 子查询（从未 IDLE 过 fallback `created_at` / 多次进出 IDLE 取最近 / IDLE 不足 10 件不补位） |
-| 后端 unit | `tests/unit/test_asset_idle_days.py` | `AssetRead.idle_days` 与 stats 同源 |
-| 后端 api | `tests/api/test_stats_router.py` | 200 + 字段完整 / toggle 透传 / bool 参数 422 |
-| 后端 api（C3） | `tests/api/test_asset_router.py` | `GET /api/assets/{id}` 含 `type_name` |
-| 后端 cli | `tests/cli/test_stats_cli.py` | `--json` envelope / toggle 透传 / 人类输出 / 退出码 |
+| 后端 unit | `tests/unit/test_stats_service.py` | 4 段聚合各 3-5 case：0/1/N 资产 / Top N 截断 / toggle 双向 / idle_days 子查询（从未 IDLE 过 fallback `created_at` / 多次进出 IDLE 取最近 / IDLE 不足 10 件不补位） / **`fields` 子集查询**（单段 / 多段 / 未知段 raise）/ **summary 始终返回（与 fields 无关）** |
+| 后端 unit（list 扩展，§2.6） | `tests/unit/test_asset_service.py`（增量） | `list_assets` 新参数：sort_by 白名单 / sort_order asc&desc / limit + offset 边界 / sort_by=idle_days + status=IDLE + limit=10 等价 stats idle_top |
+| 后端 unit | `tests/unit/test_asset_idle_days.py` | `AssetRead.idle_days` 与 stats 同源；`_idle_days_subquery` helper 单测 |
+| 后端 api | `tests/api/test_stats_router.py` | 200 + 全 4 段 / `fields=idle_top` 单段（其他段缺省）/ `fields=idle_top,status_distribution` 多段 / `fields=foo` 未知段 422 / toggle 透传 / summary 字段完整 / bool 参数 422 |
+| 后端 api（list 扩展，§2.6） | `tests/api/test_asset_router.py`（增量） | `GET /api/assets?sort_by=idle_days&limit=10` 200 + 顺序断言 / `sort_by=foo` 422 / `limit=2000` 422 |
+| 后端 api（C3） | `tests/api/test_asset_router.py`（增量） | `GET /api/assets/{id}` 含 `type_name` |
+| 后端 cli | `tests/cli/test_stats_cli.py` | `--json` envelope / toggle 透传 / `--fields idle_top` 仅返 idle_top + summary / `--fields foo` exit 2 / 人类输出 / 退出码 |
+| 后端 cli（list 扩展，§2.6） | `tests/cli/test_asset_cli.py`（增量） | `asset list --status IDLE --sort idle_days --limit 10 --json` 等价 stats idle_top / `--sort foo` exit 2 |
 | 前端 unit | `frontend/tests/unit/dashboard/` | `idle_top` > 90 天判定 / `holder_ranking` null 跳过 / `type_id` 哈希到 6 chart token 槽稳定性 / 5 态文案映射 |
 | 前端 hooks | `frontend/tests/hooks/use-stats-query.test.tsx` | MSW 4 段成功 / 单段空 / 全空 4 空态触发 / toggle 触发 refetch |
 | playwright MCP 烟测 | 实施期 Claude 调用 playwright MCP 自动跑 | 4 空态 / 4 图同框（D-原版）/ toggle 联动 / 窄屏退化 / 暗色模式 / 加载 skeleton |
@@ -406,11 +497,16 @@ asset-hub stats --json                  # K1 envelope
 | B.fd4 | 闲置榜 bar 配色 | `--checkout-internal` 蓝 dominant 而非 `--status-idle` 弱化 | 修原稿"弱化色作锚"的逻辑矛盾；语义"闲置 = 待派发"自洽 |
 | B.fd5 | Donut 中心数字 | 放总数大字 + 微 label "件" | 破纯空 donut；不冲突"不加 KPI 卡"决策（针对的是顶部 stat card 堆） |
 | B.fd6 | Skeleton 形态匹配 | 不允许单一 pulse 矩形；按最终图形定制 4 套 Skeleton | 加载态本身就预告布局，避免"loading 是另一个页面"错觉 |
+| B.an1 | `?fields=` / `--fields` 段选择 | 加 | agent-native P3——Agent 仅需 idle_top 时省 token；不传时返全 4 段保持向后兼容 |
+| B.an2 | summary 段补汇总字段 | 加 total_assets / registered_assets / idle_count / include_* / generated_at；命名 `summary` 而非 `metadata` 避免与 CLI envelope 顶层 metadata 命名冲突 | agent-native P3——让 Agent 不必重算汇总；summary 始终返回不受 fields 控制 |
+| B.an5 | `asset-hub stats` 命名 | A 单 token 例外 | 聚合查询 CLI 惯例（git stats / npm stats）；spec 加注释明示有意例外，非疏忽 |
+| B.an6 | list 与 stats 原子化关系 | PR-1 搭车扩 list `--sort/--order/--limit/--offset` | agent-native C2——Agent 可用 list 任意组合替代 stats idle_top；stats 退化为聚合便利不垄断原子能力；idle_days 子查询 helper 双方共用 |
+| B.an34 | `--help` 标准 + error 字段结构 | 不在 M3b 规约 | `--help` 项目级标准统一 M3e SKILL.md 同期；K1 envelope 统一 M3e 一锅端，M3b 沿用现状避免冲突 |
 
 ## 9. 实施时序估算
 
-- PR-1 后端契约：~1.5 天（service TDD + router + CLI + C3 + idle_days helper + 测试三层）
-- PR-2 前端集成：~3.5 天（基建 + D1/H4/C3 切换 + 4 图 + 空态 + Skeleton + Motion 编排 + playwright MCP 烟测）—— frontend-design 复审后从 ~3 天上调，反映 §3.3 customization 红线 + §3.4 Recharts override 清单 + §3.8 Skeleton 形态匹配的工程量
+- PR-1 后端契约：~2 天（service TDD + router + CLI + C3 + idle_days helper + `fields` 段选择 + list 三参数搭车 + 测试三层）—— agent-native 复审后从 ~1.5 天上调，反映 `fields` 段选择 + list 三参数搭车的工程量
+- PR-2 前端集成：~3.5 天（基建 + D1/H4/C3 切换 + 4 图 + 空态 + Skeleton + Motion 编排 + playwright MCP 烟测）
 
 ## 10. 后续分配
 
