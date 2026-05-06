@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { toFriendlyMessage, unwrap } from "@/lib/error";
+import { toFriendlyMessage } from "@/lib/error";
+import { unwrap } from "@/api/types";
 import type { components } from "@/api/generated/schema";
 import type { AssetsSearch } from "@/features/assets/list/search-schema";
 

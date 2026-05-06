@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { http } from "@/api/client";
 import type { components } from "@/api/generated/schema";
 import { qk } from "@/api/query-keys";
-import { unwrap, unwrapVoid } from "@/lib/error";
+import { unwrap, unwrapVoid } from "@/api/types";
 import { uploadWithProgress } from "@/lib/upload-progress";
 
 export function useAttachmentsQuery(assetId: string) {
