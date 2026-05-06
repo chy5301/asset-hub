@@ -54,11 +54,11 @@ def compute_idle_days_for_asset(session: Session, asset_id: uuid.UUID) -> int | 
     idle_since: datetime | None = session.exec(stmt).scalar_one_or_none()
     if idle_since is None:
         return None
-    delta = datetime.now(UTC) - _ensure_aware(idle_since)
+    delta = datetime.now(UTC) - ensure_aware(idle_since)
     return int(delta.total_seconds() // 86400)
 
 
-def _ensure_aware(dt: datetime) -> datetime:
+def ensure_aware(dt: datetime) -> datetime:
     """SQLite 取出来可能是 naive；统一为 UTC aware."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)

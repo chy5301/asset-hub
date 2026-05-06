@@ -19,15 +19,11 @@ from asset_hub.api.schemas.stats import (
 from asset_hub.errors import ValidationError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.asset_type import AssetType
-from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
+from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_idle_subq
 
 ALL_FIELDS: frozenset[StatsField] = frozenset({
     "type_distribution", "status_distribution", "holder_ranking", "idle_top",
 })
-
-
-def _ensure_aware(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
 class StatsService:
@@ -111,7 +107,7 @@ class StatsService:
         return [
             HolderRankingItem(holder=h, count=cnt)
             for h, cnt in self.session.exec(stmt).all()
-            if h is not None
+            if h is not None  # belt-and-suspenders；WHERE 已排除 NULL，但保险起见
         ]
 
     def _idle_top(self, limit: int) -> list[IdleTopItem]:
@@ -128,7 +124,7 @@ class StatsService:
         now = datetime.now(UTC)
         items = []
         for aid, code, type_name, location, since in self.session.exec(stmt).all():
-            since_aware = _ensure_aware(since)
+            since_aware = ensure_aware(since)
             days = int((now - since_aware).total_seconds() // 86400)
             items.append(IdleTopItem(
                 asset_id=aid,
@@ -141,16 +137,16 @@ class StatsService:
         return items
 
     def _summary(self, ir: bool, idp: bool) -> StatsSummary:
-        total = self.session.exec(select(func.count(Asset.id))).one()[0]
+        total = self.session.exec(select(func.count(Asset.id))).scalar_one()
         registered = self.session.exec(
             select(func.count(Asset.id)).where(
                 Asset.status != AssetStatus.RETIRED,
                 Asset.status != AssetStatus.DISPOSED,
             )
-        ).one()[0]
+        ).scalar_one()
         idle_count = self.session.exec(
             select(func.count(Asset.id)).where(Asset.status == AssetStatus.IDLE)
-        ).one()[0]
+        ).scalar_one()
         return StatsSummary(
             total_assets=total,
             registered_assets=registered,

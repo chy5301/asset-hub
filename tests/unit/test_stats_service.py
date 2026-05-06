@@ -143,3 +143,15 @@ def test_get_dashboard_stats_summary_always_returned(populated_session):
     stats = svc.get_dashboard_stats(fields=set())
     assert stats.summary is not None
     assert stats.idle_top is None
+
+
+def test_get_dashboard_stats_fields_none_returns_all_segments(populated_session):
+    """fields=None（默认）→ 4 段全返；fields=set() → 4 段全 None.
+    contract：None 表示 'all'，不同于空集合 'none'."""
+    svc = StatsService(populated_session)
+    stats = svc.get_dashboard_stats()  # fields=None
+    assert stats.type_distribution is not None
+    assert stats.status_distribution is not None
+    assert stats.holder_ranking is not None
+    assert stats.idle_top is not None
+    assert stats.summary is not None
