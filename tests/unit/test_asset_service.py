@@ -1,11 +1,12 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 from sqlmodel import Session
 
 from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
-from asset_hub.models.asset import AssetStatus
+from asset_hub.models.asset import Asset, AssetStatus
+from asset_hub.models.asset_type import AssetType
 from asset_hub.services.asset import AssetService
 from asset_hub.services.asset_type import TypeService
 
@@ -285,3 +286,80 @@ def test_list_assets_include_disposed_reveals_disposed_only(session, sample_type
     assert AssetStatus.IDLE in statuses
     assert AssetStatus.RETIRED not in statuses
     assert AssetStatus.DISPOSED in statuses
+
+
+# ── sort / limit / offset tests ────────────────────────────────────────────────
+
+
+def _create_idle_assets(session: Session, count: int) -> list[Asset]:
+    """创建 N 个 IDLE 资产，错开 created_at（i=0 最早，i=N-1 最晚）."""
+    at = AssetType(name="Laptop", code_prefix="LT", custom_fields=[])
+    session.add(at)
+    session.flush()
+    assets = []
+    for i in range(count):
+        a = Asset(asset_code=f"L-{i:03d}", name=f"L{i}", type_id=at.id, status=AssetStatus.IDLE)
+        session.add(a)
+        session.flush()
+        # 让 created_at 错开
+        a.created_at = datetime.now(UTC) - timedelta(days=count - i)
+        assets.append(a)
+    session.flush()
+    return assets
+
+
+def test_list_assets_sort_by_idle_days_desc(session: Session):
+    """sort_by=idle_days, sort_order=desc → 最闲置的（早 created_at）排首位."""
+    _create_idle_assets(session, 5)
+    svc = AssetService(session)
+    result = svc.list_assets(sort_by="idle_days", sort_order="desc")
+    assert result[0].asset_code == "L-000"  # 最早创建 = 最闲置
+
+
+def test_list_assets_limit_truncates(session: Session):
+    _create_idle_assets(session, 10)
+    svc = AssetService(session)
+    result = svc.list_assets(limit=3)
+    assert len(result) == 3
+
+
+def test_list_assets_offset_skips(session: Session):
+    _create_idle_assets(session, 5)
+    svc = AssetService(session)
+    full = svc.list_assets(sort_by="created_at", sort_order="asc")
+    paged = svc.list_assets(sort_by="created_at", sort_order="asc", offset=2, limit=2)
+    assert [a.id for a in paged] == [full[2].id, full[3].id]
+
+
+def test_list_assets_unknown_sort_by_raises(session: Session):
+    svc = AssetService(session)
+    with pytest.raises(ValidationError, match="sort_by"):
+        svc.list_assets(sort_by="invalid_field")
+
+
+def test_list_assets_invalid_sort_order_raises(session: Session):
+    svc = AssetService(session)
+    with pytest.raises(ValidationError, match="sort_order"):
+        svc.list_assets(sort_order="up")
+
+
+def test_list_assets_negative_offset_raises(session: Session):
+    svc = AssetService(session)
+    with pytest.raises(ValidationError, match="offset"):
+        svc.list_assets(offset=-1)
+
+
+def test_list_assets_limit_over_max_raises(session: Session):
+    svc = AssetService(session)
+    with pytest.raises(ValidationError, match="limit"):
+        svc.list_assets(limit=2000)
+
+
+def test_list_assets_default_no_sort_no_limit(session: Session):
+    """不传 sort/limit/offset → 行为与 main 当前一致（按 asset_code asc 全量）."""
+    _create_idle_assets(session, 3)
+    svc = AssetService(session)
+    result = svc.list_assets()  # 全默认
+    assert len(result) == 3
+    # 项目默认排序是 asset_code.asc()——3 个 asset L-000/L-001/L-002 按字典序
+    assert [a.asset_code for a in result] == ["L-000", "L-001", "L-002"]

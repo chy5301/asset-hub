@@ -1,16 +1,23 @@
 import uuid
 from datetime import UTC, date, datetime
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from asset_hub.errors import DuplicateError, NotFoundError
+from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
 from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
+
+SortOrder = Literal["asc", "desc"]
+SORT_FIELD_WHITELIST = frozenset({
+    "name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days",
+})
+LIMIT_MAX = 1000
 
 
 class _Unset:
@@ -103,7 +110,22 @@ class AssetService:
         q: str | None = None,
         include_retired: bool = False,
         include_disposed: bool = False,
+        sort_by: str | None = None,
+        sort_order: SortOrder = "desc",
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[Asset]:
+        if sort_by is not None and sort_by not in SORT_FIELD_WHITELIST:
+            raise ValidationError(
+                f"sort_by 不支持：{sort_by!r}，可选：{sorted(SORT_FIELD_WHITELIST)}"
+            )
+        if sort_order not in ("asc", "desc"):
+            raise ValidationError(f"sort_order 必须是 'asc' 或 'desc'，收到：{sort_order!r}")
+        if offset is not None and offset < 0:
+            raise ValidationError(f"offset 不能为负，收到：{offset}")
+        if limit is not None and (limit < 1 or limit > LIMIT_MAX):
+            raise ValidationError(f"limit 必须在 1..{LIMIT_MAX}，收到：{limit}")
+
         return self.repo.list_filtered(
             type_id=type_id,
             status=status,
@@ -111,6 +133,10 @@ class AssetService:
             q=q,
             include_retired=include_retired,
             include_disposed=include_disposed,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
         )
 
     def annotate_idle_days(self, assets: list[Asset]) -> list[Asset]:
