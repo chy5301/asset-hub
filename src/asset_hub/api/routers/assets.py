@@ -7,7 +7,7 @@ from sqlmodel import Session
 from asset_hub.api.deps import get_session
 from asset_hub.api.schemas.asset import AssetCreate, AssetRead, AssetUpdate
 from asset_hub.models.asset import AssetStatus
-from asset_hub.services.asset import AssetService
+from asset_hub.services.asset import AssetService, SortByField
 
 router = APIRouter()
 
@@ -43,7 +43,7 @@ def list_assets(
     q: str | None = None,
     include_retired: bool = False,
     include_disposed: bool = False,
-    sort_by: str | None = None,
+    sort_by: SortByField | None = None,
     sort_order: Literal["asc", "desc"] = "desc",
     limit: int | None = None,
     offset: int | None = None,

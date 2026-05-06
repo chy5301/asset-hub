@@ -14,6 +14,7 @@ from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
 
 SortOrder = Literal["asc", "desc"]
+SortByField = Literal["name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days"]
 SORT_FIELD_WHITELIST = frozenset({
     "name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days",
 })
@@ -119,6 +120,7 @@ class AssetService:
             raise ValidationError(
                 f"sort_by 不支持：{sort_by!r}，可选：{sorted(SORT_FIELD_WHITELIST)}"
             )
+        # Router 用 Literal 已自动 422；此 guard 兜底 CLI / 直接调用 service 的 caller
         if sort_order not in ("asc", "desc"):
             raise ValidationError(f"sort_order 必须是 'asc' 或 'desc'，收到：{sort_order!r}")
         if offset is not None and offset < 0:

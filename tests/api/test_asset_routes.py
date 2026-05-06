@@ -190,7 +190,9 @@ def test_in_use_asset_idle_days_is_null(client, in_use_asset):
     assert res.json()["idle_days"] is None
 
 
-def test_list_assets_with_sort_idle_days(client, idle_assets_5):
+def test_list_assets_with_idle_filter_and_limit(client, idle_assets_5):
+    """验 sort_by/limit/include_retired 等参数透传到 service（不断 sort 顺序——
+    单测 fixture 不支持精确断顺序，sort 顺序由 service 层 unit 测试覆盖）."""
     res = client.get("/api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=3")
     assert res.status_code == 200
     body = res.json()
