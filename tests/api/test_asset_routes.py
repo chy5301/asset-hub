@@ -212,3 +212,16 @@ def test_list_assets_limit_over_max_returns_422(client):
 def test_list_assets_negative_offset_returns_422(client):
     res = client.get("/api/assets?offset=-1")
     assert res.status_code == 422
+
+
+def test_get_asset_response_contains_type_name(client, idle_asset):
+    """C3 回归（spec §5）：detail 响应必须含 type_name 字段（非 null）.
+    M3a 已通过 Asset.type_name @property + AssetRead.type_name 实现
+    (SQLModel Relationship lazy='joined')，此测试避免未来重构误删
+    @property 或 AssetRead 字段。"""
+    asset_id = idle_asset["id"]
+    res = client.get(f"/api/assets/{asset_id}")
+    assert res.status_code == 200
+    body = res.json()
+    assert "type_name" in body
+    assert body["type_name"] is not None
