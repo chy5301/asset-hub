@@ -125,7 +125,8 @@ class TestAssetUpdate:
 
 class TestAssetListSort:
     def test_asset_list_with_sort_idle_days(self, isolated_db_with_idle_assets):
-        """--sort idle_days --order desc --limit 5 等价 stats idle_top（spec §2.6）."""
+        """smoke test: --sort idle_days --limit 5 透传 + 输出含 idle_days
+        （sort 顺序由 service 层 unit 测试覆盖；此处不做精确顺序断言）."""
         result = runner.invoke(app, [
             "asset", "list",
             "--status", "IDLE",
@@ -152,6 +153,47 @@ class TestAssetListSort:
     def test_asset_list_limit_over_max_exits_2(self):
         result = runner.invoke(app, ["asset", "list", "--limit", "2000", "--json"])
         assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "limit" in payload["error"]
+
+    def test_asset_list_bad_order_exits_2(self):
+        """--order 取无效值（非 asc/desc）走 service ValidationError → exit 2."""
+        result = runner.invoke(app, ["asset", "list", "--order", "up", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "sort_order" in payload["error"]
+
+    def test_asset_list_include_retired_returns_retired(self, isolated_db):
+        """--include-retired flag 让 RETIRED 资产出现在结果中（spec §B.3）."""
+        from asset_hub.cli.deps import cli_session
+        from asset_hub.models.asset import Asset, AssetStatus
+        from asset_hub.services.asset_type import TypeService
+
+        with cli_session() as session:
+            type_svc = TypeService(session)
+            at = type_svc.create_type(name="RetTest", code_prefix="RTI", custom_fields=[])
+            retired = Asset(
+                asset_code="RTI-001", name="R1",
+                type_id=at.id, status=AssetStatus.RETIRED,
+            )
+            session.add(retired)
+            session.commit()
+
+        # 默认（不带 --include-retired）应排除 RETIRED
+        result_default = runner.invoke(app, ["asset", "list", "--json"])
+        assert result_default.exit_code == 0
+        payload_default = json.loads(result_default.stdout)
+        codes_default = [a["asset_code"] for a in payload_default["data"]]
+        assert "RTI-001" not in codes_default
+
+        # 带 --include-retired 应包含 RETIRED
+        result_with = runner.invoke(app, ["asset", "list", "--include-retired", "--json"])
+        assert result_with.exit_code == 0
+        payload_with = json.loads(result_with.stdout)
+        codes_with = [a["asset_code"] for a in payload_with["data"]]
+        assert "RTI-001" in codes_with
 
 
 class TestAssetDelete:

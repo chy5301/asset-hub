@@ -313,6 +313,14 @@ def asset_list(
     status: Annotated[str | None, typer.Option(help="按状态筛选")] = None,
     holder: Annotated[str | None, typer.Option(help="按保管人筛选")] = None,
     q: Annotated[str | None, typer.Option(help="关键词搜索")] = None,
+    include_retired: Annotated[
+        bool,
+        typer.Option("--include-retired/--no-include-retired", help="是否包含已退役（默认排除）"),
+    ] = False,
+    include_disposed: Annotated[
+        bool,
+        typer.Option("--include-disposed/--no-include-disposed", help="是否包含已处置（默认排除）"),
+    ] = False,
     sort: Annotated[
         str | None,
         typer.Option("--sort", help="排序字段：name/asset_code/created_at/updated_at/acquired_at/idle_days"),
@@ -336,6 +344,8 @@ def asset_list(
             status=parsed_status,
             holder=holder,
             q=q,
+            include_retired=include_retired,
+            include_disposed=include_disposed,
             sort_by=sort,
             sort_order=order,
             limit=limit,

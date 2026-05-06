@@ -68,6 +68,7 @@ def to_json_dict(schema_cls: type[BaseModel], obj: Any) -> dict:
 @contextmanager
 def handle_domain_errors(
     json_output: bool,
+    *,
     exit_2_on_validation: bool = False,
 ) -> Generator[None, None, None]:
     """把域异常按 CLI 退出码契约翻译成 print_error。
