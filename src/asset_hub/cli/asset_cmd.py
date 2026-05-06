@@ -313,21 +313,36 @@ def asset_list(
     status: Annotated[str | None, typer.Option(help="按状态筛选")] = None,
     holder: Annotated[str | None, typer.Option(help="按保管人筛选")] = None,
     q: Annotated[str | None, typer.Option(help="关键词搜索")] = None,
+    sort: Annotated[
+        str | None,
+        typer.Option("--sort", help="排序字段：name/asset_code/created_at/updated_at/acquired_at/idle_days"),
+    ] = None,
+    order: Annotated[
+        str,
+        typer.Option("--order", help="asc/desc，默认 desc"),
+    ] = "desc",
+    limit: Annotated[int | None, typer.Option("--limit", help="返回上限，1-1000")] = None,
+    offset: Annotated[int | None, typer.Option("--offset", help=">=0")] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """列出资产。"""
     parsed_type_id = parse_uuid(type_id, json_output)
     parsed_status = parse_enum(AssetStatus, status, json_output)
 
-    with cli_session() as session:
+    with cli_session() as session, handle_domain_errors(json_output, exit_2_on_validation=True):
         svc = AssetService(session)
         assets = svc.list_assets(
             type_id=parsed_type_id,
             status=parsed_status,
             holder=holder,
             q=q,
+            sort_by=sort,
+            sort_order=order,
+            limit=limit,
+            offset=offset,
         )
-    data = [to_json_dict(AssetRead, a) for a in assets]
+        annotated = svc.annotate_idle_days(assets)
+    data = [to_json_dict(AssetRead, a) for a in annotated]
     print_result(data, json_output, count=len(data))
 
 

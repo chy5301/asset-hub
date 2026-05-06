@@ -123,6 +123,37 @@ class TestAssetUpdate:
         assert json.loads(result.stdout)["data"]["notes"] == "新备注"
 
 
+class TestAssetListSort:
+    def test_asset_list_with_sort_idle_days(self, isolated_db_with_idle_assets):
+        """--sort idle_days --order desc --limit 5 等价 stats idle_top（spec §2.6）."""
+        result = runner.invoke(app, [
+            "asset", "list",
+            "--status", "IDLE",
+            "--sort", "idle_days",
+            "--order", "desc",
+            "--limit", "5",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert len(payload["data"]) == 5
+        # spec §2.6 等价性：data 中每个 IDLE asset 必须含非 null idle_days
+        for asset in payload["data"]:
+            assert asset["idle_days"] is not None
+
+    def test_asset_list_unknown_sort_field_exits_2(self):
+        result = runner.invoke(app, ["asset", "list", "--sort", "bogus", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "sort_by" in payload["error"]
+
+    def test_asset_list_limit_over_max_exits_2(self):
+        result = runner.invoke(app, ["asset", "list", "--limit", "2000", "--json"])
+        assert result.exit_code == 2
+
+
 class TestAssetDelete:
     def test_delete_existing(self):
         type_id = _define_type()
