@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { http } from "@/api/client";
 import type { components } from "@/api/generated/schema";
 import { qk } from "@/api/query-keys";
-import { unwrap } from "@/lib/error";
+import { unwrap } from "@/api/types";
 
 type TransitionRead = components["schemas"]["TransitionRead"];
 type TransitionCreate = components["schemas"]["TransitionCreate"];

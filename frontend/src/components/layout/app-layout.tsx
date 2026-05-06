@@ -11,7 +11,9 @@ const NAV_ITEMS = [
   { to: "/" as const, label: "资产", fuzzy: false },
   // /types 注册于 PR-3 T35；fuzzy: true 让 /types/new、/types/$id 也高亮"类型"
   { to: "/types" as const, label: "类型", fuzzy: true },
-] satisfies { to: "/" | "/types"; label: string; fuzzy: boolean }[];
+  // /dashboard 注册于 PR-2 T16；fuzzy: false 无子路由
+  { to: "/dashboard" as const, label: "看板", fuzzy: false },
+] satisfies { to: "/" | "/types" | "/dashboard"; label: string; fuzzy: boolean }[];
 
 function NavBar() {
   const matchRoute = useMatchRoute();

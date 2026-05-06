@@ -1,7 +1,5 @@
-import type { components } from '@/api/generated/schema';
+import type { TypeRead } from '@/features/assets/types';
 import { formatDateTime } from '@/lib/date';
-
-type TypeRead = components['schemas']['TypeRead'];
 
 export function TypeSummaryCard({ type }: { type: TypeRead }) {
   return (

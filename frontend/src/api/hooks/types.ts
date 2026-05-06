@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { http } from "@/api/client";
 import { qk } from "@/api/query-keys";
-import { unwrap, unwrapVoid } from "@/lib/error";
+import { unwrap, unwrapVoid } from "@/api/types";
 import type { components } from "@/api/generated/schema";
 
 type TypeRead = components['schemas']['TypeRead'];

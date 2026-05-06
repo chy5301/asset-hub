@@ -18,4 +18,9 @@ export const qk = {
     byAsset: (assetId: string) =>
       ["attachments", "byAsset", assetId] as const,
   },
+  stats: {
+    all: ["stats"] as const,
+    detail: (params: { includeRetired: boolean; includeDisposed: boolean }) =>
+      ["stats", params] as const,
+  },
 } as const;

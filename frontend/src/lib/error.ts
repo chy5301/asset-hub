@@ -30,29 +30,10 @@ export function toFriendlyMessage(err: unknown): string {
   return "未知错误";
 }
 
-function toHttpError(result: { error?: unknown; response: Response }): HttpErrorShape {
+export function toHttpError(result: { error?: unknown; response: Response }): HttpErrorShape {
   const detail =
     typeof result.error === "object" && result.error !== null
       ? (result.error as { detail?: string }).detail
       : undefined;
   return { status: result.response.status, detail };
-}
-
-/** Wrap openapi-fetch 的 { data, error, response } 响应，失败时抛 HttpErrorShape。 */
-export function unwrap<T>(result: {
-  data?: T;
-  error?: unknown;
-  response: Response;
-}): T {
-  if (result.error || !result.data) {
-    throw toHttpError(result);
-  }
-  return result.data;
-}
-
-/** 同 `unwrap`，但用于 204/无 body 端点：成功时返回 void，失败时抛 HttpErrorShape。 */
-export function unwrapVoid(result: { error?: unknown; response: Response }): void {
-  if (result.error) {
-    throw toHttpError(result);
-  }
 }

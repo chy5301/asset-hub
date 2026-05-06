@@ -4,13 +4,11 @@ import { SectionCaption } from '@/components/ui/section-heading';
 import { GeneralFieldsForm } from './general-fields-form';
 import { CustomFieldsForm } from './custom-fields-form';
 import type { FieldDef } from './types';
-import type { components } from '@/api/generated/schema';
-
-type AssetTypeRead = components['schemas']['TypeRead'];
+import type { TypeRead } from '@/features/assets/types';
 
 interface AssetFormFieldsProps<TFieldValues extends FieldValues> {
   control: Control<TFieldValues>;
-  types: AssetTypeRead[];
+  types: TypeRead[];
   mode: 'create' | 'edit';
   assetCode?: string;
   /** 编辑模式下用 prop 传 type_id（type_id 不在 form values 中） */

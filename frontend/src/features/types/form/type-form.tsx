@@ -13,9 +13,8 @@ import { useCreateTypeMutation, useUpdateTypeMutation } from '@/api/hooks/types'
 import { toFriendlyMessage, isHttpError } from '@/lib/error';
 import { buildTypeSchema, type CreateTypeFormValues } from './build-type-schema';
 import { CustomFieldsBuilder } from './custom-fields-builder/builder';
-import type { components } from '@/api/generated/schema';
+import type { TypeRead, TypeUpdate } from '@/features/assets/types';
 
-type TypeRead = components['schemas']['TypeRead'];
 type ApiFieldDef = TypeRead['custom_fields'][number];
 type RhfFieldDef = Omit<
   ApiFieldDef,
@@ -96,12 +95,11 @@ export function TypeForm({ mode, initial, onSuccess }: Props) {
         });
         onSuccess(res);
       } else if (initial) {
-        type TypeUpdateBody = components['schemas']['TypeUpdate'];
-        const body: TypeUpdateBody = {};
+        const body: TypeUpdate = {};
         if (values.name !== initial.name) body.name = values.name;
         if ((values.description ?? '') !== (initial.description ?? ''))
           body.description = values.description || null;
-        body.custom_fields = values.custom_fields as TypeUpdateBody['custom_fields']; // §J/§L cast
+        body.custom_fields = values.custom_fields as TypeUpdate['custom_fields']; // §J/§L cast
         const res = await updateMut.mutateAsync({ id: initial.id, body });
         onSuccess(res);
       }

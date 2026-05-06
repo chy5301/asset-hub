@@ -1,9 +1,7 @@
 import { CopyableText } from "@/components/copyable-text";
 import { formatDateTime } from "@/lib/date";
-import type { components } from "@/api/generated/schema";
+import type { AssetRead } from "@/features/assets/types";
 import { DefinitionRow } from "./definition-row";
-
-type AssetRead = components["schemas"]["AssetRead"];
 
 interface GeneralFieldsProps {
   asset: AssetRead;

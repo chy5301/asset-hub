@@ -4,13 +4,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { DateField } from './field-controls/date-field';
-import type { components } from '@/api/generated/schema';
-
-type AssetTypeRead = components['schemas']['TypeRead'];
+import type { TypeRead } from '@/features/assets/types';
 
 interface GeneralFieldsFormProps<TFieldValues extends FieldValues> {
   control: Control<TFieldValues>;
-  types: AssetTypeRead[];
+  types: TypeRead[];
   /** 编辑模式下 type 字段 disabled */
   typeReadonly: boolean;
   /** 编辑模式下显示只读 asset_code */

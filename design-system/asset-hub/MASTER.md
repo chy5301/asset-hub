@@ -26,6 +26,29 @@
 
 **Color Notes:** Blue data + amber highlights
 
+### Chart 6 槽 token (M3b 看板用)
+
+| Token | Hue | 用途 |
+|---|---|---|
+| `--chart-1` | 240° (蓝) | 类型分布派色槽 1 |
+| `--chart-2` | 30° (橙) | 类型分布派色槽 2 |
+| `--chart-3` | 145° (绿) | 类型分布派色槽 3 |
+| `--chart-4` | 80° (黄) | 类型分布派色槽 4 |
+| `--chart-5` | 280° (紫) | 类型分布派色槽 5 |
+| `--chart-6` | 0° (红) | 类型分布派色槽 6 |
+
+亮度/饱和度统一: light `oklch(0.7 0.13 <hue>)` / dark `oklch(0.62 0.13 <hue>)`;
+6 槽相邻 hue 差 ≥ 60° 防刺眼撞色; 同一 type 按 type_id 第一字符 charCode % 6 哈希到稳定槽位.
+
+### Dashboard Atmosphere
+
+| Token | 用途 |
+|---|---|
+| `--dashboard-bg-radial-from` | radial gradient 起点 (顶部 50% 20%) |
+| `--dashboard-bg-radial-to` | radial gradient 终点 (向外铺) |
+
+替代 solid 背景, light 模式偏白发光, dark 模式深蓝氛围.
+
 ### Typography
 
 - **Heading Font:** Fira Sans（M2 视觉收尾纠偏，2026-05-03；原承诺 Fira Code，但 Fira Code 不渲染中文，全 fallback 到 PingFang，差异化无效；mono 字段保留 Fira Code）

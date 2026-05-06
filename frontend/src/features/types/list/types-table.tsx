@@ -16,9 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { components } from '@/api/generated/schema';
-
-type TypeRead = components['schemas']['TypeRead'];
+import type { TypeRead } from '@/features/assets/types';
 
 interface Props {
   rows: TypeRead[];
