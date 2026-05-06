@@ -7,6 +7,10 @@
 from typing import Annotated
 
 import typer
+from rich.columns import Columns
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.table import Table
 
 from asset_hub.api.schemas.stats import StatsRead
 from asset_hub.cli.deps import cli_session
@@ -89,7 +93,68 @@ def stats_root(
 
 
 def _render_human_table(stats: StatsRead) -> None:
-    """rich 双列表格输出占位（Task 11 实现）."""
-    from rich import print as rprint
+    """双列布局：左列 类型分布 + 状态分布；右列 保管人持有 + 闲置 Top 10；
+    顶部 summary 摘要面板；--fields 限定时未请求段不渲染."""
+    console = Console()
 
-    rprint(stats.model_dump(mode="python"))  # Task 11 替换为 rich Table
+    # Summary panel
+    summary = stats.summary
+    summary_lines = [
+        f"总资产 [bold]{summary.total_assets}[/bold]   "
+        f"在册 [bold]{summary.registered_assets}[/bold]   "
+        f"闲置 [bold]{summary.idle_count}[/bold]"
+    ]
+    if summary.include_retired:
+        summary_lines.append("[dim]含 RETIRED[/dim]")
+    if summary.include_disposed:
+        summary_lines.append("[dim]含 DISPOSED[/dim]")
+    console.print(Panel("\n".join(summary_lines), title="概览", border_style="blue"))
+
+    left: list = []
+    right: list = []
+
+    if stats.type_distribution is not None:
+        t = Table(title="类型分布", show_header=True, header_style="bold cyan")
+        t.add_column("Type")
+        t.add_column("Count", justify="right")
+        for item in stats.type_distribution:
+            t.add_row(item.type_name, str(item.count))
+        left.append(t)
+
+    if stats.status_distribution is not None:
+        t = Table(title="状态分布", show_header=True, header_style="bold cyan")
+        t.add_column("Status")
+        t.add_column("Count", justify="right")
+        for status_name, count in stats.status_distribution.items():
+            t.add_row(status_name, str(count))
+        left.append(t)
+
+    if stats.holder_ranking is not None:
+        t = Table(title="保管人持有", show_header=True, header_style="bold cyan")
+        t.add_column("Holder")
+        t.add_column("Count", justify="right")
+        for h in stats.holder_ranking:
+            t.add_row(h.holder, str(h.count))
+        right.append(t)
+
+    if stats.idle_top is not None:
+        t = Table(title="闲置时长 Top 10", show_header=True, header_style="bold yellow")
+        t.add_column("Code")
+        t.add_column("Type")
+        t.add_column("Days", justify="right")
+        for it in stats.idle_top:
+            days_text = (
+                f"[red]{it.idle_days}d[/red]" if it.idle_days > 90 else f"{it.idle_days}d"
+            )
+            t.add_row(it.asset_code, it.type_name or "-", days_text)
+        right.append(t)
+
+    # 双列展示——某段未渲染时那列就少
+    if left and right:
+        console.print(Columns([Panel.fit(Group(*left)), Panel.fit(Group(*right))]))
+    elif left:
+        for tbl in left:
+            console.print(tbl)
+    elif right:
+        for tbl in right:
+            console.print(tbl)
