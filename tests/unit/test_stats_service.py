@@ -57,10 +57,15 @@ def test_get_dashboard_stats_default_excludes_retired_disposed(populated_session
 
 
 def test_get_dashboard_stats_include_retired(populated_session):
+    """include_retired=True 让 status_distribution 含 RETIRED key；
+    但 summary.registered_assets 是固定业务概念（不含 RETIRED/DISPOSED），不受 toggle 影响（spec §2.1）."""
     svc = StatsService(populated_session)
     stats = svc.get_dashboard_stats(include_retired=True)
     assert stats.status_distribution.get("RETIRED") == 1
-    assert stats.summary.registered_assets == 5
+    # registered_assets 固定 = count(status NOT IN (RETIRED, DISPOSED))，与 toggle 无关
+    assert stats.summary.registered_assets == 4
+    # total_assets 含 RETIRED，仍是 5
+    assert stats.summary.total_assets == 5
 
 
 def test_get_dashboard_stats_idle_top_ordering(populated_session):

@@ -142,12 +142,12 @@ class StatsService:
 
     def _summary(self, ir: bool, idp: bool) -> StatsSummary:
         total = self.session.exec(select(func.count(Asset.id))).one()[0]
-        reg_stmt = select(func.count(Asset.id))
-        if not ir:
-            reg_stmt = reg_stmt.where(Asset.status != AssetStatus.RETIRED)
-        if not idp:
-            reg_stmt = reg_stmt.where(Asset.status != AssetStatus.DISPOSED)
-        registered = self.session.exec(reg_stmt).one()[0]
+        registered = self.session.exec(
+            select(func.count(Asset.id)).where(
+                Asset.status != AssetStatus.RETIRED,
+                Asset.status != AssetStatus.DISPOSED,
+            )
+        ).one()[0]
         idle_count = self.session.exec(
             select(func.count(Asset.id)).where(Asset.status == AssetStatus.IDLE)
         ).one()[0]
