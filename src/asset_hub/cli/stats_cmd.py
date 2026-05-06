@@ -15,8 +15,7 @@ from rich.table import Table
 from asset_hub.api.schemas.stats import StatsRead
 from asset_hub.cli.deps import cli_session
 from asset_hub.cli.envelope import handle_domain_errors, print_result
-from asset_hub.errors import ValidationError
-from asset_hub.services.stats import ALL_FIELDS, StatsService
+from asset_hub.services.stats import StatsService, parse_stats_fields
 
 stats_app = typer.Typer(
     name="stats",
@@ -27,19 +26,6 @@ stats_app = typer.Typer(
     invoke_without_command=True,
     no_args_is_help=False,
 )
-
-
-def _parse_fields_cli(raw: str | None) -> set | None:
-    """解析 --fields 逗号分隔；未知段 raise ValidationError 由 handle_domain_errors 兜底."""
-    if raw is None or raw == "":
-        return None
-    parts = {p.strip() for p in raw.split(",") if p.strip()}
-    unknown = parts - ALL_FIELDS
-    if unknown:
-        raise ValidationError(
-            f"--fields 含未知段：{sorted(unknown)}；可选：{sorted(ALL_FIELDS)}"
-        )
-    return parts
 
 
 @stats_app.callback(invoke_without_command=True)
@@ -76,7 +62,7 @@ def stats_root(
         return
 
     with cli_session() as session, handle_domain_errors(json_output, exit_2_on_validation=True):
-        parsed_fields = _parse_fields_cli(fields)
+        parsed_fields = parse_stats_fields(fields)
         svc = StatsService(session)
         stats = svc.get_dashboard_stats(
             include_retired=include_retired,

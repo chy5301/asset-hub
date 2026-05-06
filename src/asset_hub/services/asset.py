@@ -10,7 +10,7 @@ from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
-from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
+from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
 
 SortOrder = Literal["asc", "desc"]
@@ -163,9 +163,7 @@ class AssetService:
                 if idle_since is None:
                     days_by_id[asset_id] = None
                     continue
-                if idle_since.tzinfo is None:
-                    idle_since = idle_since.replace(tzinfo=UTC)
-                days_by_id[asset_id] = int((now - idle_since).total_seconds() // 86400)
+                days_by_id[asset_id] = int((now - ensure_aware(idle_since)).total_seconds() // 86400)
 
         for a in assets:
             if a.status == AssetStatus.IDLE:

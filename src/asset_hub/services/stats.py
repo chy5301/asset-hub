@@ -26,6 +26,24 @@ ALL_FIELDS: frozenset[StatsField] = frozenset({
 })
 
 
+def parse_stats_fields(raw: str | None) -> set[StatsField] | None:
+    """解析逗号分隔的 fields 字符串为 set[StatsField]；None/空串 → None；
+    未知段名 raise ValidationError。
+
+    被 router 和 CLI 共用，避免双份实现；service 层 get_dashboard_stats 仍兜底校验
+    防止 service 直调 caller 跳过此函数。
+    """
+    if raw is None or raw == "":
+        return None
+    parts = {p.strip() for p in raw.split(",") if p.strip()}
+    unknown = parts - ALL_FIELDS
+    if unknown:
+        raise ValidationError(
+            f"fields 含未知段：{sorted(unknown)}；可选：{sorted(ALL_FIELDS)}"
+        )
+    return parts  # type: ignore[return-value]
+
+
 class StatsService:
     def __init__(self, session: Session):
         self.session = session

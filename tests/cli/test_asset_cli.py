@@ -196,6 +196,56 @@ class TestAssetListSort:
         assert "RTI-001" in codes_with
 
 
+class TestAssetIdleDays:
+    def test_asset_show_idle_asset_includes_idle_days(self, isolated_db_with_idle_assets):
+        """IDLE 资产 show CLI 输出必须含 idle_days int（与 API 一致）。"""
+        list_result = runner.invoke(app, [
+            "asset", "list", "--status", "IDLE", "--limit", "1", "--json",
+        ])
+        asset_id = json.loads(list_result.stdout)["data"][0]["id"]
+
+        show_result = runner.invoke(app, ["asset", "show", asset_id, "--json"])
+        assert show_result.exit_code == 0
+        payload = json.loads(show_result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+    def test_asset_register_returns_idle_days(self):
+        """register 创建的新资产（IDLE）应返 idle_days=0（刚登记）。"""
+        type_id = _define_type(name="IdleDayType", code_prefix="IDT")
+        result = runner.invoke(app, [
+            "asset", "register",
+            "--name", "IdleDayAsset",
+            "--type-id", type_id,
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+    def test_asset_update_returns_idle_days(self):
+        """update IDLE 资产后输出应含 idle_days int。"""
+        type_id = _define_type(name="IdleDayType2", code_prefix="IDLT")
+        r = runner.invoke(app, [
+            "asset", "register", "--name", "IdleAsset2", "--type-id", type_id, "--json",
+        ])
+        asset_id = json.loads(r.stdout)["data"]["id"]
+
+        result = runner.invoke(app, [
+            "asset", "update", asset_id,
+            "--set", '{"notes": "idle update test"}',
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+
 class TestAssetDelete:
     def test_delete_existing(self):
         type_id = _define_type()

@@ -88,9 +88,8 @@ class AssetRepository:
                 direction = desc if sort_order == "desc" else asc
                 stmt = stmt.order_by(direction(col))
         else:
-            # 默认按 asset_code 升序——保持 Task 4 之前的行为；
-            # plan 模板写过 created_at desc，但改默认会破坏现有 caller / 测试，
-            # 故保留 asset_code asc。要其它顺序 → 显式传 sort_by。
+            # 默认按 asset_code 升序；改此默认会破坏现有 caller 与测试，
+            # 要其它顺序 → 显式传 sort_by。
             stmt = stmt.order_by(Asset.asset_code.asc())
 
         # limit/offset

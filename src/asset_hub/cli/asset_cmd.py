@@ -50,6 +50,7 @@ def asset_register(
             custom_data=custom_data,
             acquired_at=parsed_date,
         )
+        a = svc.annotate_idle_days([a])[0]
     print_result(to_json_dict(AssetRead, a), json_output)
 
 
@@ -366,7 +367,7 @@ def asset_show(
 
     with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
-        a = svc.get_asset(uid)
+        a = svc.annotate_idle_days([svc.get_asset(uid)])[0]
     print_result(to_json_dict(AssetRead, a), json_output)
 
 
@@ -383,6 +384,7 @@ def asset_update(
     with cli_session() as session, handle_domain_errors(json_output):
         svc = AssetService(session)
         a = svc.update_asset(uid, **updates)
+        a = svc.annotate_idle_days([a])[0]
     print_result(to_json_dict(AssetRead, a), json_output)
 
 
