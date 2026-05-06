@@ -155,6 +155,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stats */
+        get: operations["get_stats_api_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/healthz": {
         parameters: {
             query?: never;
@@ -233,6 +250,8 @@ export interface components {
             };
             /** Acquired At */
             acquired_at: string | null;
+            /** Idle Days */
+            idle_days?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -350,6 +369,72 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HolderRankingItem */
+        HolderRankingItem: {
+            /** Holder */
+            holder: string;
+            /** Count */
+            count: number;
+        };
+        /** IdleTopItem */
+        IdleTopItem: {
+            /**
+             * Asset Id
+             * Format: uuid
+             */
+            asset_id: string;
+            /** Asset Code */
+            asset_code: string;
+            /** Type Name */
+            type_name: string | null;
+            /** Current Location */
+            current_location: string | null;
+            /** Idle Days */
+            idle_days: number;
+            /**
+             * Idle Since
+             * Format: date-time
+             */
+            idle_since: string;
+        };
+        /**
+         * StatsRead
+         * @description 4 段聚合响应 + summary。各段在响应里通过 fields 子集控制；summary 始终返回.
+         */
+        StatsRead: {
+            /** Type Distribution */
+            type_distribution?: components["schemas"]["TypeDistributionItem"][] | null;
+            /** Status Distribution */
+            status_distribution?: {
+                [key: string]: number;
+            } | null;
+            /** Holder Ranking */
+            holder_ranking?: components["schemas"]["HolderRankingItem"][] | null;
+            /** Idle Top */
+            idle_top?: components["schemas"]["IdleTopItem"][] | null;
+            summary: components["schemas"]["StatsSummary"];
+        };
+        /**
+         * StatsSummary
+         * @description 业务摘要——命名 summary 而非 metadata，避免与 CLI envelope 顶层 metadata 冲突.
+         */
+        StatsSummary: {
+            /** Total Assets */
+            total_assets: number;
+            /** Registered Assets */
+            registered_assets: number;
+            /** Idle Count */
+            idle_count: number;
+            /** Include Retired */
+            include_retired: boolean;
+            /** Include Disposed */
+            include_disposed: boolean;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
         /** TransitionCreate */
         TransitionCreate: {
             kind: components["schemas"]["TransitionKind"];
@@ -415,6 +500,18 @@ export interface components {
              * @default []
              */
             custom_fields: components["schemas"]["CustomFieldDef"][];
+        };
+        /** TypeDistributionItem */
+        TypeDistributionItem: {
+            /**
+             * Type Id
+             * Format: uuid
+             */
+            type_id: string;
+            /** Type Name */
+            type_name: string;
+            /** Count */
+            count: number;
         };
         /** TypeRead */
         TypeRead: {
@@ -638,6 +735,10 @@ export interface operations {
                 q?: string | null;
                 include_retired?: boolean;
                 include_disposed?: boolean;
+                sort_by?: ("name" | "asset_code" | "created_at" | "updated_at" | "acquired_at" | "idle_days") | null;
+                sort_order?: "asc" | "desc";
+                limit?: number | null;
+                offset?: number | null;
             };
             header?: never;
             path?: never;
@@ -1003,6 +1104,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_api_stats_get: {
+        parameters: {
+            query?: {
+                include_retired?: boolean;
+                include_disposed?: boolean;
+                fields?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsRead"];
                 };
             };
             /** @description Validation Error */
