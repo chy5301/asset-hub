@@ -293,7 +293,7 @@ def test_list_assets_include_disposed_reveals_disposed_only(session, sample_type
 
 def _create_idle_assets(session: Session, count: int) -> list[Asset]:
     """创建 N 个 IDLE 资产，错开 created_at（i=0 最早，i=N-1 最晚）."""
-    at = AssetType(name="Laptop", code_prefix="LT", custom_fields=[])
+    at = AssetType(name="Laptop", code_prefix="SRT", custom_fields=[])
     session.add(at)
     session.flush()
     assets = []
@@ -363,3 +363,47 @@ def test_list_assets_default_no_sort_no_limit(session: Session):
     assert len(result) == 3
     # 项目默认排序是 asset_code.asc()——3 个 asset L-000/L-001/L-002 按字典序
     assert [a.asset_code for a in result] == ["L-000", "L-001", "L-002"]
+
+
+def test_list_assets_sort_by_idle_days_asc(session: Session):
+    """sort_by=idle_days, sort_order=asc → 最近 idle（晚 created_at）排首位."""
+    _create_idle_assets(session, 5)
+    svc = AssetService(session)
+    result = svc.list_assets(sort_by="idle_days", sort_order="asc")
+    assert result[0].asset_code == "L-004"  # 最晚创建 = 最少闲置 days
+
+
+def test_list_assets_sort_by_acquired_at(session: Session):
+    """sort_by=acquired_at 走 _SORT_COLUMN_MAP；NULL 处理由 SQLite 默认."""
+    from datetime import date
+
+    at = AssetType(name="L", code_prefix="ACQ", custom_fields=[])
+    session.add(at)
+    session.flush()
+    a1 = Asset(asset_code="A-001", name="A1", type_id=at.id, status=AssetStatus.IDLE,
+               acquired_at=date(2026, 1, 1))
+    a2 = Asset(asset_code="A-002", name="A2", type_id=at.id, status=AssetStatus.IDLE,
+               acquired_at=date(2026, 3, 1))
+    a3 = Asset(asset_code="A-003", name="A3", type_id=at.id, status=AssetStatus.IDLE)  # NULL
+    for a in [a1, a2, a3]:
+        session.add(a)
+    session.flush()
+
+    svc = AssetService(session)
+    desc_result = svc.list_assets(sort_by="acquired_at", sort_order="desc")
+    # 仅断言非 NULL 的 a2 (2026-03-01) 排在 a1 (2026-01-01) 之前
+    asset_codes_with_dates = [a.asset_code for a in desc_result if a.acquired_at is not None]
+    assert asset_codes_with_dates == ["A-002", "A-001"]
+
+
+def test_list_assets_limit_zero_raises(session: Session):
+    svc = AssetService(session)
+    with pytest.raises(ValidationError, match="limit"):
+        svc.list_assets(limit=0)
+
+
+def test_list_assets_limit_one_accepted(session: Session):
+    _create_idle_assets(session, 3)
+    svc = AssetService(session)
+    result = svc.list_assets(limit=1)
+    assert len(result) == 1
