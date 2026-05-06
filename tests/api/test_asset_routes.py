@@ -169,3 +169,59 @@ def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
     body = resp.json()
     assert body["acquired_at"] == "2025-01-15"
     assert body["asset_code"].startswith("NB-")
+
+
+def test_list_assets_response_contains_idle_days(client, idle_asset):
+    """IDLE 资产的 list 响应必须含 idle_days，且为非负整数."""
+    res = client.get("/api/assets")
+    assert res.status_code == 200
+    body = res.json()
+    idle_entries = [a for a in body if a["status"] == "IDLE"]
+    assert len(idle_entries) > 0
+    for a in idle_entries:
+        assert isinstance(a["idle_days"], int)
+        assert a["idle_days"] >= 0
+
+
+def test_in_use_asset_idle_days_is_null(client, in_use_asset):
+    """非 IDLE 资产 idle_days 必须为 null."""
+    res = client.get(f"/api/assets/{in_use_asset['id']}")
+    assert res.status_code == 200
+    assert res.json()["idle_days"] is None
+
+
+def test_list_assets_with_idle_filter_and_limit(client, idle_assets_5):
+    """验 sort_by/limit/include_retired 等参数透传到 service（不断 sort 顺序——
+    单测 fixture 不支持精确断顺序，sort 顺序由 service 层 unit 测试覆盖）."""
+    res = client.get("/api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=3")
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body) == 3
+
+
+def test_list_assets_unknown_sort_by_returns_422(client):
+    res = client.get("/api/assets?sort_by=foo")
+    assert res.status_code == 422
+
+
+def test_list_assets_limit_over_max_returns_422(client):
+    res = client.get("/api/assets?limit=2000")
+    assert res.status_code == 422
+
+
+def test_list_assets_negative_offset_returns_422(client):
+    res = client.get("/api/assets?offset=-1")
+    assert res.status_code == 422
+
+
+def test_get_asset_response_contains_type_name(client, idle_asset):
+    """C3 回归（spec §5）：detail 响应必须含 type_name 字段（非 null）.
+    M3a 已通过 Asset.type_name @property + AssetRead.type_name 实现
+    (SQLModel Relationship lazy='joined')，此测试避免未来重构误删
+    @property 或 AssetRead 字段。"""
+    asset_id = idle_asset["id"]
+    res = client.get(f"/api/assets/{asset_id}")
+    assert res.status_code == 200
+    body = res.json()
+    assert "type_name" in body
+    assert body["type_name"] is not None

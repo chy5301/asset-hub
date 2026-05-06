@@ -47,3 +47,10 @@ class Asset(SQLModel, table=True):
         list_assets 走 select(Asset) 时也会自动 JOIN。
         """
         return self.asset_type.name if self.asset_type else None
+
+    @property
+    def idle_days(self) -> int | None:
+        """非 IDLE 状态返 None；IDLE 状态由 service 层 annotate_idle_days() 注入实例属性 _idle_days_value。
+        惰性计算——通过 service 单独查询 StateTransitionRecord，避免 ORM 层访问 session。
+        """
+        return getattr(self, "_idle_days_value", None)

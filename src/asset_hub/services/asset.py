@@ -1,15 +1,24 @@
 import uuid
 from datetime import UTC, date, datetime
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
-from asset_hub.errors import DuplicateError, NotFoundError
+from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
+from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
+
+SortOrder = Literal["asc", "desc"]
+SortByField = Literal["name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days"]
+SORT_FIELD_WHITELIST = frozenset({
+    "name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days",
+})
+LIMIT_MAX = 1000
 
 
 class _Unset:
@@ -102,7 +111,23 @@ class AssetService:
         q: str | None = None,
         include_retired: bool = False,
         include_disposed: bool = False,
+        sort_by: str | None = None,
+        sort_order: SortOrder = "desc",
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> list[Asset]:
+        if sort_by is not None and sort_by not in SORT_FIELD_WHITELIST:
+            raise ValidationError(
+                f"sort_by 不支持：{sort_by!r}，可选：{sorted(SORT_FIELD_WHITELIST)}"
+            )
+        # Router 用 Literal 已自动 422；此 guard 兜底 CLI / 直接调用 service 的 caller
+        if sort_order not in ("asc", "desc"):
+            raise ValidationError(f"sort_order 必须是 'asc' 或 'desc'，收到：{sort_order!r}")
+        if offset is not None and offset < 0:
+            raise ValidationError(f"offset 不能为负，收到：{offset}")
+        if limit is not None and (limit < 1 or limit > LIMIT_MAX):
+            raise ValidationError(f"limit 必须在 1..{LIMIT_MAX}，收到：{limit}")
+
         return self.repo.list_filtered(
             type_id=type_id,
             status=status,
@@ -110,7 +135,42 @@ class AssetService:
             q=q,
             include_retired=include_retired,
             include_disposed=include_disposed,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            limit=limit,
+            offset=offset,
         )
+
+    def annotate_idle_days(self, assets: list[Asset]) -> list[Asset]:
+        """批量计算 idle_days 注入 _idle_days_value instance attr。
+
+        单 SQL 批量查，避免 N+1（list 100 IDLE assets 不会触发 200 queries）。
+        复用 last_idle_subq + idle_since_expr 与 stats / sort_by=idle_days 同源。
+        """
+        idle_asset_ids = [a.id for a in assets if a.status == AssetStatus.IDLE]
+
+        days_by_id: dict[uuid.UUID, int | None] = {}
+        if idle_asset_ids:
+            sq = last_idle_subq()
+            stmt = (
+                select(Asset.id, idle_since_expr(Asset, sq))
+                .select_from(Asset)
+                .join(sq, sq.c.asset_id == Asset.id, isouter=True)
+                .where(Asset.id.in_(idle_asset_ids))
+            )
+            now = datetime.now(UTC)
+            for asset_id, idle_since in self.session.exec(stmt).all():
+                if idle_since is None:
+                    days_by_id[asset_id] = None
+                    continue
+                days_by_id[asset_id] = int((now - ensure_aware(idle_since)).total_seconds() // 86400)
+
+        for a in assets:
+            if a.status == AssetStatus.IDLE:
+                setattr(a, "_idle_days_value", days_by_id.get(a.id))
+            else:
+                setattr(a, "_idle_days_value", None)
+        return assets
 
     def update_asset(
         self,

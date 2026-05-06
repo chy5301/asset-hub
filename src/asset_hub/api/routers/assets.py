@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
 from sqlmodel import Session
@@ -7,7 +7,7 @@ from sqlmodel import Session
 from asset_hub.api.deps import get_session
 from asset_hub.api.schemas.asset import AssetCreate, AssetRead, AssetUpdate
 from asset_hub.models.asset import AssetStatus
-from asset_hub.services.asset import AssetService
+from asset_hub.services.asset import AssetService, SortByField
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def create_asset(
     body: AssetCreate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    return svc.register(
+    asset = svc.register(
         name=body.name,
         type_id=body.type_id,
         serial_number=body.serial_number,
@@ -31,6 +31,7 @@ def create_asset(
         custom_data=body.custom_data,
         acquired_at=body.acquired_at,
     )
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.get("", response_model=list[AssetRead])
@@ -42,15 +43,24 @@ def list_assets(
     q: str | None = None,
     include_retired: bool = False,
     include_disposed: bool = False,
+    sort_by: SortByField | None = None,
+    sort_order: Literal["asc", "desc"] = "desc",
+    limit: int | None = None,
+    offset: int | None = None,
 ):
-    return svc.list_assets(
+    assets = svc.list_assets(
         type_id=type_id,
         status=status,
         holder=holder,
         q=q,
         include_retired=include_retired,
         include_disposed=include_disposed,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        limit=limit,
+        offset=offset,
     )
+    return svc.annotate_idle_days(assets)
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
@@ -58,7 +68,8 @@ def get_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    return svc.get_asset(asset_id)
+    asset = svc.get_asset(asset_id)
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)
@@ -71,7 +82,8 @@ def update_asset(
 
     状态、holder、location 走 POST /api/assets/{id}/transitions。
     """
-    return svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
+    asset = svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.delete("/{asset_id}", status_code=204)

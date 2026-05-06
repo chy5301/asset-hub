@@ -123,6 +123,129 @@ class TestAssetUpdate:
         assert json.loads(result.stdout)["data"]["notes"] == "新备注"
 
 
+class TestAssetListSort:
+    def test_asset_list_with_sort_idle_days(self, isolated_db_with_idle_assets):
+        """smoke test: --sort idle_days --limit 5 透传 + 输出含 idle_days
+        （sort 顺序由 service 层 unit 测试覆盖；此处不做精确顺序断言）."""
+        result = runner.invoke(app, [
+            "asset", "list",
+            "--status", "IDLE",
+            "--sort", "idle_days",
+            "--order", "desc",
+            "--limit", "5",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert len(payload["data"]) == 5
+        # spec §2.6 等价性：data 中每个 IDLE asset 必须含非 null idle_days
+        for asset in payload["data"]:
+            assert asset["idle_days"] is not None
+
+    def test_asset_list_unknown_sort_field_exits_2(self):
+        result = runner.invoke(app, ["asset", "list", "--sort", "bogus", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "sort_by" in payload["error"]
+
+    def test_asset_list_limit_over_max_exits_2(self):
+        result = runner.invoke(app, ["asset", "list", "--limit", "2000", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "limit" in payload["error"]
+
+    def test_asset_list_bad_order_exits_2(self):
+        """--order 取无效值（非 asc/desc）走 service ValidationError → exit 2."""
+        result = runner.invoke(app, ["asset", "list", "--order", "up", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stdout)
+        assert payload["success"] is False
+        assert "sort_order" in payload["error"]
+
+    def test_asset_list_include_retired_returns_retired(self, isolated_db):
+        """--include-retired flag 让 RETIRED 资产出现在结果中（spec §B.3）."""
+        from asset_hub.cli.deps import cli_session
+        from asset_hub.models.asset import Asset, AssetStatus
+        from asset_hub.services.asset_type import TypeService
+
+        with cli_session() as session:
+            type_svc = TypeService(session)
+            at = type_svc.create_type(name="RetTest", code_prefix="RTI", custom_fields=[])
+            retired = Asset(
+                asset_code="RTI-001", name="R1",
+                type_id=at.id, status=AssetStatus.RETIRED,
+            )
+            session.add(retired)
+            session.commit()
+
+        # 默认（不带 --include-retired）应排除 RETIRED
+        result_default = runner.invoke(app, ["asset", "list", "--json"])
+        assert result_default.exit_code == 0
+        payload_default = json.loads(result_default.stdout)
+        codes_default = [a["asset_code"] for a in payload_default["data"]]
+        assert "RTI-001" not in codes_default
+
+        # 带 --include-retired 应包含 RETIRED
+        result_with = runner.invoke(app, ["asset", "list", "--include-retired", "--json"])
+        assert result_with.exit_code == 0
+        payload_with = json.loads(result_with.stdout)
+        codes_with = [a["asset_code"] for a in payload_with["data"]]
+        assert "RTI-001" in codes_with
+
+
+class TestAssetIdleDays:
+    def test_asset_show_idle_asset_includes_idle_days(self, isolated_db_with_idle_assets):
+        """IDLE 资产 show CLI 输出必须含 idle_days int（与 API 一致）。"""
+        list_result = runner.invoke(app, [
+            "asset", "list", "--status", "IDLE", "--limit", "1", "--json",
+        ])
+        asset_id = json.loads(list_result.stdout)["data"][0]["id"]
+
+        show_result = runner.invoke(app, ["asset", "show", asset_id, "--json"])
+        assert show_result.exit_code == 0
+        payload = json.loads(show_result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+    def test_asset_register_returns_idle_days(self):
+        """register 创建的新资产（IDLE）应返 idle_days=0（刚登记）。"""
+        type_id = _define_type(name="IdleDayType", code_prefix="IDT")
+        result = runner.invoke(app, [
+            "asset", "register",
+            "--name", "IdleDayAsset",
+            "--type-id", type_id,
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+    def test_asset_update_returns_idle_days(self):
+        """update IDLE 资产后输出应含 idle_days int。"""
+        type_id = _define_type(name="IdleDayType2", code_prefix="IDLT")
+        r = runner.invoke(app, [
+            "asset", "register", "--name", "IdleAsset2", "--type-id", type_id, "--json",
+        ])
+        asset_id = json.loads(r.stdout)["data"]["id"]
+
+        result = runner.invoke(app, [
+            "asset", "update", asset_id,
+            "--set", '{"notes": "idle update test"}',
+            "--json",
+        ])
+        assert result.exit_code == 0
+        payload = json.loads(result.stdout)
+        assert payload["success"] is True
+        assert isinstance(payload["data"]["idle_days"], int)
+        assert payload["data"]["idle_days"] >= 0
+
+
 class TestAssetDelete:
     def test_delete_existing(self):
         type_id = _define_type()

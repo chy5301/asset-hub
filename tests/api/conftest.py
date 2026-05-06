@@ -62,6 +62,27 @@ def idle_asset(client, sample_type_nb_via_api):
 
 
 @pytest.fixture
+def in_use_asset(client, sample_type_nb_via_api):
+    """创建一个 IN_USE 状态资产（checkout 后），返回 dict 含 id。"""
+    resp = client.post(
+        "/api/assets",
+        json={
+            "name": "在用笔记本",
+            "type_id": sample_type_nb_via_api,
+            "custom_data": {},
+        },
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+    r = client.post(
+        f"/api/assets/{aid}/transitions",
+        json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"},
+    )
+    assert r.status_code == 201
+    return client.get(f"/api/assets/{aid}").json()
+
+
+@pytest.fixture
 def retired_asset(client, sample_type_nb_via_api):
     resp = client.post(
         "/api/assets",
@@ -87,3 +108,68 @@ def disposed_asset(client, sample_type_nb_via_api):
     r2 = client.post(f"/api/assets/{aid}/transitions", json={"kind": "DISPOSE"})
     assert r2.status_code == 201
     return resp.json()
+
+
+@pytest.fixture
+def idle_assets_5(client, sample_type_nb_via_api):
+    """创建 5 个 IDLE 状态资产，返回 list of dict（含 id 等字段）。"""
+    assets = []
+    for i in range(5):
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": f"空闲笔记本-{i + 1}",
+                "type_id": sample_type_nb_via_api,
+                "custom_data": {},
+            },
+        )
+        assert resp.status_code == 201
+        assets.append(resp.json())
+    return assets
+
+
+@pytest.fixture
+def populated_db(client, sample_type_nb_via_api):
+    """创若干资产（含 IDLE/IN_USE/RETIRED）用于 stats 测试。
+
+    共 4 个资产：2 IDLE / 1 IN_USE / 1 RETIRED。
+    """
+    type_id = sample_type_nb_via_api
+
+    # a1, a2 保持 IDLE
+    a1 = client.post(
+        "/api/assets",
+        json={"name": "Stats笔记本-1", "type_id": type_id, "custom_data": {}},
+    ).json()
+    assert "id" in a1
+
+    a2 = client.post(
+        "/api/assets",
+        json={"name": "Stats笔记本-2", "type_id": type_id, "holder": "张三", "custom_data": {}},
+    ).json()
+    assert "id" in a2
+
+    # a3 → IN_USE
+    a3_resp = client.post(
+        "/api/assets",
+        json={"name": "Stats笔记本-3", "type_id": type_id, "custom_data": {}},
+    )
+    assert a3_resp.status_code == 201
+    a3 = a3_resp.json()
+    r = client.post(
+        f"/api/assets/{a3['id']}/transitions",
+        json={"kind": "CHECKOUT_INTERNAL", "to_holder": "李四"},
+    )
+    assert r.status_code == 201
+
+    # a4 → RETIRED
+    a4_resp = client.post(
+        "/api/assets",
+        json={"name": "Stats笔记本-4", "type_id": type_id, "custom_data": {}},
+    )
+    assert a4_resp.status_code == 201
+    a4 = a4_resp.json()
+    r = client.post(f"/api/assets/{a4['id']}/transitions", json={"kind": "RETIRE"})
+    assert r.status_code == 201
+
+    return [a1, a2, a3, a4]

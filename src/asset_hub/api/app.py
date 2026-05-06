@@ -11,6 +11,7 @@ from asset_hub.api.routers import (
     assets,
     attachments,
     health,
+    stats,
     transitions,
     types,
 )
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
     app.include_router(transitions.router, prefix="/api/assets", tags=["transitions"])
     app.include_router(attachments.router, prefix="/api", tags=["attachments"])
+    app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
     app.include_router(health.router, prefix="/api", tags=["health"])
 
     for exc_cls, status in _EXC_STATUS.items():

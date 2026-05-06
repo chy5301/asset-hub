@@ -48,5 +48,6 @@ class AssetRead(BaseModel):
     notes: str | None
     custom_data: dict
     acquired_at: date | None  # 新
+    idle_days: int | None = None  # 新；非 IDLE 状态为 None
     created_at: datetime
     updated_at: datetime

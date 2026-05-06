@@ -66,21 +66,28 @@ def to_json_dict(schema_cls: type[BaseModel], obj: Any) -> dict:
 
 
 @contextmanager
-def handle_domain_errors(json_output: bool) -> Generator[None, None, None]:
+def handle_domain_errors(
+    json_output: bool,
+    *,
+    exit_2_on_validation: bool = False,
+) -> Generator[None, None, None]:
     """把域异常按 CLI 退出码契约翻译成 print_error。
 
-    退出码：NotFoundError → 3；ConflictError/DuplicateError/ValidationError/StateError → 1。
+    退出码：NotFoundError → 3；ConflictError/DuplicateError/IllegalTransitionError/StateError → 1；
+    ValidationError → 1（默认）/ 2（exit_2_on_validation=True，agent-native 用法错误约定）。
     与 api/app.py 的 HTTP 映射对称，避免每个命令重复 try/except。
     """
     try:
         yield
     except NotFoundError as e:
         print_error(str(e), json_output, exit_code=3)
+    except ValidationError as e:
+        exit_code = 2 if exit_2_on_validation else 1
+        print_error(str(e), json_output, exit_code=exit_code)
     except (
         ConflictError,
         DuplicateError,
         IllegalTransitionError,
         StateError,
-        ValidationError,
     ) as e:
         print_error(str(e), json_output, exit_code=1)
