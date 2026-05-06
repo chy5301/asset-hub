@@ -169,3 +169,18 @@ def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
     body = resp.json()
     assert body["acquired_at"] == "2025-01-15"
     assert body["asset_code"].startswith("NB-")
+
+
+def test_list_assets_response_contains_idle_days(client, idle_asset):
+    """IDLE 资产的 list 响应必须含 idle_days."""
+    res = client.get("/api/assets")
+    assert res.status_code == 200
+    body = res.json()
+    assert any(a.get("idle_days") is not None for a in body if a["status"] == "IDLE")
+
+
+def test_in_use_asset_idle_days_is_null(client, in_use_asset):
+    """非 IDLE 资产 idle_days 必须为 null."""
+    res = client.get(f"/api/assets/{in_use_asset['id']}")
+    assert res.status_code == 200
+    assert res.json()["idle_days"] is None

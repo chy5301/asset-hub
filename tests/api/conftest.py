@@ -62,6 +62,27 @@ def idle_asset(client, sample_type_nb_via_api):
 
 
 @pytest.fixture
+def in_use_asset(client, sample_type_nb_via_api):
+    """创建一个 IN_USE 状态资产（checkout 后），返回 dict 含 id。"""
+    resp = client.post(
+        "/api/assets",
+        json={
+            "name": "在用笔记本",
+            "type_id": sample_type_nb_via_api,
+            "custom_data": {},
+        },
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+    r = client.post(
+        f"/api/assets/{aid}/transitions",
+        json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"},
+    )
+    assert r.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
 def retired_asset(client, sample_type_nb_via_api):
     resp = client.post(
         "/api/assets",

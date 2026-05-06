@@ -43,7 +43,7 @@ def list_assets(
     include_retired: bool = False,
     include_disposed: bool = False,
 ):
-    return svc.list_assets(
+    assets = svc.list_assets(
         type_id=type_id,
         status=status,
         holder=holder,
@@ -51,6 +51,7 @@ def list_assets(
         include_retired=include_retired,
         include_disposed=include_disposed,
     )
+    return svc.annotate_idle_days(assets)
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
@@ -58,7 +59,8 @@ def get_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    return svc.get_asset(asset_id)
+    asset = svc.get_asset(asset_id)
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)

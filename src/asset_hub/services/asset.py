@@ -112,6 +112,18 @@ class AssetService:
             include_disposed=include_disposed,
         )
 
+    def annotate_idle_days(self, assets: list[Asset]) -> list[Asset]:
+        """给 IDLE 资产填充 idle_days；in-place 设属性，让 AssetRead 序列化能读到。"""
+        from asset_hub.services._idle_days import compute_idle_days_for_asset
+
+        for a in assets:
+            if a.status == AssetStatus.IDLE:
+                # @property 是只读的，用 setattr 注入实例属性供 @property 读取
+                setattr(a, "_idle_days_value", compute_idle_days_for_asset(self.session, a.id))
+            else:
+                setattr(a, "_idle_days_value", None)
+        return assets
+
     def update_asset(
         self,
         asset_id: uuid.UUID,
