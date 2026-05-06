@@ -1,16 +1,6 @@
-/**
- * Dashboard 主页面 (D-原版): radial atmosphere + 顶部 hairline + grid 容器.
- *
- * spec §3.2: grid-cols-[3fr_2fr] 左 60% / 右 40%, 右列三段 stacked vertically.
- * 4 图组件 + Skeleton + ErrorBanner 当前为 stub, 由 Task 12-14 替换.
- *
- * spec §3.2 + §B.fd2 (Task 15): 页面入场 staggered reveal motion——
- * 闲置锚先入场 (translateX -8 → 0), 右三段 80ms 错位 (translateY 8 → 0).
- * duration 320ms / cubic-bezier(0.16, 1, 0.3, 1).
- * prefers-reduced-motion 退化为纯 opacity 不 translate.
- */
 import { motion, useReducedMotion } from "motion/react";
 
+import { ErrorState } from "@/components/feedback/error-state";
 import { Route as DashboardRoute } from "@/routes/dashboard";
 
 import { HolderLeaderboard } from "./charts/holder-leaderboard";
@@ -18,7 +8,6 @@ import { IdleTopBarChart } from "./charts/idle-top-bar-chart";
 import { StatusDistributionChart } from "./charts/status-distribution-chart";
 import { TypeDistributionChart } from "./charts/type-distribution-chart";
 import { DashboardHeader } from "./dashboard-header";
-import { DashboardErrorBanner } from "./error-banner";
 import { DashboardSkeleton } from "./skeleton";
 import { useStatsQuery } from "./use-stats-query";
 
@@ -61,7 +50,7 @@ export function DashboardPage() {
       {statsQuery.isLoading ? (
         <DashboardSkeleton />
       ) : statsQuery.isError ? (
-        <DashboardErrorBanner onRetry={() => statsQuery.refetch()} />
+        <ErrorState error={statsQuery.error} onRetry={() => statsQuery.refetch()} />
       ) : statsQuery.data ? (
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 min-h-[640px]">
           <motion.div
