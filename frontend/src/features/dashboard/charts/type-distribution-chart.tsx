@@ -14,6 +14,8 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import type { TypeDistributionItem } from "@/features/assets/types";
 
+import { TypeEmpty } from "../empty-states/type-empty";
+
 import { typeIdToChartTokenVar } from "./chart-token";
 
 interface Props {
@@ -21,13 +23,7 @@ interface Props {
 }
 
 export function TypeDistributionChart({ data }: Props) {
-  if (data.length === 0) {
-    return (
-      <section className="rounded-lg border bg-card p-6 flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-muted-foreground italic">尚未定义任何类型</p>
-      </section>
-    );
-  }
+  if (data.length === 0) return <TypeEmpty />;
 
   const total = data.reduce((sum, item) => sum + item.count, 0);
 

@@ -1,5 +1,7 @@
 import { type AssetStatus, STATUS_META } from "@/features/assets/status-labels";
 
+import { StatusEmpty } from "../empty-states/status-empty";
+
 interface Props {
   data: Record<string, number> | null;
 }
@@ -14,13 +16,7 @@ export function StatusDistributionChart({ data }: Props) {
     .filter((e) => e.count > 0);
   const total = entries.reduce((sum, e) => sum + e.count, 0);
 
-  if (total === 0) {
-    return (
-      <section className="rounded-lg border bg-card p-6 flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-muted-foreground italic">还没有登记任何资产</p>
-      </section>
-    );
-  }
+  if (total === 0) return <StatusEmpty />;
 
   return (
     <section className="rounded-lg border bg-card p-6 flex flex-col">

@@ -13,6 +13,8 @@ import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 
 
 import type { IdleTopItem } from "@/features/assets/types";
 
+import { IdleEmpty } from "../empty-states/idle-empty";
+
 const IDLE_THRESHOLD_DAYS = 90;
 const ANIMATION_MS = 480;
 
@@ -21,13 +23,7 @@ interface Props {
 }
 
 export function IdleTopBarChart({ data }: Props) {
-  if (data.length === 0) {
-    return (
-      <section className="rounded-lg border bg-card p-6 flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-muted-foreground italic">没有闲置资产——一切都在用</p>
-      </section>
-    );
-  }
+  if (data.length === 0) return <IdleEmpty />;
 
   return (
     <section className="rounded-lg border bg-card p-6 flex flex-col">

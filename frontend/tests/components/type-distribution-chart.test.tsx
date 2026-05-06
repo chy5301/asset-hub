@@ -1,7 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { TypeDistributionChart } from "@/features/dashboard/charts/type-distribution-chart";
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>{children}</a>
+  ),
+}));
 
 describe("TypeDistributionChart", () => {
   it("renders empty state when data is []", () => {

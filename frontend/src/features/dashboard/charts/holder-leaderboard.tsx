@@ -1,17 +1,13 @@
 import type { HolderRankingItem } from "@/features/assets/types";
 
+import { HolderEmpty } from "../empty-states/holder-empty";
+
 interface Props {
   data: HolderRankingItem[];
 }
 
 export function HolderLeaderboard({ data }: Props) {
-  if (data.length === 0) {
-    return (
-      <section className="rounded-lg border bg-card p-6 flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-muted-foreground italic">还没有派发记录</p>
-      </section>
-    );
-  }
+  if (data.length === 0) return <HolderEmpty />;
 
   const max = data[0]?.count ?? 0;
 
