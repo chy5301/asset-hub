@@ -69,3 +69,26 @@ def test_stats_read_full_payload():
     )
     assert len(s.type_distribution) == 1
     assert s.holder_ranking[0].holder == "张三"
+
+
+def test_stats_summary_naive_datetime_coerced_to_utc():
+    """spec §2.1 要求 generated_at 是 ISO-8601 with Z；naive datetime 应自动加 UTC tz."""
+    s = StatsSummary(
+        total_assets=10, registered_assets=10, idle_count=5,
+        include_retired=False, include_disposed=False,
+        generated_at=datetime(2026, 5, 6, 10, 30, 0),  # naive
+    )
+    assert s.generated_at.tzinfo is not None
+    # 序列化后含 Z 或 +00:00
+    serialized = s.model_dump(mode="json")["generated_at"]
+    assert "Z" in serialized or "+00:00" in serialized
+
+
+def test_idle_top_item_naive_datetime_coerced_to_utc():
+    """idle_since 同理."""
+    item = IdleTopItem(
+        asset_id=uuid4(), asset_code="X-001", type_name="X",
+        current_location=None, idle_days=10,
+        idle_since=datetime(2025, 12, 4),  # naive
+    )
+    assert item.idle_since.tzinfo is not None

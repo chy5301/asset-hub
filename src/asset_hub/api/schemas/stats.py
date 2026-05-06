@@ -1,10 +1,10 @@
 """M3b 看板 / stats 端点 DTO."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 # 4 段名 — fields 参数 + service 函数签名都引用
 StatsField = Literal[
@@ -37,6 +37,13 @@ class IdleTopItem(BaseModel):
     idle_days: int
     idle_since: datetime
 
+    @field_validator("idle_since", mode="before")
+    @classmethod
+    def _ensure_utc_idle_since(cls, v: datetime) -> datetime:
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=UTC)
+        return v
+
 
 class StatsSummary(BaseModel):
     """业务摘要——命名 summary 而非 metadata，避免与 CLI envelope 顶层 metadata 冲突."""
@@ -46,6 +53,13 @@ class StatsSummary(BaseModel):
     include_retired: bool
     include_disposed: bool
     generated_at: datetime
+
+    @field_validator("generated_at", mode="before")
+    @classmethod
+    def _ensure_utc_generated_at(cls, v: datetime) -> datetime:
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=UTC)
+        return v
 
 
 class StatsRead(BaseModel):
