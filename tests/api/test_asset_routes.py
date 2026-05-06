@@ -188,3 +188,25 @@ def test_in_use_asset_idle_days_is_null(client, in_use_asset):
     res = client.get(f"/api/assets/{in_use_asset['id']}")
     assert res.status_code == 200
     assert res.json()["idle_days"] is None
+
+
+def test_list_assets_with_sort_idle_days(client, idle_assets_5):
+    res = client.get("/api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=3")
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body) == 3
+
+
+def test_list_assets_unknown_sort_by_returns_422(client):
+    res = client.get("/api/assets?sort_by=foo")
+    assert res.status_code == 422
+
+
+def test_list_assets_limit_over_max_returns_422(client):
+    res = client.get("/api/assets?limit=2000")
+    assert res.status_code == 422
+
+
+def test_list_assets_negative_offset_returns_422(client):
+    res = client.get("/api/assets?offset=-1")
+    assert res.status_code == 422

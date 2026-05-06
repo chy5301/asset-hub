@@ -108,3 +108,21 @@ def disposed_asset(client, sample_type_nb_via_api):
     r2 = client.post(f"/api/assets/{aid}/transitions", json={"kind": "DISPOSE"})
     assert r2.status_code == 201
     return resp.json()
+
+
+@pytest.fixture
+def idle_assets_5(client, sample_type_nb_via_api):
+    """创建 5 个 IDLE 状态资产，返回 list of dict（含 id 等字段）。"""
+    assets = []
+    for i in range(5):
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": f"空闲笔记本-{i + 1}",
+                "type_id": sample_type_nb_via_api,
+                "custom_data": {},
+            },
+        )
+        assert resp.status_code == 201
+        assets.append(resp.json())
+    return assets

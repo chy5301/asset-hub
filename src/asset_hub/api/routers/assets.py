@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
 from sqlmodel import Session
@@ -43,6 +43,10 @@ def list_assets(
     q: str | None = None,
     include_retired: bool = False,
     include_disposed: bool = False,
+    sort_by: str | None = None,
+    sort_order: Literal["asc", "desc"] = "desc",
+    limit: int | None = None,
+    offset: int | None = None,
 ):
     assets = svc.list_assets(
         type_id=type_id,
@@ -51,6 +55,10 @@ def list_assets(
         q=q,
         include_retired=include_retired,
         include_disposed=include_disposed,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        limit=limit,
+        offset=offset,
     )
     return svc.annotate_idle_days(assets)
 
