@@ -172,11 +172,15 @@ def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
 
 
 def test_list_assets_response_contains_idle_days(client, idle_asset):
-    """IDLE 资产的 list 响应必须含 idle_days."""
+    """IDLE 资产的 list 响应必须含 idle_days，且为非负整数."""
     res = client.get("/api/assets")
     assert res.status_code == 200
     body = res.json()
-    assert any(a.get("idle_days") is not None for a in body if a["status"] == "IDLE")
+    idle_entries = [a for a in body if a["status"] == "IDLE"]
+    assert len(idle_entries) > 0
+    for a in idle_entries:
+        assert isinstance(a["idle_days"], int)
+        assert a["idle_days"] >= 0
 
 
 def test_in_use_asset_idle_days_is_null(client, in_use_asset):

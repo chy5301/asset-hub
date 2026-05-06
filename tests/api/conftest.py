@@ -79,7 +79,7 @@ def in_use_asset(client, sample_type_nb_via_api):
         json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"},
     )
     assert r.status_code == 201
-    return resp.json()
+    return client.get(f"/api/assets/{aid}").json()
 
 
 @pytest.fixture

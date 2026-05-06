@@ -9,6 +9,7 @@ from asset_hub.errors import DuplicateError, NotFoundError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
+from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
 
 
@@ -113,13 +114,34 @@ class AssetService:
         )
 
     def annotate_idle_days(self, assets: list[Asset]) -> list[Asset]:
-        """给 IDLE 资产填充 idle_days；in-place 设属性，让 AssetRead 序列化能读到。"""
-        from asset_hub.services._idle_days import compute_idle_days_for_asset
+        """批量计算 idle_days 注入 _idle_days_value instance attr。
+
+        单 SQL 批量查，避免 N+1（list 100 IDLE assets 不会触发 200 queries）。
+        复用 last_idle_subq + idle_since_expr 与 stats / sort_by=idle_days 同源。
+        """
+        idle_asset_ids = [a.id for a in assets if a.status == AssetStatus.IDLE]
+
+        days_by_id: dict[uuid.UUID, int | None] = {}
+        if idle_asset_ids:
+            sq = last_idle_subq()
+            stmt = (
+                select(Asset.id, idle_since_expr(Asset, sq))
+                .select_from(Asset)
+                .join(sq, sq.c.asset_id == Asset.id, isouter=True)
+                .where(Asset.id.in_(idle_asset_ids))
+            )
+            now = datetime.now(UTC)
+            for asset_id, idle_since in self.session.exec(stmt).all():
+                if idle_since is None:
+                    days_by_id[asset_id] = None
+                    continue
+                if idle_since.tzinfo is None:
+                    idle_since = idle_since.replace(tzinfo=UTC)
+                days_by_id[asset_id] = int((now - idle_since).total_seconds() // 86400)
 
         for a in assets:
             if a.status == AssetStatus.IDLE:
-                # @property 是只读的，用 setattr 注入实例属性供 @property 读取
-                setattr(a, "_idle_days_value", compute_idle_days_for_asset(self.session, a.id))
+                setattr(a, "_idle_days_value", days_by_id.get(a.id))
             else:
                 setattr(a, "_idle_days_value", None)
         return assets

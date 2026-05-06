@@ -21,7 +21,7 @@ def create_asset(
     body: AssetCreate,
     svc: Annotated[AssetService, Depends(_get_svc)],
 ):
-    return svc.register(
+    asset = svc.register(
         name=body.name,
         type_id=body.type_id,
         serial_number=body.serial_number,
@@ -31,6 +31,7 @@ def create_asset(
         custom_data=body.custom_data,
         acquired_at=body.acquired_at,
     )
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.get("", response_model=list[AssetRead])
@@ -73,7 +74,8 @@ def update_asset(
 
     状态、holder、location 走 POST /api/assets/{id}/transitions。
     """
-    return svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
+    asset = svc.update_asset(asset_id, **body.model_dump(exclude_unset=True))
+    return svc.annotate_idle_days([asset])[0]
 
 
 @router.delete("/{asset_id}", status_code=204)

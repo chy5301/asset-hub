@@ -1,8 +1,9 @@
 """idle_days 计算：从 StateTransitionRecord 取上次 to_status=IDLE 的 created_at；
 新登记后未发生 transition 的 IDLE 资产 fallback Asset.created_at。
 
-提供两种用法：
-- compute_idle_days_for_asset(): 单 asset 标量查询（list/detail DTO 用）
+提供三种用法：
+- last_idle_subq(): 构建"每个 asset 上次进入 IDLE 的时间"子查询（公开 helper）
+- compute_idle_days_for_asset(): 单 asset 标量查询（单资产 detail 用）
 - idle_since_expr(): 可拼到 select(Asset).join(...).order_by() 的子查询表达式
   （stats 闲置 Top 10 / list_assets sort_by=idle_days 用）
 """
@@ -18,7 +19,7 @@ from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.state_transition import StateTransitionRecord
 
 
-def _last_idle_subq():
+def last_idle_subq() -> Subquery:
     """子查询：每个 asset 上次进入 IDLE 的时间."""
     return (
         select(
@@ -33,10 +34,10 @@ def _last_idle_subq():
 
 def idle_since_expr(
     asset_alias: type[Asset] = Asset,
-    last_idle_subq: Subquery | None = None,
+    subq: Subquery | None = None,
 ) -> Function:
     """COALESCE(last_idle_at, asset.created_at) 表达式 — 用作排序/选择列."""
-    sq = last_idle_subq if last_idle_subq is not None else _last_idle_subq()
+    sq = subq if subq is not None else last_idle_subq()
     return func.coalesce(sq.c.last_idle_at, asset_alias.created_at)
 
 
@@ -46,7 +47,7 @@ def compute_idle_days_for_asset(session: Session, asset_id: uuid.UUID) -> int | 
     if asset is None or asset.status != AssetStatus.IDLE:
         return None
 
-    sq = _last_idle_subq()
+    sq = last_idle_subq()
     stmt = select(idle_since_expr(Asset, sq)).select_from(Asset).join(
         sq, sq.c.asset_id == Asset.id, isouter=True,
     ).where(Asset.id == asset_id)
