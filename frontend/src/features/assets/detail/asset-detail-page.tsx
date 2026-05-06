@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useAssetDetailQuery } from "@/api/hooks/assets";
 import { useAttachmentsQuery } from "@/api/hooks/attachments";
-import { useAssetTypesQuery } from "@/api/hooks/types";
+import { useTypeQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isHttpError } from "@/lib/error";
 import type { FieldDef } from "@/features/assets/form/types";
@@ -27,7 +27,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   const navigate = useNavigate();
   const assetQuery = useAssetDetailQuery(id);
   const attachmentsQuery = useAttachmentsQuery(id);
-  const typesQuery = useAssetTypesQuery();
+  const typeQuery = useTypeQuery(assetQuery.data?.type_id);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [lightboxAttachment, setLightboxAttachment] = useState<AttachmentRead | null>(null);
@@ -52,8 +52,8 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   }
 
   const asset = assetQuery.data;
-  const assetType = typesQuery.data?.find((t) => t.id === asset.type_id);
-  const typeName = assetType?.name;
+  const assetType = typeQuery.data;
+  const typeName = asset.type_name ?? undefined;
 
   return (
     <>
