@@ -12,9 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDeleteTypeMutation } from '@/api/hooks/types';
 import { toFriendlyMessage } from '@/lib/error';
-import type { components } from '@/api/generated/schema';
-
-type TypeRead = components['schemas']['TypeRead'];
+import type { TypeRead } from '@/features/assets/types';
 
 interface Props {
   type: TypeRead;

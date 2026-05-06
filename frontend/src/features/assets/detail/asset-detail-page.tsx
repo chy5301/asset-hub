@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import type { components } from "@/api/generated/schema";
 import { useAssetDetailQuery } from "@/api/hooks/assets";
 import { useAttachmentsQuery } from "@/api/hooks/attachments";
 import { useAssetTypesQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { isHttpError } from "@/lib/error";
 import type { FieldDef } from "@/features/assets/form/types";
+import type { AttachmentRead } from "@/features/assets/types";
 
 import { AssetHeader } from "./asset-header";
 import { AssetNotFound } from "./asset-not-found";
@@ -30,9 +30,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   const typesQuery = useAssetTypesQuery();
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [lightboxAttachment, setLightboxAttachment] = useState<
-    components["schemas"]["AttachmentRead"] | null
-  >(null);
+  const [lightboxAttachment, setLightboxAttachment] = useState<AttachmentRead | null>(null);
 
   if (assetQuery.isLoading) return <DetailSkeleton />;
 

@@ -20,9 +20,7 @@ import { useDeleteAttachmentMutation } from "@/api/hooks/attachments";
 import { toFriendlyMessage } from "@/lib/error";
 import { formatDateTime } from "@/lib/date";
 import { PENDING_TEXT } from "@/features/assets/form/form-toast";
-import type { components } from "@/api/generated/schema";
-
-type AttachmentRead = components["schemas"]["AttachmentRead"];
+import type { AttachmentRead } from "@/features/assets/types";
 
 interface AttachmentLightboxProps {
   attachment: AttachmentRead | null;

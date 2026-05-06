@@ -8,9 +8,7 @@ import { useAssetTypesQuery } from '@/api/hooks/types';
 import { TypesTable } from './types-table';
 import { TypesTableSkeleton } from './types-table-skeleton';
 import { TypeDeleteDialog } from '../detail/type-delete-dialog';
-import type { components } from '@/api/generated/schema';
-
-type TypeRead = components['schemas']['TypeRead'];
+import type { TypeRead } from '@/features/assets/types';
 
 export function TypesPage() {
   const q = useAssetTypesQuery();

@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 
-import type { components } from "@/api/generated/schema";
+import type { AssetRead, TransitionKind } from "@/features/assets/types";
 import { StatusBadge } from "@/components/status/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +27,6 @@ import { RetireAlertDialog } from "./retire-alert-dialog";
 import { ReturnDialog } from "./return-dialog";
 import { SimpleTransitionDialog } from "./simple-transition-dialog";
 import { TransferHolderDialog } from "./transfer-holder-dialog";
-
-type AssetRead = components["schemas"]["AssetRead"];
 
 interface AssetHeaderProps {
   asset: AssetRead;
@@ -69,8 +67,6 @@ export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
     </header>
   );
 }
-
-type TransitionKind = components["schemas"]["TransitionKind"];
 
 function ActionArea({
   asset,

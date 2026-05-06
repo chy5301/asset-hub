@@ -1,11 +1,9 @@
 import { FileText, FileImage, File } from "lucide-react";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { components } from "@/api/generated/schema";
+import type { AttachmentRead } from "@/features/assets/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { AttachmentAddSlot } from "./attachment-add-slot";
-
-type AttachmentRead = components["schemas"]["AttachmentRead"];
 
 interface AttachmentGridProps {
   query: UseQueryResult<AttachmentRead[]>;

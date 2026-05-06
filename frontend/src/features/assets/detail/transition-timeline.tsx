@@ -4,15 +4,12 @@ import {
 } from "lucide-react";
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import type { components } from "@/api/generated/schema";
+import type { TransitionKind, TransitionRead } from "@/features/assets/types";
 import { useTransitionsQuery } from "@/api/hooks/transitions";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/date";
-
-type TransitionKind = components["schemas"]["TransitionKind"];
-type TransitionRead = components["schemas"]["TransitionRead"];
 
 interface KindMeta {
   label: string;
