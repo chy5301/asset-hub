@@ -28,7 +28,7 @@ export function TypeDetailPage({ id }: { id: string }) {
   return (
     <div className="space-y-10">
       <div className="flex items-start justify-between">
-        <h1 className="text-xl font-semibold">编辑类型 - {q.data.name}</h1>
+        <h1 className="text-2xl font-semibold">编辑类型 - {q.data.name}</h1>
         <Button variant="ghost" onClick={() => setDeleting(true)} className="text-destructive">
           <Trash2 className="h-4 w-4 mr-2" />
           删除类型

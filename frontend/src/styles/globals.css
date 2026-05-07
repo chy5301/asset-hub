@@ -1,3 +1,10 @@
+/* M3d 引入 type scale 二档约定（详见 design-system/asset-hub/MASTER.md "排版" 节）：
+ *   列表 / 配置页 H1：text-xl font-semibold
+ *   详情页 H1     ：text-2xl font-semibold
+ *   看板（hero）  ：不纳入约定（dashboard-header 用 text-3xl font-medium tracking-tight 独立形态）
+ * 新加页面前按归类挑选；偏离需在 MASTER.md 加行说明。
+ */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

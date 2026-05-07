@@ -21,9 +21,10 @@ import type { TypeRead } from '@/features/assets/types';
 interface Props {
   rows: TypeRead[];
   onDelete: (t: TypeRead) => void;
+  bodyKey: string;
 }
 
-export function TypesTable({ rows, onDelete }: Props) {
+export function TypesTable({ rows, onDelete, bodyKey }: Props) {
   const columns = useMemo<ColumnDef<TypeRead>[]>(
     () => [
       {
@@ -119,11 +120,12 @@ export function TypesTable({ rows, onDelete }: Props) {
             </tr>
           ))}
         </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
+        <tbody key={bodyKey} className="tbody-fade">
+          {table.getRowModel().rows.map((row, idx) => (
             <tr
               key={row.id}
-              className="border-b border-border last:border-b-0 transition-colors hover:bg-accent/40"
+              className="stagger-row border-b border-border transition-colors hover:bg-accent/40"
+              style={{ animationDelay: idx < 20 ? `${idx * 18}ms` : "0ms" }}
             >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-3 py-2 align-middle">
