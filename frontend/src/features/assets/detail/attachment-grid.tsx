@@ -49,7 +49,7 @@ function AttachmentTile({
     <button
       type="button"
       onClick={() => onOpen(att)}
-      className="group relative aspect-square overflow-hidden rounded-md ring-1 ring-border cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="group relative aspect-square overflow-hidden rounded-md ring-1 ring-border cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40"
       aria-label={`查看附件 ${att.original_name}`}
     >
       {att.mime_type.startsWith("image/") ? (

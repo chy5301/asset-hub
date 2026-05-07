@@ -1,4 +1,6 @@
-import { ArrowRightFromLine, Send, type LucideIcon } from "lucide-react";
+import { ArrowRightFromLine, CalendarIcon, type LucideIcon } from "lucide-react";
+import { format, startOfDay } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -6,6 +8,7 @@ import { z } from "zod";
 
 import { useRecordTransitionMutation } from "@/api/hooks/transitions";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +20,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,13 +28,15 @@ import {
 } from "@/components/ui/form";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { toFriendlyMessage } from "@/lib/error";
+import { cn } from "@/lib/utils";
 import type { CheckoutKind } from "./available-transitions";
 
 const META: Record<CheckoutKind, { verb: string; Icon: LucideIcon; audience: string }> = {
   CHECKOUT_INTERNAL: { verb: "派发", Icon: ArrowRightFromLine, audience: "团队成员" },
-  CHECKOUT_EXTERNAL: { verb: "出借", Icon: Send, audience: "外部人员" },
+  CHECKOUT_EXTERNAL: { verb: "出借", Icon: ArrowRightFromLine, audience: "外部人员" },
 };
 
 const schema = z.object({
@@ -79,7 +85,7 @@ export function CheckoutDialog({
         kind,
         to_holder: values.to_holder.trim(),
         to_location: values.to_location?.trim() || null,
-        due_at: values.due_at || null,
+        due_at: values.due_at ? `${values.due_at}T00:00:00` : null,
         note: values.note?.trim() || null,
       });
       toast.success(`已${meta.verb}`);
@@ -95,7 +101,14 @@ export function CheckoutDialog({
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-status-in-use/15 px-2.5 py-1 text-xs font-medium text-status-in-use-fg">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                kind === "CHECKOUT_INTERNAL"
+                  ? "bg-status-in-use/15 text-status-in-use-fg"
+                  : "bg-status-borrowed/15 text-status-borrowed-fg",
+              )}
+            >
               <Icon className="size-3.5" aria-hidden />
               {meta.verb}
             </span>
@@ -154,13 +167,38 @@ export function CheckoutDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>期望归还时间（可选）</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="datetime-local"
-                      {...field}
-                      disabled={mutation.isPending}
-                    />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground",
+                          )}
+                          disabled={mutation.isPending}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value
+                            ? format(new Date(field.value), "yyyy-MM-dd", { locale: zhCN })
+                            : "选择日期"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : undefined)}
+                        disabled={(d) => d < startOfDay(new Date())}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription className="text-xs">
+                    建议填写以启用超期提醒；留空则不预警
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

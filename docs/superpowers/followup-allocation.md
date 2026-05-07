@@ -106,7 +106,10 @@
 | **M2d** | §14.9 serve | B2、B3、I1、I2 | 4 | ✅ 已完成（2026-04-29） |
 | **M2c-4** | 类型管理 UI + custom_fields builder | A1、F3、A2、A4 | 4 | ✅ 已完成（2026-05-02） |
 | **M3a** | 状态机基建（5 态 + 10 transition kind） | smoketest B1、C1、§14.3、§14.6、§14.7、§J、§L | 7 | ✅ 已完成（2026-05-04，merge `a360e04` + `bc084e5`） |
-| **M3b–M3e** | 看板/导出/SKILL/14.1/14.8/部署 | C3、D1、H4、§14.8、A3（推迟 M4） | 5 | ⏳ 待启动 |
+| **M3b** | 看板 + /api/stats | C3、D1、H4 | 3 | ✅ 已完成（2026-05-06，merge `c21ae55` + `98052dc`） |
+| **M3c** | CSV/XLSX 导出 | — | 0 | ✅ 已完成（2026-05-07，merge `a55beec` + `5c5bab0`） |
+| **M3d** | timeline 视觉重构 + simplify §7 搭车 | §14.8 染色 / §14.8 超长派发 / C-1 / C-2 / C-3 | 5 | ✅ 已完成（2026-05-07，单 PR feat/m3d-timeline-visual） |
+| **M3e** | SKILL.md + 部署 + 测试基建 + K1 envelope 统一 | K1（HIGH）、A3（推迟 M4） | 2 | ⏳ 待启动 |
 | 暂不动 | — | 13 项 | 13 | — |
 
 ---

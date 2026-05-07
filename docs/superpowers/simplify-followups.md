@@ -969,7 +969,7 @@ M2c-4 全部三个 PR 均已合并到 main：
 
 **视角**：frontend-design skill 对照 ui-ux-pro-max MASTER + spec §3.5 做的 M2 阶段全栈审计；本 PR（M2 视觉收尾，[2026-05-03 spec](./specs/2026-05-03-m2-visual-polish-design.md)）闭环了 H 类全部 + M2 SectionHeading，以下是当时记录暂不动的项。
 
-### M1 · TypesTable 未接 Motion 三时刻（stagger / tbody-fade）
+### M1 · TypesTable 未接 Motion 三时刻（stagger / tbody-fade）· ✅ 闭环（M3d C-1）
 
 **位置**：`frontend/src/features/types/list/types-table.tsx:124`
 
@@ -983,7 +983,7 @@ M2c-4 全部三个 PR 均已合并到 main：
 
 ---
 
-### M3 · 页面 H1 字号三档无 type scale token
+### M3 · 页面 H1 字号三档无 type scale token · ✅ 闭环（M3d C-2）
 
 **位置**：
 - `features/assets/detail/asset-header.tsx:57` `text-2xl font-semibold`
@@ -1000,7 +1000,7 @@ M2c-4 全部三个 PR 均已合并到 main：
 
 ---
 
-### M4 · `attachment-grid` `transition-shadow` 配错 prop 名
+### M4 · `attachment-grid` `transition-shadow` 配错 prop 名 · ✅ 闭环（M3d C-3）
 
 **位置**：`frontend/src/features/assets/detail/attachment-grid.tsx:54`
 
@@ -1045,3 +1045,33 @@ A3（CheckoutDialog/ReturnDialog 合并）时机已到——M3a 引入 7 个 dia
 - **§V `Settings.mode` 字段替代 `os.environ.get`**（M3a simplify Agent 1 F6）：`api/app.py` 用裸 `os.environ.get("ASSET_HUB_MODE")`，`lifecycle.py` 用裸 `os.environ["ASSET_HUB_MODE"] = mode`，是局部破例——项目其他配置统一走 `Settings()`（`config.py` `env_prefix="ASSET_HUB_"`）。改造：`Settings` 加 `mode: Literal["dev","prod"] | None = None` 字段，`api/app.py` 改 `Settings().mode == "dev"`；`lifecycle.py` 仍需 `os.environ` mutation 让子进程继承（or 走 `subprocess.Popen(env={...})` 更干净）。**触发时机**：下次 Settings 加新字段或 serve 命令重构时。
 - **§W types 详情/列表 vs assets 详情/列表面板风格不统一**（用户提）：types-summary-card 居中布局 vs assets-header 左对齐；types 列表 vs assets 列表的 column-visibility / pagination / filter 区视觉风格差异。**触发时机**：M4 UI 打磨期统一规范（与 §S Toggle 视觉、A3 dialog 合并、编辑/删除按钮位置等一并处理）。
 - **§X `dispose-alert-dialog.tsx` 用 useState 而非 RHF**（M3a code review 隐含）：当前 dialog 用 `useState<string>(confirmText)` + `useState<string>(note)` 直接管理表单，与其他 6 个 dialog 用 RHF + zodResolver 风格不一致；但 dispose 字段简单（只有 confirm phrase + note）+ 校验逻辑特殊（unlocked = phrase === "处置"），抽 RHF 价值不大。**触发时机**：仅在 dialog 字段扩多 / 加 zod 校验需求时切换，否则保持现状。
+
+---
+
+## §8 M3d 范围（2026-05-07）
+
+M3d 子里程碑（timeline 视觉重构 + simplify §7 三搭车）单 PR 完成（feat/m3d-timeline-visual，5 phase commit）：
+
+- Phase 1 `2dbb574`: design token (--status-borrowed / --warning) + MASTER.md type scale 节
+- Phase 2 `dcdcaed`: utility 纯函数 (calcOverdue / formatRelative / timeline-grouping)
+- Phase 3 `9587c38`: transition-timeline 重构 (KIND_META 5 替换 / Group rail / 月份分段)
+- Phase 4 `3dcdf56`: CheckoutDialog Calendar+Popover + AssetHeader overdue 角标
+- Phase 5 `9d5284b`: simplify §7 三搭车 (TypesTable motion / H1 二档 / attachment-grid prop)
+
+### 闭环条目
+
+| 条目 | 状态 | commit ref |
+|---|---|---|
+| §7 M1 TypesTable Motion 三时刻 | ✅ 已闭环 | M3d Phase 5 commit `9d5284b`（C-1） |
+| §7 M3 H1 字号三档 type scale | ✅ 已闭环 | M3d Phase 5 commit `9d5284b`（C-2，含 globals.css 注释 + MASTER.md "排版" 节 SoT） |
+| §7 M4 attachment-grid transition-shadow prop | ✅ 已闭环 | M3d Phase 5 commit `9d5284b`（C-3，transition-shadow → transition-all） |
+| §14.8 派出类型染色（spec 主线） | ✅ 已闭环 | M3d Phase 3 commit `9587c38`（E2 形态：Group rail + 月份分段） |
+| §14.8 时间渐隐 | ❌ M3d 决议作废 | spec §1.1 详述（与 Group rail + 月份分段双层时间分层冗余） |
+| §14.8 超长派发预警 | ✅ 已闭环 | M3d Phase 4 commit `3dcdf56`（基于 due_at 两阶段） |
+
+### 烟测发现 / final review 新登记 follow-up
+
+- **§Y `closedCheckoutIds` Set 构建跨 2 文件重复**（M3d final review I1）：`timeline-grouping.ts::groupByCheckout` L40-44 与 `asset-header.tsx::useOverdueForOpenCheckout` L45-48 逻辑同构（filter RETURN.closes_transition_id → Set）。可抽 `findOpenCheckout(transitions): TransitionRead | null` 工具函数到 `lib/transition-state.ts`，两处复用。**触发时机**：第三处复制出现时，或 transition 状态查询逻辑再扩展。
+- **§Z `formatRelative` v1 仅天级**（spec §0 不包）：无小时/分钟粒度，timeline 卡若同日多次 transition 全显示"今天"，调试时区分困难。**触发时机**：用户反馈或同日多 transition 真实场景出现。
+- **`useOverdueForOpenCheckout` loading 闪现**（U5 quality reviewer I2）：transitions 加载期间 hook 返 null → 角标"先不显示再突然出现"轻微视觉跳动。当前接受（有 detail 页 skeleton 兜底）；后续若用户反馈再处理。
+- **`bg-status-borrowed/15` className 直选脆弱**（U5 quality reviewer I4）：checkout-dialog.test 用 `document.body.querySelector(".bg-status-borrowed\/15")` 耦合 Tailwind utility 字符串，换 token 名时测试挂。改 `screen.getByText("出借").closest("span").toHaveClass(...)` 更稳。**触发时机**：simplify pass。

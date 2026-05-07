@@ -1,3 +1,10 @@
+/* M3d 引入 type scale 二档约定（详见 design-system/asset-hub/MASTER.md "排版" 节）：
+ *   列表 / 配置页 H1：text-xl font-semibold
+ *   详情页 H1     ：text-2xl font-semibold
+ *   看板（hero）  ：不纳入约定（dashboard-header 用 text-3xl font-medium tracking-tight 独立形态）
+ * 新加页面前按归类挑选；偏离需在 MASTER.md 加行说明。
+ */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -11,8 +18,9 @@
   --font-sans: "Fira Sans", "PingFang SC", "Microsoft YaHei UI", sans-serif;
   --font-mono: "Fira Code", ui-monospace, monospace;
 
-  /* 警告色（D16: amber，类型名冲突提示用） */
-  --color-warning: hsl(var(--warning-hsl));
+  /* 警告色（D16: amber，类型名冲突提示用；M3d 升级为 OKLCH token pair） */
+  --color-warning: var(--warning);
+  --color-warning-fg: var(--warning-fg);
 
   /* shadcn 色变量 */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -59,6 +67,8 @@
   --color-status-maintenance-fg: var(--status-maintenance-fg);
   --color-status-retired-fg: var(--status-retired-fg);
   --color-status-disposed-fg: var(--status-disposed-fg);
+  --color-status-borrowed: var(--status-borrowed);
+  --color-status-borrowed-fg: var(--status-borrowed-fg);
 
   /* 半径（§3.5.1 ≤6px） */
   --radius-sm: calc(var(--radius) * 0.6);
@@ -110,6 +120,10 @@
   --status-retired-fg: oklch(0.50 0.008 247);
   --status-disposed: oklch(0.95 0.000 0);
   --status-disposed-fg: oklch(0.35 0.000 0);
+  --status-borrowed: oklch(0.78 0.13 75);
+  --status-borrowed-fg: oklch(0.42 0.13 75);
+  --warning: oklch(0.85 0.18 90);
+  --warning-fg: oklch(0.45 0.15 90);
 
   /* M3b 看板: 6 槽 chart token 错位 hue (240/30/145/80/280/0)
      亮度+饱和度统一确保任意 4-5 槽组合视觉重量平衡 */
@@ -179,6 +193,10 @@
   --status-retired-fg: oklch(0.62 0.008 247);
   --status-disposed: oklch(0.18 0.000 0);
   --status-disposed-fg: oklch(0.50 0.000 0);
+  --status-borrowed: oklch(0.70 0.13 75);
+  --status-borrowed-fg: oklch(0.85 0.10 75);
+  --warning: oklch(0.72 0.18 90);
+  --warning-fg: oklch(0.88 0.13 90);
 
   --chart-1: oklch(0.62 0.13 240);
   --chart-2: oklch(0.62 0.13 30);

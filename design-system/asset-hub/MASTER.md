@@ -40,6 +40,27 @@
 亮度/饱和度统一: light `oklch(0.7 0.13 <hue>)` / dark `oklch(0.62 0.13 <hue>)`;
 6 槽相邻 hue 差 ≥ 60° 防刺眼撞色; 同一 type 按 type_id 第一字符 charCode % 6 哈希到稳定槽位.
 
+### Status token（状态语义色）
+
+| Token | 色相描述 | 用途 |
+|---|---|---|
+| `--status-in-use` | 绿色，hue ≈ 150° | IN_USE 状态 chip / 背景 |
+| `--status-in-use-fg` | 同色相深 fg | IN_USE chip 文字色 |
+| `--status-idle` | 中性蓝灰，hue ≈ 247° | IDLE 状态 chip / 背景 |
+| `--status-idle-fg` | 同色相深 fg | IDLE chip 文字色 |
+| `--status-maintenance` | 橙黄，hue ≈ 65° | MAINTENANCE 状态 chip / 背景 |
+| `--status-maintenance-fg` | 同色相深 fg | MAINTENANCE chip 文字色 |
+| `--status-retired` | 蓝灰，hue ≈ 247° | RETIRED 状态 chip / 背景 |
+| `--status-retired-fg` | 同色相深 fg | RETIRED chip 文字色 |
+| `--status-disposed` | 纯灰，chroma=0 | DISPOSED 状态 chip / 背景（无色相） |
+| `--status-disposed-fg` | 同灰深 fg | DISPOSED chip 文字色 |
+| `--status-borrowed`    | 琥珀（amber），hue ≈ 75°  | CHECKOUT_EXTERNAL（对外出借）chip / Group rail external |
+| `--status-borrowed-fg` | 同色相深 fg              | 上同 chip 文字色                                        |
+| `--warning`            | amber 黄，hue ≈ 90°      | due-soon 黄色警示（< 7 天到期）                         |
+| `--warning-fg`         | 同色相深 fg              | warning 文字色 / 角标 fg                                |
+
+light/dark 独立调（不做反转），双套落地于 `globals.css` `:root` + `.dark` + `@theme inline` 映射。
+
 ### Dashboard Atmosphere
 
 | Token | 用途 |
@@ -586,3 +607,17 @@ DISPOSE 终态不可逆，dialog 内输入"处置"二字解锁主按钮（参考
 ### 烟测发现 followup（非 blocker）
 
 - 列表 Toggle pressed 视觉态较弱（chip 在 on 时与 off 视觉差异不够明显）—— spec §5.10 review 时考虑加重 `data-[state=on]` 边框
+
+---
+
+## 排版 type scale（M3d 引入）
+
+页面 H1 字号按页面分类二档：
+
+| 页面分类 | utility | 用例 |
+|---|---|---|
+| 列表 / 配置页 | `text-xl font-semibold` | `/types`（类型列表） |
+| 详情页 | `text-2xl font-semibold` | `/assets/:id` / `/types/:id` |
+| 看板（hero）| 不纳入此约定 | `/dashboard` 用 `text-3xl font-medium tracking-tight` 独立形态 |
+
+新加页面前按归类挑选；偏离需在本表加行说明。

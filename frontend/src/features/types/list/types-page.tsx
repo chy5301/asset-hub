@@ -45,7 +45,7 @@ export function TypesPage() {
         />
       )}
       {q.data && q.data.length > 0 && (
-        <TypesTable rows={q.data} onDelete={setDeletingType} />
+        <TypesTable rows={q.data} onDelete={setDeletingType} bodyKey={String(q.dataUpdatedAt)} />
       )}
 
       {deletingType && (
