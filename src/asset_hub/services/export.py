@@ -32,6 +32,9 @@ STATUS_LABELS: dict[AssetStatus, str] = {
     AssetStatus.DISPOSED: "已处置",
 }
 
+# 反向: label → enum (用于 _render_xlsx 染色时把 row 中的中文 status 反查回 enum)
+_LABEL_TO_STATUS: dict[str, AssetStatus] = {v: k for k, v in STATUS_LABELS.items()}
+
 # spec §B.7: 5 态 light 模式 OKLCH 转 sRGB ARGB hex.
 # 输入 OKLCH 来自 frontend/src/styles/globals.css line 102-110 light 模式,
 # 用 colour-science 实施期一次性算出 (脚本见 PR-1 plan Task 2).
@@ -150,6 +153,15 @@ class ExportService:
 
         # Data rows
         wrap_align = Alignment(wrap_text=True, vertical="top")
+        # 预生成 5 态 PatternFill 对象, 与 Alignment/Font 一样在 method 顶部复用
+        status_fills: dict[AssetStatus, PatternFill] = {
+            status: PatternFill(
+                start_color=hex_val,
+                end_color=hex_val,
+                fill_type="solid",
+            )
+            for status, hex_val in STATUS_HEX.items()
+        }
         status_col_idx = (
             column_names.index(self._STATUS_COLUMN_HEADER) + 1
             if self._STATUS_COLUMN_HEADER in column_names
@@ -163,12 +175,7 @@ class ExportService:
                     status_value = row.get(name, "")
                     status_enum = self._label_to_enum(status_value)
                     if status_enum is not None:
-                        hex_argb = STATUS_HEX[status_enum]
-                        cell.fill = PatternFill(
-                            start_color=hex_argb,
-                            end_color=hex_argb,
-                            fill_type="solid",
-                        )
+                        cell.fill = status_fills[status_enum]
 
         # Freeze + autofilter
         ws.freeze_panes = "A2"
@@ -201,10 +208,7 @@ class ExportService:
     @staticmethod
     def _label_to_enum(label: str) -> AssetStatus | None:
         """状态中文标签反查 enum (仅用于 XLSX 染色; 找不到返 None 不染色)."""
-        for enum_val, lbl in STATUS_LABELS.items():
-            if lbl == label:
-                return enum_val
-        return None
+        return _LABEL_TO_STATUS.get(label)
 
     def export(
         self,
