@@ -454,14 +454,14 @@ asset-hub/
 
 时机：v1 4 态先跑一段，等实际业务遇到"咦这个该归哪态"的真实痛点再决定，避免拍脑袋设计。状态枚举的最终方案需与 §14.5（web 状态切换入口）、§14.6（audit 化）联合考虑。
 
-### 14.8 流转 timeline 视觉重构（M3 与 14.1 联动）
+### 14.8 流转 timeline 视觉重构（M3d 已完成，2026-05-07）
 
-**M3 候选**，已部分前置在 M2c-2 polish（去节点 + 状态 pill 文字化）。M3 完整重构包含：
-- 时间近远渐隐：旧记录卡 opacity 分级（≤90d 100% / ≤180d 80% / 更早 60%）
-- **派出类型染色**（与 14.1 联动）：进行中卡片 pill 文字 "派发中" / "出借中" 自然分化；已归还卡通过 ring 边框色（蓝/琥珀）保留派出类型线索
-- 超长派发预警：> 90 天未归还节点加 `Clock` icon + `text-destructive` 警示色 + 卡片标 "派发 {n} 天"
+**M3 候选**，已部分前置在 M2c-2 polish（去节点 + 状态 pill 文字化）。M3d 完整重构包含：
+- ~~时间近远渐隐：旧记录卡 opacity 分级（≤90d 100% / ≤180d 80% / 更早 60%）~~ → **M3d 决议作废**：与 Group rail（派出周期分组）+ 月份 sticky heading（时间分段）双层时间分层信号冗余；月份分段是中性"组织"，opacity 渐隐是带价值判断的"褪色"——v1 单台资产 timeline < 30 卡时不存在"屏幕过密降权"前提（详见 [M3d spec §1.1](./2026-05-07-m3d-timeline-visual-design.md#11-时间渐隐砍掉)）
+- **派出类型染色**（与 14.1 联动）：M3d 实施为 **E2 形态**（Group rail + 月份分段）—— CHECKOUT_INTERNAL/EXTERNAL 共用 ArrowRightFromLine icon 由 chip 颜色（蓝/琥珀）+ pill 文字（派发/出借）分化；派出周期所有卡（含 RELOCATE/TRANSFER_HOLDER）共享 2px 左侧 rail 按派出类型染色
+- **超长派发预警**：基于 `due_at`（M3a 已落 model 字段）两阶段（< 7d 黄 / 超期 红），出现在 timeline 卡 + AssetHeader 角标（列表页不加，看板 IdleTopBarChart 已承载）
 
-详见 M2c-2 spec §10.2。
+详见 [M3d spec](./2026-05-07-m3d-timeline-visual-design.md)（设计）+ [M3d plan](../plans/2026-05-07-m3d-timeline-visual.md)（实施）。M2c-2 spec §10.2 是早期规划，已被 M3d spec 取代。
 
 ### 14.9 CLI 接管 web 服务生命周期（拟 M2d 独立子里程碑）
 
