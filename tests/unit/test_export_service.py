@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from io import BytesIO
 
+import openpyxl
 from sqlmodel import Session
 
 from asset_hub.models.asset import AssetStatus
@@ -271,3 +273,127 @@ class TestRenderCsv:
         text = data.decode("utf-8-sig")
         # 含逗号 / 引号 / 换行的字段必须包在双引号内, 内部双引号 escape 为 ""
         assert '"含,逗号""引号' in text
+
+
+class TestRenderXlsx:
+    @staticmethod
+    def _load(data: bytes):
+        return openpyxl.load_workbook(BytesIO(data))
+
+    def test_sheet_name_assets_list(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XA", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        wb = self._load(data)
+        assert "资产清单" in wb.sheetnames
+
+    def test_header_row_bold(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XB", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        assert ws.cell(row=1, column=1).value == "资产编号"
+        assert ws.cell(row=1, column=1).font.bold is True
+
+    def test_freeze_panes_a2(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XC", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        assert ws.freeze_panes == "A2"
+
+    def test_autofilter_full_range(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XD", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        # 10 列 (固定) + 1 row header + 1 row data = "A1:J2"
+        assert ws.auto_filter.ref == "A1:J2"
+
+    def test_status_cell_filled_with_status_hex(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XE", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})  # IDLE
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        # 状态列固定第 4 列 (D), data row=2
+        status_cell = ws.cell(row=2, column=4)
+        assert status_cell.value == "闲置"
+        # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致
+        assert status_cell.fill.fgColor.rgb == STATUS_HEX[AssetStatus.IDLE]
+
+    def test_empty_rows_only_header(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        column_names = [
+            "资产编号", "名称", "类型", "状态", "保管人", "位置",
+            "闲置天数", "入账日期", "铭牌编号", "备注",
+        ]
+        data = svc._render_xlsx([], column_names=column_names)
+        ws = self._load(data)["资产清单"]
+        assert ws.cell(row=1, column=1).value == "资产编号"
+        assert ws.cell(row=2, column=1).value is None
+
+    def test_notes_column_width_capped(self, session: Session):
+        """spec §B.3: notes 列宽 cap 60, 其他列 cap 50."""
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XF", custom_fields=[])
+        a = asset_svc.register(
+            name="X", type_id=t.id, custom_data={},
+            notes="x" * 100,  # 100 char 长文本, 列宽应 cap 60
+        )
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        # 备注是固定第 10 列 (J)
+        assert ws.column_dimensions["J"].width is not None
+        assert ws.column_dimensions["J"].width <= 60
+
+    def test_wrap_text_enabled_on_data_cells(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="XG", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={}, notes="long text")
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
+        ws = self._load(data)["资产清单"]
+        notes_cell = ws.cell(row=2, column=10)
+        assert notes_cell.alignment.wrap_text is True
