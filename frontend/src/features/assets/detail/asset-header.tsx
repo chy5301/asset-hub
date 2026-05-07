@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { calcOverdue } from "@/lib/overdue";
+import { findOpenCheckout } from "@/lib/transition-state";
 import { cn } from "@/lib/utils";
 
 import { MENU_ACTIONS, PRIMARY_ACTIONS } from "./available-transitions";
@@ -42,16 +43,7 @@ function useOverdueForOpenCheckout(
 ) {
   const { data: transitions } = useTransitionsQuery(assetId);
   if (!transitions) return null;
-  const closedIds = new Set(
-    transitions
-      .filter((t) => t.kind === "RETURN" && t.closes_transition_id)
-      .map((t) => t.closes_transition_id as string),
-  );
-  const open = transitions.find(
-    (t) =>
-      (t.kind === "CHECKOUT_INTERNAL" || t.kind === "CHECKOUT_EXTERNAL") &&
-      !closedIds.has(t.id),
-  );
+  const open = findOpenCheckout(transitions);
   if (!open) return null;
   return calcOverdue(open.due_at, assetStatus);
 }

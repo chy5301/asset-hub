@@ -1,5 +1,5 @@
 import { ArrowRightFromLine, CalendarIcon, type LucideIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -190,7 +190,7 @@ export function CheckoutDialog({
                         mode="single"
                         selected={field.value ? new Date(field.value) : undefined}
                         onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : undefined)}
-                        disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                        disabled={(d) => d < startOfDay(new Date())}
                         initialFocus
                       />
                     </PopoverContent>

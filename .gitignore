@@ -52,4 +52,5 @@ Thumbs.db
 
 # ===== 临时调试产物（Playwright MCP 烟测 / ad hoc 截图）=====
 .playwright-mcp/
+.playwright-screenshots/
 /smoke-*.png

@@ -1,5 +1,6 @@
 import { format, parseISO } from "date-fns";
 import type { TransitionRead } from "@/features/assets/types";
+import { getClosedCheckoutIds } from "@/lib/transition-state";
 
 export type GroupKind = "in-use" | "external";
 export type GroupPosition = "start" | "middle" | "end";
@@ -29,47 +30,44 @@ export function groupByMonth<T extends TransitionRead>(transitions: T[]): MonthG
     .map(([month, items]) => ({ month, items }));
 }
 
-/** 给每条 transition 标记派出周期 group。
- *  输入按 created_at desc 排序（API 返回顺序）。
- *  算法：倒序遍历（数组尾部 = 最旧 → 数组头部 = 最新），按入队顺序配对 CHECKOUT_* ↔ RETURN。
- *  closes_transition_id 仅用于判断 CHECKOUT 是否 OPEN（构建 closedCheckoutIds Set），不用于直接配对——
- *  配对依赖状态机保证的"非嵌套"顺序单调性。 */
+/** 给每条 transition 标记派出周期 group。输入按 created_at desc 排序（API 返回顺序）。
+ *
+ *  CHECKOUT_* / RETURN 配对靠 RETURN.closes_transition_id 显式 lookup（非依赖顺序单调性），
+ *  防止历史数据异常时配对错误。OPEN CHECKOUT 向更新方向延伸 middle 标记。 */
 export function groupByCheckout(transitions: TransitionRead[]): GroupedTransition[] {
   const out: GroupedTransition[] = transitions.map((t) => ({ ...t, group: null }));
 
-  const closedCheckoutIds = new Set(
-    transitions
-      .filter((t) => t.kind === "RETURN" && t.closes_transition_id)
-      .map((t) => t.closes_transition_id as string),
-  );
+  const closedCheckoutIds = getClosedCheckoutIds(transitions);
 
-  // 找所有派出周期的 [start, end] 索引区间（数组索引）
-  const cycles: { kind: GroupKind; startIdx: number; endIdx: number | null }[] = [];
-  for (let i = transitions.length - 1; i >= 0; i--) {
+  // CHECKOUT.id → 配对的 RETURN 索引（O(N) 预建，避免内层 findIndex）
+  const returnIdxByCheckoutId = new Map<string, number>();
+  for (let i = 0; i < transitions.length; i++) {
     const t = transitions[i];
-    if (t.kind === "CHECKOUT_INTERNAL" || t.kind === "CHECKOUT_EXTERNAL") {
-      const kind: GroupKind = t.kind === "CHECKOUT_INTERNAL" ? "in-use" : "external";
-      const isOpen = !closedCheckoutIds.has(t.id);
-      cycles.push({ kind, startIdx: i, endIdx: isOpen ? null : -1 });
-    } else if (t.kind === "RETURN" && t.closes_transition_id) {
-      const cycle = cycles.find((c) => c.endIdx === -1);
-      if (cycle) cycle.endIdx = i;
+    if (t.kind === "RETURN" && t.closes_transition_id) {
+      returnIdxByCheckoutId.set(t.closes_transition_id, i);
     }
   }
 
-  for (const cycle of cycles) {
-    out[cycle.startIdx].group = { kind: cycle.kind, position: "start" };
+  // 倒序扫（最旧 → 最新），每遇 CHECKOUT_* 起新周期
+  for (let i = transitions.length - 1; i >= 0; i--) {
+    const t = transitions[i];
+    if (t.kind !== "CHECKOUT_INTERNAL" && t.kind !== "CHECKOUT_EXTERNAL") continue;
 
-    if (cycle.endIdx !== null && cycle.endIdx >= 0) {
-      out[cycle.endIdx].group = { kind: cycle.kind, position: "end" };
-      // 中间（startIdx > i > endIdx，因 desc：startIdx 大 endIdx 小）
-      for (let i = cycle.startIdx - 1; i > cycle.endIdx; i--) {
-        if (out[i].group === null) out[i].group = { kind: cycle.kind, position: "middle" };
+    const kind: GroupKind = t.kind === "CHECKOUT_INTERNAL" ? "in-use" : "external";
+    out[i].group = { kind, position: "start" };
+
+    if (closedCheckoutIds.has(t.id)) {
+      // 已配对的 RETURN（必定在更新方向：索引 < startIdx，因数组 desc）
+      const endIdx = returnIdxByCheckoutId.get(t.id);
+      if (endIdx === undefined) continue; // 防御：closedIds 与 map 理论一致
+      out[endIdx].group = { kind, position: "end" };
+      for (let j = i - 1; j > endIdx; j--) {
+        if (out[j].group === null) out[j].group = { kind, position: "middle" };
       }
     } else {
-      // OPEN CHECKOUT：从 startIdx 向更新方向（i < startIdx）扫，所有未标记的中性卡都属于此周期
-      for (let i = cycle.startIdx - 1; i >= 0; i--) {
-        if (out[i].group === null) out[i].group = { kind: cycle.kind, position: "middle" };
+      // OPEN CHECKOUT：向更新方向扫到列表头，所有未标记的中性卡都属于此周期
+      for (let j = i - 1; j >= 0; j--) {
+        if (out[j].group === null) out[j].group = { kind, position: "middle" };
       }
     }
   }
