@@ -17,6 +17,7 @@ import {
   ColumnVisibilityMenu,
   useColumnVisibility,
 } from "@/features/assets/list/column-visibility";
+import { ExportButton } from "@/features/assets/list/export-button";
 import { assetsSearchSchema } from "@/features/assets/list/search-schema";
 
 const WARN_THRESHOLD = 2000;
@@ -63,6 +64,7 @@ function AssetListPage() {
           <AssetsFilters search={search} />
           <div className="flex items-center gap-2">
             <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
+            <ExportButton search={search} />
             <Link to="/assets/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
