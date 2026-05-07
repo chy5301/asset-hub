@@ -28,8 +28,13 @@
 
 **C 三搭车**（simplify §7，§4）：
 - C-1 TypesTable motion 三时刻
-- C-2 globals.css type scale 节 + 现有 3 H1 对齐（含 type-detail-page H1 升级）
+- C-2 globals.css type scale 节 + 现有 3 H1 对齐（含 type-detail-page H1 升级；看板 hero H1 不纳入）
 - C-3 attachment-grid `transition-shadow` → `transition-all`
+
+**视觉一致性配套**：
+- timeline loading skeleton 在月份分组下保持 M3a 现状（裸 ol + 3 卡，**不模拟月份分组**）
+- timeline empty/error 态保持现状（M3a 已用 EmptyState / ErrorState）
+- a11y：月份分组用 `<div>` 不嵌套 list；`<h3>` 提供屏幕阅读器导航锚点；rail span 全部 `aria-hidden`
 
 ### 不包（明确 v2+ 或其他里程碑）
 
@@ -84,10 +89,11 @@
 **收敛规则**：
 
 - 全部 lucide outline/stroke 风格（24×24 viewBox / stroke-width 2 / fill none）
-- 禁用复合 glyph（UserCog 类多元素，size-4 下糊成一团）
-- 禁用诗化隐喻（Moon=退役 / Sun=重启用 类望文生义翻译）
-- 禁用带外圈状态符号（CheckCircle2 类，与 RETURN/REINSTATE 撞"好结果"语义）
-- 同状态簇内有"对偶感"（Wrench ↔ PackageCheck 工具→包裹 / Archive ↔ ArchiveRestore 封箱→开箱）
+- **禁用复合 glyph**（UserCog 类多元素，size-4 下糊成一团）
+- **禁用浪漫化抽象隐喻**（自然元素 / 拟人 等与"动作 / 状态"无直接物质对应的隐喻）—— Moon = 退役、Sun = 重启用 是把中文文案望文生义翻成自然意象，落地后 Moon icon 跟"暂停服役"的业务语义无直接物质映射
+- **允许语义直接映射隐喻**（动作工具 / 仓储 / 资产生命周期物质对应）—— `Archive`（封箱）↔ `ArchiveRestore`（开箱）= "暂停服役 → 重启用"的物质对应，`Trash2` = "处置"的标准 affordance，`Wrench` / `PackageCheck` = "送修 / 修好"的工具→包裹流程
+- **禁用带外圈状态符号**（CheckCircle2 类，与 RETURN/REINSTATE 撞"好结果"语义）
+- 同状态簇内有"对偶感"（Wrench ↔ PackageCheck 工具→包裹 / Archive ↔ ArchiveRestore 封箱→开箱 / 派发 ↔ 出借共用 ArrowRightFromLine 由颜色分化）
 
 详见 §3.2 KIND_META 表。
 
@@ -190,17 +196,28 @@ export function calcOverdue(
 
 #### Group rail
 
+**关键约束**：`<ol>` 用 `space-y-3`（卡间 12px gap），rail 必须**跨过 gap**才视觉连续。做法：rail span 用 `absolute`，**non-end 卡的 rail 向下延伸 -12px 跨过 gap 到下张卡顶**；end 卡的 rail 在 li 内底部封口。**li 不加 `overflow-hidden`**（默认 visible，否则 rail 跨 gap 会被裁）。
+
 ```tsx
 <li className="rounded-lg ring-1 ring-border/60 p-3 flex items-start gap-3 relative">
-  {group?.kind && (
+  {group?.kind && group.position !== "end" && (
     <span
       className={cn(
-        "absolute left-0 w-0.5",                           // 2px
+        "absolute left-0 w-0.5",                            // 2px
+        "-bottom-3",                                         // 跨过 12px gap 到下张卡
+        group.position === "start" ? "top-1.5" : "top-0",   // start 顶部留 6px 封口
         group.kind === "in-use" && "bg-status-in-use/40",
         group.kind === "external" && "bg-status-borrowed/40",
-        group.position === "start" && "top-1.5 bottom-0 rounded-t-sm",
-        group.position === "end" && "top-0 bottom-1.5 rounded-b-sm",
-        group.position === "middle" && "top-0 bottom-0",
+      )}
+      aria-hidden
+    />
+  )}
+  {group?.kind && group.position === "end" && (
+    <span
+      className={cn(
+        "absolute left-0 w-0.5 top-0 bottom-1.5",            // end 卡内收束，底部留 6px 封口
+        group.kind === "in-use" && "bg-status-in-use/40",
+        group.kind === "external" && "bg-status-borrowed/40",
       )}
       aria-hidden
     />
@@ -215,9 +232,10 @@ export function calcOverdue(
 - 颜色：
   - INTERNAL 周期：`bg-status-in-use/40`
   - EXTERNAL 周期：`bg-status-borrowed/40`（新 token，§3.6）
-- start 卡（CHECKOUT）：rail `top-1.5 rounded-t-sm`（顶部留 6px + 圆角封口）
-- end 卡（RETURN）：rail `bottom-1.5 rounded-b-sm`（底部留 6px + 圆角封口）
-- middle 卡（派出期内的 RELOCATE / TRANSFER_HOLDER）：rail 全长
+- **rail 连续性靠 `-bottom-3` 跨过 `space-y-3` gap** —— 多张连续卡 rail 视觉无缝
+- start 卡（CHECKOUT）：`top-1.5` 顶部留 6px 封口
+- middle 卡（派出期内的 RELOCATE / TRANSFER_HOLDER）：`top-0` 满高
+- end 卡（RETURN）：`top-0 bottom-1.5` 底部 6px 封口（不 -bottom-3，rail 在 li 内收束）
 
 #### 月份 sticky heading
 
@@ -235,24 +253,35 @@ export function calcOverdue(
 
 #### Render 结构
 
+**决议**：不用 ol > li > h3 + ol 嵌套（li 包 h3 语义糊）。改 `<section>` + 月份分组用 `<div>` 平铺 + 卡片仍用 `<ol>` 保 list 语义：
+
 ```tsx
 <section>
   <h2 className="mb-3 text-lg font-medium">流转记录</h2>
-  {/* loading / error / empty 略 */}
-  <ol className="space-y-3">
-    {months.map(({ month, items }) => (
-      <li key={month}>
-        <h3 className="sticky ...">{month}</h3>
+  {query.isLoading ? (
+    <TimelineSkeleton />
+  ) : query.isError ? (
+    <ErrorState ... />
+  ) : (data ?? []).length === 0 ? (
+    <EmptyState ... />
+  ) : (
+    months.map(({ month, items }) => (
+      <div key={month} className="mb-3">
+        <h3 className="sticky top-0 bg-background pb-1.5 pt-3 text-xs uppercase tracking-wide text-muted-foreground border-b border-border/40 font-medium first:pt-0 z-10">
+          {month}
+        </h3>
         <ol className="space-y-3 mt-2">
           {items.map(t => <TransitionCard key={t.id} transition={t} group={t.group} />)}
         </ol>
-      </li>
-    ))}
-  </ol>
+      </div>
+    ))
+  )}
 </section>
 ```
 
-**注意**：ol > li > h3 + ol 嵌套 list 不是 HTML 标准（li 可包 h3，但语义略 awkward）。可改用 `<div role="list">` / `<div role="listitem">` 显式 ARIA。实施期评估。
+**loading 态**：保持 M3a 现有 `TimelineSkeleton` 形态（裸 ol + 3 张骨架卡，**不模拟月份分组**）—— loading 状态显示假月份会让用户产生"已经知道有几个月"的错觉，反而更糟。
+
+**a11y**：每个月份分组用 `<div>` 不用 list 嵌套；`<ol>` 在每个月份内独立保 list 语义；`<h3>` 自带 heading level 让屏幕阅读器导航能跳到月份。
 
 ### 3.2 chip icon 系统
 
@@ -287,13 +316,13 @@ const KIND_META: Record<TransitionKind, KindMeta> = {
 
 #### 视觉位置 1 · timeline OPEN CHECKOUT 卡
 
-CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at` 非空时，卡内文案下方追加 overdue 提示行：
+CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at` 非空时，卡内文案下方追加 overdue 提示行。**`font-medium` 是关键**——避免视觉重量被 `t.note`（`text-xs text-muted-foreground`）压制：
 
 ```tsx
 {overdue && overdue.status !== "pending" && (
   <p className={cn(
-    "text-xs mt-1 inline-flex items-center gap-1",
-    overdue.status === "due-soon" && "text-warning",
+    "text-xs font-medium mt-1 inline-flex items-center gap-1",
+    overdue.status === "due-soon" && "text-warning-fg",
     overdue.status === "overdue" && "text-destructive",
   )}>
     <Clock className="size-3" aria-hidden />
@@ -310,8 +339,8 @@ CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at
 ```tsx
 {overdue && overdue.status !== "pending" && (
   <span className={cn(
-    "ml-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs",
-    overdue.status === "due-soon" && "bg-warning/15 text-warning",
+    "ml-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+    overdue.status === "due-soon" && "bg-warning/15 text-warning-fg",
     overdue.status === "overdue" && "bg-destructive/15 text-destructive",
   )}>
     <Clock className="size-3" aria-hidden />
@@ -321,13 +350,13 @@ CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at
 )}
 ```
 
+颜色 token 与现有 status pill 体系（status-badge.tsx）一致采用**双 token**模式：`bg-{color}/15 text-{color}-fg`。新建 `--warning` + `--warning-fg` 双 token（§3.7）。
+
 `overdue` 计算流程：
 
-1. `useTransitionsQuery(assetId)` 拿 transitions 列表
+1. `useTransitionsQuery(assetId)` 拿 transitions 列表 —— **同 hook 复用零成本**：M3a 的 `transition-timeline.tsx` 已在 detail page 内调 `useTransitionsQuery(assetId)`，AssetHeader 调同 hook 同 assetId 时 React Query 自动 dedupe（同 queryKey），不会发出第二次网络请求
 2. 找 **OPEN CHECKOUT** —— 同时满足：(a) `kind === 'CHECKOUT_INTERNAL' || kind === 'CHECKOUT_EXTERNAL'`，(b) 不存在任何 RETURN transition 的 `closes_transition_id` 引用它
 3. 取该 OPEN CHECKOUT 的 `due_at` + 当前 `asset.status`，调 `calcOverdue(dueAt, status)` 返 `OverdueResult | null`
-
-**实施期校验**：当前 transitions hook 是否已在 detail page 加载？是 → 复用 / 否 → 评估是否值得在 AssetHeader 单独发请求 vs 退化只在 timeline 卡显示预警。
 
 ### 3.4 timeline 卡时间格式
 
@@ -341,20 +370,51 @@ CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at
 
 ### 3.5 CheckoutDialog 加 due_at picker
 
-`checkout-dialog.tsx`（CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 共用此 dialog）表单加日期 picker：
+`checkout-dialog.tsx`（CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 共用此 dialog）表单加日期 picker。**不引入新依赖**：项目已装 `react-day-picker@^9.14.0`，`frontend/src/components/ui/calendar.tsx` + `popover.tsx` 已就位，且 `features/assets/form/field-controls/date-field.tsx`（`acquired_at` 字段已用）是现成范本，直接复用 Popover + Calendar 模式：
 
 ```tsx
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { zhCN } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 <FormField
   control={form.control}
   name="due_at"
   render={({ field }) => (
     <FormItem>
       <FormLabel>期望归还时间（可选）</FormLabel>
-      <FormControl>
-        {/* 实施期决定：原生 <input type="date"> / shadcn date-picker / 既有项目 helper */}
-      </FormControl>
+      <Popover>
+        <PopoverTrigger asChild>
+          <FormControl>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !field.value && "text-muted-foreground",
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {field.value
+                ? format(new Date(field.value), "yyyy-MM-dd", { locale: zhCN })
+                : "选择日期"}
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={field.value ? new Date(field.value) : undefined}
+            onSelect={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : undefined)}
+            disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}  // 不允许选过去
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
       <FormDescription className="text-xs">
-        填入将启用超期提醒；不填则不预警
+        建议填写以启用超期提醒；留空则不预警
       </FormDescription>
       <FormMessage />
     </FormItem>
@@ -362,32 +422,58 @@ CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL 在 `assetStatus === 'IN_USE'` 且 `due_at
 />
 ```
 
-**实施期校验**：grep `<input type="date"` / `DatePicker` / `Calendar` 在 `frontend/src/components/ui/`，决定 picker 形态：
+**注意**：
 
-- 已存在：直接用
-- 不存在：v1 用原生 `<input type="date" min={today}>`，避免引入 react-day-picker 等新依赖（YAGNI）
-
-提交时把 `due_at` 字符串转 ISO datetime（00:00:00 当地时区）随 transition body 一起发后端。
+- 表单内部存 `'yyyy-MM-dd'` 字符串（与 `acquired_at` 一致）；提交前再转 ISO datetime（`{date}T00:00:00` 当地时区）随 transition body 发后端
+- `due_at` 字段在 `useCreateTransition`（或 transitions API client）请求 body 中已就位（M3a 后端 schema 已含），前端零后端契约改动
+- 不直接抽 `DateField` 复用：CheckoutDialog 用 RHF + zod 资产 schema，与 asset-form 的 fieldDef 驱动结构异构；按 dialog 现有 FormField 模式直写更轻
 
 ### 3.6 新建 `--status-borrowed` token
 
 `design-system/asset-hub/MASTER.md` "Status token 体系"节加：
 
 ```
-| --status-borrowed     | 琥珀，hue ≈ 60° | CHECKOUT_EXTERNAL（对外出借）chip / Group rail external |
-| --status-borrowed-fg  | 琥珀深色 fg     | 同上 chip 文字色 |
+| --status-borrowed     | 琥珀（amber），hue ≈ 75° | CHECKOUT_EXTERNAL（对外出借）chip / Group rail external |
+| --status-borrowed-fg  | 同色相深 fg              | 同上 chip 文字色 |
 ```
 
-约束：与 `--status-maintenance`（hue ≈ 30°）色相距离 ≥ 30°，避免"出借"和"送修"色相相邻而难以一眼区分。
+**色相距离约束**：
 
-`globals.css` 同步 light + dark 双主题 OKLCH 值。dark mode 调亮 lightness 保对比度（参考已有 status token 双主题约定）。
+- 与 `--status-maintenance`（橙，hue ≈ 30°）拉开 ≥ 45° —— 满足
+- 与 `--chart-2`（橙，hue ≈ 30°）拉开 ≥ 45° —— 满足
+- 与 `--chart-4`（黄，hue ≈ 80°）距离 5° —— 接受：chart token 是看板派色槽，与 timeline status token 不在同一视图共现
 
-### 3.7 `--warning` token 校验
+**OKLCH 参考值**（具体数值实施期调，保持 light/dark 对比度 AA）：
 
-实施期前 grep `--warning` 在 `globals.css` / MASTER.md：
+```css
+/* light */
+--status-borrowed: oklch(0.78 0.13 75);
+--status-borrowed-fg: oklch(0.42 0.13 75);
 
-- 已存在：直接用
-- 不存在：本 PR 同时引入 `--warning` / `--warning-fg`（amber 系，与 `--status-borrowed` 拉开 ≥ 20° 色相距离避免撞色）
+/* dark */
+--status-borrowed: oklch(0.70 0.13 75);
+--status-borrowed-fg: oklch(0.85 0.10 75);
+```
+
+dark mode 调亮 lightness 保对比度（参考已有 status token 双主题约定）。
+
+### 3.7 新建 `--warning` + `--warning-fg` token
+
+项目当前无 `--warning` 通用语义 token（status-* / destructive 已覆盖大部分场景，但 due-soon 黄色警示无现成 token）。本 PR 引入双 token：
+
+```css
+/* light */
+--warning: oklch(0.85 0.18 90);     /* amber 黄 */
+--warning-fg: oklch(0.45 0.15 90);
+
+/* dark */
+--warning: oklch(0.72 0.18 90);
+--warning-fg: oklch(0.88 0.13 90);
+```
+
+**色相距离约束**：与 `--status-borrowed`（hue ≈ 75°）拉开 15°——临界但接受：两者语义关联（"出借"+"快到期"经常同卡出现），同色系反而强化"派出场景的警示"叙事；用 lightness/chroma 区分明暗即可（warning 更亮、border 更亮）。
+
+`globals.css` 同步 light + dark 双主题；MASTER.md "Status token 体系"节文档化。
 
 ## 4. C 三搭车（simplify §7）
 
@@ -425,8 +511,9 @@ return (
 
 | 页面分类 | H1 utility | 用例 |
 |---|---|---|
-| 列表 / 配置页 | `text-xl font-semibold` | `/types`（类型列表） |
+| 列表 / 配置页 | `text-xl font-semibold` | `/types`（类型列表）/ `/assets`（列表页 H1 由 SectionHeading 承担，这里指页面标题级别） |
 | 详情页 | `text-2xl font-semibold` | `/assets/:id` / `/types/:id` |
+| **看板（hero）** | 不纳入此约定 | `/dashboard`（M3b 已交付 `text-3xl font-medium tracking-tight`）—— hero 页有副标 + radial atmosphere，是独立形态 |
 
 **改动现有 3 处**：
 
@@ -463,6 +550,8 @@ return (
 
 每 phase 间跑 `pnpm --dir frontend tsc -b` + `pnpm --dir frontend test` + `pnpm --dir frontend lint`；后端零改动也跑一次 `uv run ruff check . && uv run pytest` 兜底确认 import 无漂移。
 
+**Phase 3 末尾视觉 gate**（critical）：timeline 重构是 M3d 视觉重头戏，Phase 3 commit 后**必须**用 playwright MCP 烟测 timeline 视觉再进 Phase 4，避免 Phase 4 角标遮蔽 Phase 3 的潜在视觉问题（rail 跨 gap / sticky h3 / 月份分组 / 新 icon）。Phase 3 视觉验收点见下方烟测清单 step 3。
+
 **PR 规模预估**：~15-20 文件、+800 -200 行。
 
 **playwright MCP 烟测**（实施期手动）：
@@ -489,7 +578,8 @@ return (
 
 | 文件 | 覆盖 |
 |---|---|
-| `transition-timeline.test.tsx`（扩展） | 10 kind 各 1 条 → DOM 含正确 icon test-id / pill 文字 / 月份 heading 结构 / Group rail 卡归属 / OPEN CHECKOUT overdue → 含 "逾期 N 天" 红文案 |
+| `transition-timeline.test.tsx`（扩展） | 10 kind 各 1 条 → DOM 含正确 icon test-id / pill 文字 / **跨 2 个月数据 → 渲染 2 个 sticky h3 + 月份文案正确** / Group rail 卡归属 / OPEN CHECKOUT overdue → 含 "逾期 N 天" 红文案 |
+| `tokens.test.ts`（新） | `getComputedStyle` 验证 `--status-borrowed` / `--warning` / `--warning-fg` 在 light/dark 主题下都有非空值且对比度满足 AA（用 `theme-provider` mock 切主题） |
 | `checkout-dialog.test.tsx`（扩展） | 提交 due_at 字段 → request body 含 ISO string / 不填 → body 无 due_at（或 null） |
 | `asset-header.test.tsx`（扩展） | status IN_USE + dueAt 8 天前 + transitions 含 OPEN CHECKOUT → render "逾期 8 天" 红角标 / status IDLE + dueAt 任意 → 不 render 角标 / status IN_USE + dueAt null → 不 render |
 
@@ -506,10 +596,11 @@ return (
 | R2 | `--warning` token 之前不存在，due-soon 落色无 token 引用 | 低 | 实施期 grep 确认；缺则同 PR 加（amber 系，与 `--status-borrowed` 拉开 ≥ 20°） |
 | R3 | `groupByCheckout` 算法对状态机异常序列（数据库手动改坏）行为未定义 | 低 | 防御性返 group=null；不做异常恢复 |
 | R4 | sticky 月份 heading 在 detail page 滚动容器层级不对（不在最外层 sticky 失效） | 中 | 实施期 playwright MCP 验证 sticky 在实际 DOM 树中生效；若不生效退化为 inline heading（不影响其他逻辑） |
-| R5 | 项目无 DatePicker 组件，引入 react-day-picker 等新依赖增加 bundle | 低 | v1 用原生 `<input type="date">` 兜底；plan 阶段评估 |
+| ~~R5~~ | ~~项目无 DatePicker~~ | — | **spec 已查证：项目装 react-day-picker 9.14 + Calendar/Popover ui 组件 + DateField 范本 + acquired_at 已用同模式。R5 不存在。整行作废** |
 | R6 | `type-detail-page` H1 从 `text-xl` 升到 `text-2xl` 视觉破坏 | 低 | C-2 要求统一详情页 H1；playwright MCP visual 校验 |
 | R7 | M3d 视觉重构破坏 M3a 落地的 timeline 已有视觉一致性（用户已习惯当前样子） | 低 | 单仓库内可控，无外部消费者；M3d PR 合并后视觉切换为新形态 |
-| R8 | AssetHeader 角标依赖 `useTransitionsQuery` 找 OPEN CHECKOUT，detail page 是否已加载该 hook 待确认 | 中 | 实施期 grep 确认；已加载 → 复用 / 未加载 → 评估是否值得为角标单独请求 vs 退化只在 timeline 卡显示 |
+| ~~R8~~ | ~~AssetHeader 角标依赖 useTransitionsQuery~~ | — | **spec 已查证：transition-timeline.tsx 已调 useTransitionsQuery，AssetHeader 调同 hook 同 assetId 时 React Query queryKey dedupe 零额外网络请求。R8 不存在。整行作废** |
+| R9 | 月份 sticky heading 滚动时与 Group rail 视觉打架（rail 顶到 h3 后是否被遮挡 / 视觉是否打断派出周期感）| 中 | h3 用 `bg-background z-10` 不透明 + rail 在 li 内绘制 —— sticky h3 浮起时 rail 视觉被 h3 遮住底部部分，是 **预期行为**（rail 表"派出周期"的视觉收编，h3 表"日历组织"，两者在 z 轴层级上 h3 覆盖 rail 是正确的层级关系，跟实际"派出周期跨多月"的物理现实一致）；playwright MCP 滚动烟测验证视觉合理性 |
 
 ### 不缓解的已知风险
 
@@ -523,4 +614,5 @@ return (
   - `simplify-followups.md` §7 三项标 ✅ 闭环
   - `followup-allocation.md` 摘要表 M3d 标 ✅ 已完成
   - 主 spec §14.8 时间渐隐条款标"M3d 决议作废"
+- M3d 落地后**跑一次 Lighthouse a11y 全站扫描**（M2c-1 跑过基线，M3a/b/c/d 大量新视觉后窗口收紧，v1.0 GA 前必须扫一次回归）；扫描 score < 95 的页面在 M3e 修复
 - M3e 启动前考虑追加 `--status-shift` cyan token（RELOCATE / TRANSFER_HOLDER 染色升级）
