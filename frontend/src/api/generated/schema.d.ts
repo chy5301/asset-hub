@@ -155,6 +155,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Assets
+         * @description spec §2.1: 单端点 CSV/XLSX 导出. format 必填; filter 复用 list.
+         */
+        get: operations["export_assets_api_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats": {
         parameters: {
             query?: never;
@@ -1093,6 +1113,43 @@ export interface operations {
             path: {
                 attachment_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_assets_api_export_get: {
+        parameters: {
+            query: {
+                format: "csv" | "xlsx";
+                type_id?: string | null;
+                status?: components["schemas"]["AssetStatus"] | null;
+                holder?: string | null;
+                q?: string | null;
+                include_retired?: boolean;
+                include_disposed?: boolean;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
