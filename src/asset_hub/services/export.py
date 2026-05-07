@@ -6,6 +6,8 @@ spec: docs/superpowers/specs/2026-05-07-m3c-export-design.md
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 
 from sqlmodel import Session
@@ -89,3 +91,26 @@ class ExportService:
                 row[header] = str((a.custom_data or {}).get(field.key, ""))
             rows.append(row)
         return rows
+
+    def _render_csv(
+        self,
+        rows: list[dict[str, str]],
+        column_names: list[str] | None = None,
+    ) -> bytes:
+        """spec §B.6: UTF-8 BOM + stdlib csv.writer.
+
+        column_names 在 rows 非空时可省 (从 rows[0].keys() 推断);
+        rows 空时必传 (0 结果仅 header 场景).
+        """
+        if column_names is None:
+            if not rows:
+                return b"\xef\xbb\xbf"
+            column_names = list(rows[0].keys())
+
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=column_names, extrasaction="ignore")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+        return b"\xef\xbb\xbf" + buf.getvalue().encode("utf-8")

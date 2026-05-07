@@ -210,3 +210,64 @@ class TestBuildRows:
 
         rows = svc._build_rows([], custom_fields=[])
         assert rows == []
+
+
+class TestRenderCsv:
+    def test_starts_with_utf8_bom(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="CA", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_csv(rows)
+        assert data.startswith(b"\xef\xbb\xbf"), f"missing BOM, got {data[:10]!r}"
+
+    def test_header_row_chinese(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="CB", custom_fields=[])
+        a = asset_svc.register(name="X", type_id=t.id, custom_data={})
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_csv(rows)
+        text = data.decode("utf-8-sig")
+        first_line = text.splitlines()[0]
+        assert first_line.startswith("资产编号,名称,类型,状态,")
+
+    def test_empty_rows_writes_header_only(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        column_names = [
+            "资产编号", "名称", "类型", "状态", "保管人", "位置",
+            "闲置天数", "入账日期", "铭牌编号", "备注",
+        ]
+        data = svc._render_csv([], column_names=column_names)
+        text = data.decode("utf-8-sig")
+        lines = text.strip().splitlines()
+        assert len(lines) == 1
+        assert lines[0] == ",".join(column_names)
+
+    def test_csv_escape_comma_quote_newline(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="CC", custom_fields=[])
+        a = asset_svc.register(
+            name='含,逗号"引号\n换行',
+            type_id=t.id,
+            custom_data={},
+        )
+        rows = svc._build_rows([a], custom_fields=[])
+
+        data = svc._render_csv(rows, column_names=list(rows[0].keys()))
+        text = data.decode("utf-8-sig")
+        # 含逗号 / 引号 / 换行的字段必须包在双引号内, 内部双引号 escape 为 ""
+        assert '"含,逗号""引号' in text
