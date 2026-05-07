@@ -9,6 +9,8 @@ from __future__ import annotations
 import csv
 import io
 import uuid
+from datetime import datetime
+from typing import Literal
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -52,6 +54,12 @@ class ExportService:
     _NOTES_COLUMN_HEADER = "备注"
     _COL_WIDTH_DEFAULT_CAP = 50
     _COL_WIDTH_NOTES_CAP = 60
+
+    # spec §B.3: 10 固定列, 顺序严格 (custom fields 平铺接在尾)
+    _FIXED_COLUMN_NAMES: list[str] = [
+        "资产编号", "名称", "类型", "状态", "保管人", "位置",
+        "闲置天数", "入账日期", "铭牌编号", "备注",
+    ]
 
     def __init__(
         self,
@@ -197,3 +205,51 @@ class ExportService:
             if lbl == label:
                 return enum_val
         return None
+
+    def export(
+        self,
+        format: Literal["csv", "xlsx"],
+        type_id: uuid.UUID | None = None,
+        status: AssetStatus | None = None,
+        holder: str | None = None,
+        q: str | None = None,
+        include_retired: bool = False,
+        include_disposed: bool = False,
+    ) -> tuple[bytes, str]:
+        """spec §2.2: 整合 list_assets + annotate_idle_days + 渲染. 返 (bytes, filename).
+
+        spec §B.10: 整 filter 集导出, 强制 sort_by=None / limit=None / offset=None,
+        不分页不排序.
+        """
+        assets = self.asset_service.list_assets(
+            type_id=type_id,
+            status=status,
+            holder=holder,
+            q=q,
+            include_retired=include_retired,
+            include_disposed=include_disposed,
+            sort_by=None,
+            sort_order="desc",
+            limit=None,
+            offset=None,
+        )
+        # 关键: annotate idle_days 让 _build_rows "闲置天数" 列有值
+        # (Asset.idle_days @property 仅在 _idle_days_value 注入后非 None)
+        assets = self.asset_service.annotate_idle_days(assets)
+        custom_fields = self._resolve_custom_fields(type_id)
+        rows = self._build_rows(assets, custom_fields)
+
+        column_names = list(self._FIXED_COLUMN_NAMES)
+        for field in custom_fields:
+            column_names.append(field.label or field.key)
+
+        filename = self._build_filename(format)
+        if format == "csv":
+            return self._render_csv(rows, column_names=column_names), filename
+        return self._render_xlsx(rows, column_names=column_names), filename
+
+    @staticmethod
+    def _build_filename(format: Literal["csv", "xlsx"]) -> str:
+        """spec §B.9: assets-YYYYMMDD-HHMM.{csv,xlsx}."""
+        stamp = datetime.now().strftime("%Y%m%d-%H%M")
+        return f"assets-{stamp}.{format}"

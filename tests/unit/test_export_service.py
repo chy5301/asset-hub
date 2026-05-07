@@ -397,3 +397,99 @@ class TestRenderXlsx:
         ws = self._load(data)["资产清单"]
         notes_cell = ws.cell(row=2, column=10)
         assert notes_cell.alignment.wrap_text is True
+
+
+class TestExport:
+    def test_format_csv_returns_bom_bytes(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="EA", custom_fields=[])
+        asset_svc.register(name="X", type_id=t.id, custom_data={})
+
+        data, filename = svc.export(format="csv")
+        assert data.startswith(b"\xef\xbb\xbf")
+        assert filename.endswith(".csv")
+
+    def test_format_xlsx_returns_pk_magic(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="L", code_prefix="EB", custom_fields=[])
+        asset_svc.register(name="X", type_id=t.id, custom_data={})
+
+        data, filename = svc.export(format="xlsx")
+        # XLSX 是 zip, magic bytes "PK\x03\x04"
+        assert data.startswith(b"PK")
+        assert filename.endswith(".xlsx")
+
+    def test_filename_format(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        _, filename = svc.export(format="csv")
+        # spec §B.9: assets-YYYYMMDD-HHMM.csv
+        assert re.fullmatch(r"assets-\d{8}-\d{4}\.csv", filename), (
+            f"unexpected filename: {filename!r}"
+        )
+
+    def test_filter_passed_through_with_type_id_lock(self, session: Session):
+        """type_id 锁定 → 仅该 type 的 assets + custom_fields 平铺."""
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t1 = type_svc.create_type(
+            name="Laptop", code_prefix="EC",
+            custom_fields=[
+                {"key": "sn", "label": "SN", "type": "string", "required": False},
+            ],
+        )
+        t2 = type_svc.create_type(name="GPU", code_prefix="ED", custom_fields=[])
+        asset_svc.register(name="A1", type_id=t1.id, custom_data={"sn": "NB-001"})
+        asset_svc.register(name="A2", type_id=t1.id, custom_data={"sn": "NB-002"})
+        asset_svc.register(name="A3", type_id=t2.id, custom_data={})  # GPU
+
+        data, _ = svc.export(format="csv", type_id=t1.id)
+        text = data.decode("utf-8-sig")
+        non_empty_lines = [line for line in text.splitlines() if line.strip()]
+        # 1 header + 2 t1 资产 = 3 行
+        assert len(non_empty_lines) == 3
+        # 含 SN 平铺列
+        assert "SN" in non_empty_lines[0]
+        # 不含 GPU asset
+        assert "A3" not in text
+
+    def test_filter_no_type_id_no_custom_flatten(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(
+            name="Laptop", code_prefix="EE",
+            custom_fields=[
+                {"key": "sn", "label": "SN", "type": "string", "required": False},
+            ],
+        )
+        asset_svc.register(name="A1", type_id=t.id, custom_data={"sn": "NB-001"})
+
+        data, _ = svc.export(format="csv")  # 不传 type_id
+        text = data.decode("utf-8-sig")
+        first_line = text.splitlines()[0]
+        # SN 平铺列不应出现
+        assert "SN" not in first_line
+
+    def test_zero_results_csv_only_header(self, session: Session):
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        # 完全空 db
+        data, _ = svc.export(format="csv")
+        text = data.decode("utf-8-sig")
+        non_empty_lines = [line for line in text.splitlines() if line.strip()]
+        assert len(non_empty_lines) == 1  # 仅 header
+        assert non_empty_lines[0].startswith("资产编号,")
