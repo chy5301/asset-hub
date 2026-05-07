@@ -74,7 +74,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
           onOpen={(att) => setLightboxAttachment(att)}
           assetId={asset.id}
         />
-        <TransitionTimeline assetId={asset.id} />
+        <TransitionTimeline assetId={asset.id} assetStatus={asset.status} />
       </main>
       <AttachmentLightbox
         attachment={lightboxAttachment}
