@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { MoreHorizontal } from "lucide-react";
+import { Clock, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 
+import { useTransitionsQuery } from "@/api/hooks/transitions";
 import type { AssetRead, TransitionKind } from "@/features/assets/types";
 import { StatusBadge } from "@/components/status/status-badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { calcOverdue } from "@/lib/overdue";
+import { cn } from "@/lib/utils";
 
 import { MENU_ACTIONS, PRIMARY_ACTIONS } from "./available-transitions";
 import { CheckoutDialog } from "./checkout-dialog";
@@ -33,7 +36,28 @@ interface AssetHeaderProps {
   onDelete: () => void;
 }
 
+function useOverdueForOpenCheckout(
+  assetId: string,
+  assetStatus: AssetRead["status"],
+) {
+  const { data: transitions } = useTransitionsQuery(assetId);
+  if (!transitions) return null;
+  const closedIds = new Set(
+    transitions
+      .filter((t) => t.kind === "RETURN" && t.closes_transition_id)
+      .map((t) => t.closes_transition_id as string),
+  );
+  const open = transitions.find(
+    (t) =>
+      (t.kind === "CHECKOUT_INTERNAL" || t.kind === "CHECKOUT_EXTERNAL") &&
+      !closedIds.has(t.id),
+  );
+  if (!open) return null;
+  return calcOverdue(open.due_at, assetStatus);
+}
+
 export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
+  const overdue = useOverdueForOpenCheckout(asset.id, asset.status);
   return (
     <header className="flex items-start justify-between gap-4">
       <div className="space-y-1">
@@ -44,7 +68,23 @@ export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
         >
           ← 返回列表
         </Link>
-        <h1 className="text-2xl font-semibold">{asset.name}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">{asset.name}</h1>
+          {overdue && overdue.status !== "pending" && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                overdue.status === "due-soon" && "bg-warning/15 text-warning-fg",
+                overdue.status === "overdue" && "bg-destructive/15 text-destructive",
+              )}
+            >
+              <Clock className="size-3" aria-hidden />
+              {overdue.status === "due-soon"
+                ? `还有 ${overdue.days} 天到期`
+                : `逾期 ${overdue.days} 天`}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <span className="font-code text-sm text-muted-foreground">
             {asset.asset_code}
