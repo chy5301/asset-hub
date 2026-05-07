@@ -11,7 +11,7 @@ import uuid
 from sqlmodel import Session
 
 from asset_hub.api.schemas.asset_type import CustomFieldDef
-from asset_hub.models.asset import AssetStatus
+from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.services.asset import AssetService
 from asset_hub.services.asset_type import TypeService
 
@@ -59,3 +59,33 @@ class ExportService:
         if type_id is None:
             return []
         return self.type_service.get_type(type_id).custom_fields
+
+    def _build_rows(
+        self,
+        assets: list[Asset],
+        custom_fields: list[CustomFieldDef],
+    ) -> list[dict[str, str]]:
+        """spec §B.3: 10 固定列 + custom_fields 平铺. 列序严格.
+
+        idle_days 期望 caller 已调 AssetService.annotate_idle_days(assets);
+        未 annotate 时 asset.idle_days 返 None → 兜底空字符串.
+        """
+        rows: list[dict[str, str]] = []
+        for a in assets:
+            row: dict[str, str] = {
+                "资产编号": a.asset_code,
+                "名称": a.name,
+                "类型": a.type_name or "",
+                "状态": STATUS_LABELS[a.status],
+                "保管人": a.holder or "",
+                "位置": a.location or "",
+                "闲置天数": str(a.idle_days) if a.idle_days is not None else "",
+                "入账日期": a.acquired_at.isoformat() if a.acquired_at else "",
+                "铭牌编号": a.serial_number or "",
+                "备注": a.notes or "",
+            }
+            for field in custom_fields:
+                header = field.label or field.key
+                row[header] = str((a.custom_data or {}).get(field.key, ""))
+            rows.append(row)
+        return rows
