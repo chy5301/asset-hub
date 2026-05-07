@@ -5,26 +5,15 @@ import { qk } from "@/api/query-keys";
 import { toFriendlyMessage } from "@/lib/error";
 import { unwrap } from "@/api/types";
 import type { components } from "@/api/generated/schema";
+import { searchToServerParams } from "@/features/assets/list/search-params";
 import type { AssetsSearch } from "@/features/assets/list/search-schema";
-
-/** 只把后端接受的 filter 参数传过去；sort/page/pageSize 是客户端语义。 */
-function toServerParams(search: AssetsSearch) {
-  const params: Record<string, string> = {};
-  if (search.type) params.type_id = search.type;
-  if (search.status) params.status = search.status;
-  if (search.holder) params.holder = search.holder;
-  if (search.q) params.q = search.q;
-  if (search.show_retired) params.include_retired = "true";
-  if (search.show_disposed) params.include_disposed = "true";
-  return params;
-}
 
 export function useAssetsQuery(search: AssetsSearch) {
   return useQuery({
     queryKey: qk.assets.list(search),
     queryFn: async () => {
       const res = await http.GET("/api/assets", {
-        params: { query: toServerParams(search) },
+        params: { query: searchToServerParams(search) },
       });
       return unwrap(res);
     },

@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { searchToServerParams } from "./search-params";
 import type { AssetsSearch } from "./search-schema";
 
 interface ExportButtonProps {
@@ -46,23 +47,11 @@ export function ExportButton({ search }: ExportButtonProps) {
   );
 }
 
-/**
- * spec §3.1: 把 AssetsSearch 翻译为 /api/export query string.
- *
- * - 仅传 filter 字段 (type/status/holder/q/show_retired/show_disposed)
- * - 不传 sort/page/pageSize (v1 export 整 filter 集, 不分页 - spec §B.10)
- * - 字段名翻译: show_retired → include_retired (与后端 list/stats 一致)
- */
+/** spec §3.1 + §B.10: filter 透传给 /api/export, 加 format; 不传 sort/page/pageSize. */
 export function buildExportUrl(
   search: AssetsSearch,
   format: "csv" | "xlsx",
 ): string {
-  const params = new URLSearchParams({ format });
-  if (search.type) params.set("type_id", search.type);
-  if (search.status) params.set("status", search.status);
-  if (search.holder) params.set("holder", search.holder);
-  if (search.q) params.set("q", search.q);
-  if (search.show_retired) params.set("include_retired", "true");
-  if (search.show_disposed) params.set("include_disposed", "true");
+  const params = new URLSearchParams({ format, ...searchToServerParams(search) });
   return `/api/export?${params.toString()}`;
 }
