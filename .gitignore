@@ -33,6 +33,9 @@ yarn-debug.log*
 pnpm-debug.log*
 frontend/dist/
 
+# ===== e2e 运行时状态（worker 进程间共享，不入库）=====
+frontend/e2e/.state/
+
 # ===== 环境变量 =====
 .env
 .env.local
