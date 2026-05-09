@@ -131,7 +131,7 @@ uv run asset-hub asset list --json | jq '.metadata.count'
 # 减 1（默认不含 DISPOSED）
 
 uv run asset-hub asset list --include-disposed --json | jq '.metadata.count'
-# 不变（含 DISPOSED）；注意是 .metadata.count，不是 .data.items
+# count 含 DISPOSED 项，故较默认 list 多 1（注意是 .metadata.count，不是 .data.items）
 ```
 
 ---

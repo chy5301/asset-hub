@@ -52,6 +52,7 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 
 | code | 触发场景 |
 |---|---|
+| `serve.usage` | `--mode` / `--service` 等参数取值非法（如 `--mode staging`、`--service db` 等用法错误），exit_code 2 |
 | `serve.port_occupied` | `:8000` / `:5173` 被占（`start` / `restart` 前置检查） |
 | `serve.dist_missing` | `prod` 模式 + `--skip-build` 时 `frontend/dist` 缺失 |
 | `serve.health_probe_timeout` | `start` 后 `/api/healthz` 多次重试仍未 200（约 10s 超时） |
