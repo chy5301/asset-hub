@@ -37,10 +37,10 @@ def type_define(
     elif name is not None:
         custom_fields = json.loads(fields) if fields else []
     else:
-        print_error("必须提供 --name 或 --from", json_output, exit_code=2)
+        print_error("必须提供 --name 或 --from", json_output, code="validation", exit_code=2)
 
     if not prefix:
-        print_error("必须提供 --prefix（2-4 大写字母）", json_output, exit_code=2)
+        print_error("必须提供 --prefix（2-4 大写字母）", json_output, code="validation", exit_code=2)
 
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
@@ -100,6 +100,7 @@ def type_delete(
                 print_error(
                     f"该类型仍有 {ref_count} 个资产引用，dry-run 报告将会失败（实际删除会被拒绝）",
                     json_output,
+                    code="conflict",
                     exit_code=1,
                 )
             payload = {
@@ -119,7 +120,7 @@ def type_delete(
         if ref_count == 0 and not yes and not json_output:
             confirm = typer.confirm(f"确认删除 type '{t.name}' ({t.code_prefix})？")
             if not confirm:
-                print_error("用户取消", json_output, exit_code=1)
+                print_error("用户取消", json_output, code="cancelled", exit_code=1)
 
         # delete_type 内部再校验 ref，>0 时抛 ConflictError → envelope → exit 1
         svc.delete_type(uid)
@@ -145,6 +146,7 @@ def type_update(
         print_error(
             "--from 与 --name/--description 互斥，请二选一",
             json_output,
+            code="validation",
             exit_code=2,
         )
 
@@ -153,6 +155,7 @@ def type_update(
         print_error(
             "必须提供至少一个修改源：--from / --name / --description",
             json_output,
+            code="validation",
             exit_code=2,
         )
 

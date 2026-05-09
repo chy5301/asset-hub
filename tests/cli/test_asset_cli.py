@@ -148,14 +148,16 @@ class TestAssetListSort:
         assert result.exit_code == 2
         payload = json.loads(result.stdout)
         assert payload["success"] is False
-        assert "sort_by" in payload["error"]
+        assert payload["error"]["code"] == "validation"
+        assert "sort_by" in payload["error"]["message"]
 
     def test_asset_list_limit_over_max_exits_2(self):
         result = runner.invoke(app, ["asset", "list", "--limit", "2000", "--json"])
         assert result.exit_code == 2
         payload = json.loads(result.stdout)
         assert payload["success"] is False
-        assert "limit" in payload["error"]
+        assert payload["error"]["code"] == "validation"
+        assert "limit" in payload["error"]["message"]
 
     def test_asset_list_bad_order_exits_2(self):
         """--order 取无效值（非 asc/desc）走 service ValidationError → exit 2."""
@@ -163,7 +165,8 @@ class TestAssetListSort:
         assert result.exit_code == 2
         payload = json.loads(result.stdout)
         assert payload["success"] is False
-        assert "sort_order" in payload["error"]
+        assert payload["error"]["code"] == "validation"
+        assert "sort_order" in payload["error"]["message"]
 
     def test_asset_list_include_retired_returns_retired(self, isolated_db):
         """--include-retired flag 让 RETIRED 资产出现在结果中（spec §B.3）."""

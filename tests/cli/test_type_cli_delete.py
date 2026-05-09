@@ -52,9 +52,9 @@ def test_type_delete_with_refs_returns_exit_1(isolated_db):
     assert res.exit_code == 1
     payload = json.loads(res.stdout)
     assert payload["success"] is False
-    # error envelope 是字符串，不是嵌套 dict — 见 envelope.py error_envelope
-    assert isinstance(payload["error"], str)
-    assert "引用" in payload["error"]
+    # error envelope: M3e 起统一为 {code, message} dict — 见 envelope.py error_envelope
+    assert payload["error"]["code"] == "conflict"
+    assert "引用" in payload["error"]["message"]
 
 
 def test_type_delete_not_found_returns_exit_3(isolated_db):
@@ -81,7 +81,8 @@ def test_type_delete_dry_run_with_refs_returns_exit_1(isolated_db):
     assert res.exit_code == 1
     payload = json.loads(res.stdout)
     assert payload["success"] is False
-    assert "1" in payload["error"] and "dry-run" in payload["error"]
+    assert payload["error"]["code"] == "conflict"
+    assert "1" in payload["error"]["message"] and "dry-run" in payload["error"]["message"]
 
     # type 仍存在（未真删）
     with cli_session() as session:

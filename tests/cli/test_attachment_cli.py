@@ -90,7 +90,8 @@ class TestAttachmentAdd:
         assert second.exit_code == 1
         data = json.loads(second.stdout)
         assert data["success"] is False
-        assert "相同内容" in data["error"]
+        assert data["error"]["code"] == "duplicate"
+        assert "相同内容" in data["error"]["message"]
 
     def test_add_bad_uuid_exits_2(self, tmp_path: Path):
         photo = tmp_path / "a.jpg"
