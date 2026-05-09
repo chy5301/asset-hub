@@ -16,6 +16,7 @@ export default defineConfig({
   },
   webServer: {
     command: "uv run asset-hub serve start --mode prod --json",
+    cwd: "..",
     url: "http://127.0.0.1:8000/api/healthz",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
