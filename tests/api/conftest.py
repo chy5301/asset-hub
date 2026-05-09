@@ -138,31 +138,42 @@ def seed_5_states(client, sample_type_nb_via_api):
     type_id = sample_type_nb_via_api
 
     # IDLE: 直接注册即为 IDLE
-    idle = client.post("/api/assets", json={"name": "Filter-IDLE", "type_id": type_id, "custom_data": {}}).json()
+    idle_resp = client.post("/api/assets", json={"name": "Filter-IDLE", "type_id": type_id, "custom_data": {}})
+    assert idle_resp.status_code == 201
+    idle = idle_resp.json()
 
     # IN_USE: 注册后 CHECKOUT_INTERNAL
     in_use_resp = client.post("/api/assets", json={"name": "Filter-IN_USE", "type_id": type_id, "custom_data": {}})
+    assert in_use_resp.status_code == 201
     in_use_id = in_use_resp.json()["id"]
-    client.post(f"/api/assets/{in_use_id}/transitions", json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"})
+    r = client.post(f"/api/assets/{in_use_id}/transitions", json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"})
+    assert r.status_code == 201
     in_use = client.get(f"/api/assets/{in_use_id}").json()
 
-    # MAINTENANCE: 注册后 BEGIN_MAINTENANCE
+    # MAINTENANCE: 注册后 SEND_TO_MAINTENANCE
     maint_resp = client.post("/api/assets", json={"name": "Filter-MAINT", "type_id": type_id, "custom_data": {}})
+    assert maint_resp.status_code == 201
     maint_id = maint_resp.json()["id"]
-    client.post(f"/api/assets/{maint_id}/transitions", json={"kind": "SEND_TO_MAINTENANCE"})
+    r = client.post(f"/api/assets/{maint_id}/transitions", json={"kind": "SEND_TO_MAINTENANCE"})
+    assert r.status_code == 201
     maint = client.get(f"/api/assets/{maint_id}").json()
 
     # RETIRED: 注册后 RETIRE
     retired_resp = client.post("/api/assets", json={"name": "Filter-RETIRED", "type_id": type_id, "custom_data": {}})
+    assert retired_resp.status_code == 201
     retired_id = retired_resp.json()["id"]
-    client.post(f"/api/assets/{retired_id}/transitions", json={"kind": "RETIRE"})
+    r = client.post(f"/api/assets/{retired_id}/transitions", json={"kind": "RETIRE"})
+    assert r.status_code == 201
     retired = client.get(f"/api/assets/{retired_id}").json()
 
     # DISPOSED: 注册后 RETIRE → DISPOSE
     disposed_resp = client.post("/api/assets", json={"name": "Filter-DISPOSED", "type_id": type_id, "custom_data": {}})
+    assert disposed_resp.status_code == 201
     disposed_id = disposed_resp.json()["id"]
-    client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "RETIRE"})
-    client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "DISPOSE"})
+    r1 = client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "RETIRE"})
+    assert r1.status_code == 201
+    r2 = client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "DISPOSE"})
+    assert r2.status_code == 201
     disposed = client.get(f"/api/assets/{disposed_id}").json()
 
     return {
