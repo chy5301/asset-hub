@@ -15,7 +15,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "uv run asset-hub serve start --mode prod --json",
+    command:
+      "uv run uvicorn asset_hub.api.app:app --host 127.0.0.1 --port 8000",
     cwd: "..",
     url: "http://127.0.0.1:8000/api/healthz",
     reuseExistingServer: !process.env.CI,

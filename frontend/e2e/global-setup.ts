@@ -12,6 +12,14 @@ export default async function globalSetup() {
 
   console.log(`[e2e setup] using ASSET_HUB_DATA_DIR=${dataDir}`);
 
+  // 0. 确保 frontend dist 已 build（uvicorn 不像 serve start 那样自动 build）
+  console.log("[e2e setup] building frontend dist...");
+  execSync("pnpm --dir frontend build", {
+    stdio: "inherit",
+    env: process.env,
+    cwd: "..",
+  });
+
   // 1. alembic upgrade（alembic.ini 在 repo root，cwd 退到上级）
   execSync("uv run alembic upgrade head", {
     stdio: "inherit",
