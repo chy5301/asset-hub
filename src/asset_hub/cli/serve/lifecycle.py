@@ -22,7 +22,7 @@ from asset_hub.config import Settings
 
 
 class ServeLifecycleError(Exception):
-    """raise 时携带 ServeError 给上层 cmd 转 exit code。"""
+    """raise 时携带 (code, message) 给上层 cmd 转 exit code + envelope error。"""
 
     def __init__(self, code: str, message: str):
         self.code = code

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -63,31 +62,6 @@ class StatusReport:
 
     def metadata(self) -> dict[str, Any]:
         return {"took_ms": self.took_ms, "probed": self.probed}
-
-
-@dataclass
-class ServeError:
-    code: str
-    message: str
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"code": self.code, "message": self.message}
-
-
-def render_json_envelope(
-    *,
-    success: bool,
-    data: Any = None,
-    metadata: dict[str, Any] | None = None,
-    error: dict[str, Any] | None = None,
-) -> str:
-    payload = {
-        "success": success,
-        "data": data,
-        "metadata": metadata or {},
-        "error": error,
-    }
-    return json.dumps(payload, ensure_ascii=False)
 
 
 def render_plain_start(result: StartResult) -> str:
