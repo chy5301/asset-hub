@@ -1088,6 +1088,7 @@ M3e 子里程碑（v1.0 GA 收口）单 PR 完成（feat/m3e-ga，4 phase commit
 - Phase 2 5 态文案对齐 + 薄弱点补测
 - Phase 3 文档全集（SKILL.md + references/ + deployment.md + README + release-notes-v1.0）
 - Phase 4 playwright e2e 7 spec + GitHub Actions
+- 烟测期发现 3 fix（A/B/α）：M1 baseline create_table / doctor shutil.which / e2e webServer 前台 uvicorn
 
 ### 闭环条目
 
@@ -1100,6 +1101,9 @@ M3e 子里程碑（v1.0 GA 收口）单 PR 完成（feat/m3e-ga，4 phase commit
 | SKILL.md 起草 + references/ 4 文件 | ✅ 已闭环 | M3e Phase 3 |
 | Windows 部署文档 + README 全量重写 + release-notes-v1.0 | ✅ 已闭环 | M3e Phase 3 |
 | playwright e2e CI 7 spec + GitHub Actions | ✅ 已闭环 | M3e Phase 4 |
+| 烟测发现 A：M1 baseline 空 stamp 致 fresh DB alembic upgrade head fail（v1.0 部署 blocker） | ✅ 已闭环 | 3c9287b |
+| 烟测发现 B：doctor pnpm Windows 假阳性（subprocess 不读 PATHEXT 找不到 .cmd shim） | ✅ 已闭环 | 7310142 |
+| 烟测发现 α：playwright webServer 与 serve start detach 模式不兼容（spawn 后 wrapper 立即退出，误判 server down） | ✅ 已闭环 | 9378017 |
 
 ### 推 v1.1 的 follow-up
 

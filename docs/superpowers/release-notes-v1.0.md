@@ -12,7 +12,7 @@ v1.0 GA 收口了 M3a–M3e 五个里程碑，在 M2d（基础 CRUD + 附件 + s
 | M3b | /api/stats + 看板 4 图表 + ChartTokenProvider | c21ae55 + 98052dc |
 | M3c | /api/export CSV/XLSX + ExportButton | a55beec + 5c5bab0 |
 | M3d | timeline Group rail + 月份分段 + 派出类型染色 + 超长派发预警 + simplify §7 | 5320804 |
-| M3e | SKILL.md + envelope 统一 + serve doctor + 5 态文案对齐 + Windows 部署文档 + playwright e2e CI | \<m3e-merge\>（实施期回填） |
+| M3e | SKILL.md + envelope 统一 + serve doctor + 5 态文案对齐 + Windows 部署文档 + playwright e2e CI + 烟测发现 3 fix（M1 baseline create_table / doctor shutil.which / e2e webServer 前台 uvicorn） | \<m3e-merge\>（实施期回填） |
 
 ---
 
@@ -154,6 +154,14 @@ PR 与 main push 都会触发 GitHub Actions e2e workflow（ubuntu-latest，4–
 - [ ] `serve start / stop / status / restart / logs` 正常工作
 
 ---
+
+## 烟测期发现并修复
+
+M3e PR 推 origin 后烟测发现 3 个 v1.0 GA 阻塞/体验问题，已在本 PR 内修复：
+
+- **fresh DB 部署 blocker**：M1 baseline migration 原本是空 stamp，新部署按 `docs/deployment.md` 跑 `alembic upgrade head` 在第 2 个 migration ALTER 不存在的 `asset_types` 表上失败。重写 baseline 加 `op.create_table` 全 5 表 + indexes + FK。
+- **doctor `pnpm` Windows 假阳性**：subprocess 不读 PATHEXT，找不到 `pnpm.cmd` shim。`check_uv` / `check_pnpm` 改用 `shutil.which` 跨平台显式找 path 后再 spawn。
+- **playwright e2e webServer 与 detach 模式不兼容**：`serve start --mode prod` 是 detach wrapper，spawn 后立即 exit，playwright 误判 server down。`webServer.command` 改为前台 `uvicorn`；workflow + `global-setup.ts` 加 `pnpm build` 步骤补偿（uvicorn 不自动 build）。生产 `serve start` 行为完全不变。
 
 ## 已知 gap（推 v1.1+）
 

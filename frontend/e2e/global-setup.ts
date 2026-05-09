@@ -12,7 +12,10 @@ export default async function globalSetup() {
 
   console.log(`[e2e setup] using ASSET_HUB_DATA_DIR=${dataDir}`);
 
-  // 0. 确保 frontend dist 已 build（uvicorn 不像 serve start 那样自动 build）
+  // 0. 确保 data dir 存在 (CI 的 runner.temp 子目录不会自动创建; 本地用户也可能给不存在的 path)
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  // 1. 确保 frontend dist 已 build（uvicorn 不像 serve start 那样自动 build）
   console.log("[e2e setup] building frontend dist...");
   execSync("pnpm --dir frontend build", {
     stdio: "inherit",
@@ -20,16 +23,16 @@ export default async function globalSetup() {
     cwd: "..",
   });
 
-  // 1. alembic upgrade（alembic.ini 在 repo root，cwd 退到上级）
+  // 2. alembic upgrade（alembic.ini 在 repo root，cwd 退到上级）
   execSync("uv run alembic upgrade head", {
     stdio: "inherit",
     env: process.env,
     cwd: "..",
   });
 
-  // 2. seed laptop type
+  // 3. seed laptop type (--prefix 是 CLI 必填，fixtures/laptop.json 不含此字段)
   const result = execSync(
-    "uv run asset-hub type define --from frontend/e2e/fixtures/laptop.json --json",
+    "uv run asset-hub type define --from frontend/e2e/fixtures/laptop.json --prefix NB --json",
     { env: process.env, cwd: ".." },
   ).toString();
 
