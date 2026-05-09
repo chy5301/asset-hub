@@ -33,14 +33,13 @@ description: |-
 
 | kind | from → to | 必填字段 |
 |---|---|---|
-| `CHECKOUT_INTERNAL` | IDLE → IN_USE | `--to` |
-| `CHECKOUT_EXTERNAL` | IDLE → IN_USE | `--to` |
+| `CHECKOUT_*` (INTERNAL/EXTERNAL) | IDLE → IN_USE | `--to`（`--kind internal|external` 区分，默认 internal） |
 | `RETURN` | IN_USE → IDLE | —（可选 `--receiver`, `--location`） |
 | `SEND_TO_MAINTENANCE` | IDLE → MAINTENANCE | —（可选 `--holder`, `--location`） |
 | `RECOVER_FROM_MAINTENANCE` | MAINTENANCE → IDLE | —（可选 `--holder`, `--location`） |
-| `RETIRE` | IDLE / MAINTENANCE → RETIRED | —（可选 `--holder`, `--location`） |
+| `RETIRE` | IDLE / MAINTENANCE → RETIRED | —（--yes 跳过确认） |
 | `REINSTATE` | RETIRED → IDLE | —（可选 `--holder`, `--location`） |
-| `DISPOSE` | RETIRED / MAINTENANCE → DISPOSED | `--yes` 确认（终态） |
+| `DISPOSE` | RETIRED / MAINTENANCE → DISPOSED | —（--yes 跳过确认，终态） |
 | `RELOCATE` | IDLE / IN_USE / MAINTENANCE / RETIRED → 同 status | `--to-location` |
 | `TRANSFER_HOLDER` | IDLE / IN_USE / MAINTENANCE / RETIRED → 同 status | `--to-holder` |
 
@@ -125,7 +124,7 @@ asset-hub serve doctor [--mode dev|prod] [--json]
 
 - **DISPOSED 是终态**：一旦设置不可回退。这是因为 DISPOSED 对应物理处置（卖 / 捐 / 销毁），与 RETIRED（暂时退役、可复活）严格区分。用户说"先放着以后可能用"→ 用 `asset retire`，不是 `asset dispose`。
 - **DISPOSE 必须 from RETIRED / MAINTENANCE**：IDLE 不能直接 dispose，必须先 retire。这是为了让"误点处置"成本最小化——多一道门槛做二次确认。
-- **归还后 holder/location 跟随 to_holder/to_location，不强制清空**：M3a 行为修订。`--receiver` 不传则资产归还后无 holder（无人值守仓库语义）；传了则归还接收人成为新 holder。
+- **归还后 holder/location 跟随 --receiver/--location，不强制清空**：M3a 行为修订。`--receiver` 不传则资产归还后无 holder（无人值守仓库语义）；传了则归还接收人成为新 holder。
 - **IN_USE → MAINTENANCE 直跳走两步**：CLI 会提示"将先记 RETURN 再 SEND_TO_MAINTENANCE"，service 写两条 record。这样 timeline 能真实反映"派发期间送修"的两步语义，不丢历史。
 - **5 态文案 vs 枚举值严格区分**：UI 显示"闲置中/使用中/维修中/已退役/已处置"，API 与 CLI `--json` 输出 "IDLE/IN_USE/MAINTENANCE/RETIRED/DISPOSED"。`--json` 里看到 `"IN_USE"` 不是 bug。
 
