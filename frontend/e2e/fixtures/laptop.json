@@ -1,0 +1,9 @@
+{
+  "name": "Laptop",
+  "icon": "laptop",
+  "custom_fields": [
+    { "key": "brand", "label": "品牌", "type": "string", "required": true },
+    { "key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"], "required": false },
+    { "key": "ram_gb", "label": "内存 (GB)", "type": "int", "min": 4, "max": 256, "required": false }
+  ]
+}

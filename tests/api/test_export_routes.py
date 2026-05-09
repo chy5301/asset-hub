@@ -43,7 +43,7 @@ class TestExportRoutes:
         resp = client.get("/api/export?format=csv&status=IDLE")
         assert resp.status_code == 200
         text = resp.content.decode("utf-8-sig")
-        assert "在用" not in text  # IN_USE label 不应出现
+        assert "使用中" not in text  # IN_USE label 不应出现
         non_empty = [line for line in text.splitlines() if line.strip()]
         # 1 header + 2 IDLE = 3 行
         assert len(non_empty) == 3

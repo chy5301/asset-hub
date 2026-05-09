@@ -11,13 +11,13 @@ export interface StatusMeta {
 
 export const STATUS_META: Record<AssetStatus, StatusMeta> = {
   IN_USE: {
-    label: "在用",
+    label: "使用中",
     bgVar: "--status-in-use",
     fgVar: "--status-in-use-fg",
     Icon: CircleDot,
   },
   IDLE: {
-    label: "闲置",
+    label: "闲置中",
     bgVar: "--status-idle",
     fgVar: "--status-idle-fg",
     Icon: Circle,

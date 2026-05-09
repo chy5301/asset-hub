@@ -1,40 +1,12 @@
-import json
-
 from asset_hub.cli.serve.output import (
-    ServeError,
     ServiceInfo,
     StartResult,
     StatusReport,
     StopResult,
-    render_json_envelope,
     render_plain_start,
     render_plain_status,
     render_plain_stop,
 )
-
-
-def test_start_result_json_envelope_success():
-    result = StartResult(
-        mode="prod",
-        backend=ServiceInfo(pid=12345, port=8000, host="127.0.0.1", log="data/logs/backend.log"),
-        frontend=None,
-        took_ms=4231,
-        build_ran=True,
-    )
-    out = render_json_envelope(success=True, data=result.to_dict(), metadata=result.metadata())
-    parsed = json.loads(out)
-    assert parsed["success"] is True
-    assert parsed["data"]["backend"]["pid"] == 12345
-    assert parsed["data"]["frontend"] is None
-    assert parsed["metadata"]["build_ran"] is True
-
-
-def test_start_result_json_envelope_failure():
-    err = ServeError(code="serve.port_occupied", message="port 8000 in use")
-    out = render_json_envelope(success=False, error=err.to_dict(), metadata={"took_ms": 12})
-    parsed = json.loads(out)
-    assert parsed["success"] is False
-    assert parsed["error"]["code"] == "serve.port_occupied"
 
 
 def test_render_plain_start_prod():

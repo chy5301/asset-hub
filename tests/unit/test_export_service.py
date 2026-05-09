@@ -20,8 +20,8 @@ class TestStatusDicts:
         assert set(STATUS_LABELS.keys()) == set(AssetStatus)
 
     def test_status_labels_chinese(self):
-        assert STATUS_LABELS[AssetStatus.IN_USE] == "在用"
-        assert STATUS_LABELS[AssetStatus.IDLE] == "闲置"
+        assert STATUS_LABELS[AssetStatus.IN_USE] == "使用中"
+        assert STATUS_LABELS[AssetStatus.IDLE] == "闲置中"
         assert STATUS_LABELS[AssetStatus.MAINTENANCE] == "维修中"
         assert STATUS_LABELS[AssetStatus.RETIRED] == "已退役"
         assert STATUS_LABELS[AssetStatus.DISPOSED] == "已处置"
@@ -99,7 +99,7 @@ class TestBuildRows:
         a = asset_svc.register(name="X", type_id=t.id, custom_data={})
 
         rows = svc._build_rows([a], custom_fields=[])
-        assert rows[0]["状态"] == "闲置"  # register 默认 IDLE
+        assert rows[0]["状态"] == "闲置中"  # register 默认 IDLE
 
     def test_acquired_at_iso_date(self, session: Session):
         type_svc = TypeService(session)
@@ -347,7 +347,7 @@ class TestRenderXlsx:
         ws = self._load(data)["资产清单"]
         # 状态列固定第 4 列 (D), data row=2
         status_cell = ws.cell(row=2, column=4)
-        assert status_cell.value == "闲置"
+        assert status_cell.value == "闲置中"
         # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致
         assert status_cell.fill.fgColor.rgb == STATUS_HEX[AssetStatus.IDLE]
 

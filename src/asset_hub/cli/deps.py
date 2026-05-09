@@ -31,7 +31,7 @@ def parse_uuid(raw: str | None, json_output: bool) -> UUID | None:
     try:
         return UUID(raw)
     except ValueError:
-        print_error(f"无效的 UUID: {raw}", json_output, exit_code=2)
+        print_error(f"无效的 UUID: {raw}", json_output, code="validation", exit_code=2)
 
 
 @overload
@@ -49,7 +49,10 @@ def parse_enum[E: Enum](cls: type[E], raw: str | None, json_output: bool) -> E |
     except ValueError:
         valid = ", ".join(m.value for m in cls)
         print_error(
-            f"无效的 {cls.__name__}: {raw}（允许：{valid}）", json_output, exit_code=2
+            f"无效的 {cls.__name__}: {raw}（允许：{valid}）",
+            json_output,
+            code="validation",
+            exit_code=2,
         )
 
 
@@ -62,4 +65,9 @@ def load_schema_from_file(path: Path, json_output: bool) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print_error(f"JSON 文件读取失败：{path}（{e}）", json_output, exit_code=2)
+        print_error(
+            f"JSON 文件读取失败：{path}（{e}）",
+            json_output,
+            code="validation",
+            exit_code=2,
+        )

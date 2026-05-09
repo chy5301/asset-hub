@@ -207,87 +207,6 @@ def test_register_duplicate_serial_number_message(session, sample_type_nb):
         svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
 
 
-def test_list_assets_default_excludes_retired_and_disposed(session, sample_type_nb):
-    """默认 list_assets() 不应返回 RETIRED / DISPOSED 资产，只看到 IDLE。"""
-    from asset_hub.models.asset import Asset
-
-    svc = AssetService(session)
-    for status, code in [
-        (AssetStatus.IDLE, "T-001"),
-        (AssetStatus.RETIRED, "T-002"),
-        (AssetStatus.DISPOSED, "T-003"),
-    ]:
-        a = Asset(
-            asset_code=code,
-            name=f"a-{code}",
-            type_id=sample_type_nb.id,
-            status=status,
-            custom_data={},
-        )
-        session.add(a)
-    session.commit()
-
-    rows = svc.list_assets()
-    statuses = {a.status for a in rows}
-    assert AssetStatus.IDLE in statuses
-    assert AssetStatus.RETIRED not in statuses
-    assert AssetStatus.DISPOSED not in statuses
-
-
-def test_list_assets_include_retired_reveals_retired_only(session, sample_type_nb):
-    """include_retired=True 仅放出 RETIRED，不影响 DISPOSED 仍被过滤。"""
-    from asset_hub.models.asset import Asset
-
-    svc = AssetService(session)
-    for status, code in [
-        (AssetStatus.IDLE, "T-001"),
-        (AssetStatus.RETIRED, "T-002"),
-        (AssetStatus.DISPOSED, "T-003"),
-    ]:
-        a = Asset(
-            asset_code=code,
-            name=f"a-{code}",
-            type_id=sample_type_nb.id,
-            status=status,
-            custom_data={},
-        )
-        session.add(a)
-    session.commit()
-
-    rows = svc.list_assets(include_retired=True)
-    statuses = {a.status for a in rows}
-    assert AssetStatus.IDLE in statuses
-    assert AssetStatus.RETIRED in statuses
-    assert AssetStatus.DISPOSED not in statuses
-
-
-def test_list_assets_include_disposed_reveals_disposed_only(session, sample_type_nb):
-    """include_disposed=True 仅放出 DISPOSED，不影响 RETIRED 仍被过滤。"""
-    from asset_hub.models.asset import Asset
-
-    svc = AssetService(session)
-    for status, code in [
-        (AssetStatus.IDLE, "T-001"),
-        (AssetStatus.RETIRED, "T-002"),
-        (AssetStatus.DISPOSED, "T-003"),
-    ]:
-        a = Asset(
-            asset_code=code,
-            name=f"a-{code}",
-            type_id=sample_type_nb.id,
-            status=status,
-            custom_data={},
-        )
-        session.add(a)
-    session.commit()
-
-    rows = svc.list_assets(include_disposed=True)
-    statuses = {a.status for a in rows}
-    assert AssetStatus.IDLE in statuses
-    assert AssetStatus.RETIRED not in statuses
-    assert AssetStatus.DISPOSED in statuses
-
-
 # ── sort / limit / offset tests ────────────────────────────────────────────────
 
 
@@ -407,3 +326,88 @@ def test_list_assets_limit_one_accepted(session: Session):
     svc = AssetService(session)
     result = svc.list_assets(limit=1)
     assert len(result) == 1
+
+
+class TestListAssetsRetiredDisposedFilter:
+    """5 态 filter 列表拼接 — M3e §3.2 薄弱点补测。"""
+
+    def _seed_5_states(self, session: Session, type_id):
+        """seed 5 个资产，每态各 1 个，返回插入的资产列表。"""
+        from asset_hub.models.asset import Asset
+
+        statuses = [
+            (AssetStatus.IDLE, "F5-001"),
+            (AssetStatus.IN_USE, "F5-002"),
+            (AssetStatus.MAINTENANCE, "F5-003"),
+            (AssetStatus.RETIRED, "F5-004"),
+            (AssetStatus.DISPOSED, "F5-005"),
+        ]
+        assets = []
+        for status, code in statuses:
+            a = Asset(
+                asset_code=code,
+                name=f"资产-{code}",
+                type_id=type_id,
+                status=status,
+                custom_data={},
+            )
+            session.add(a)
+            assets.append(a)
+        session.commit()
+        return assets
+
+    def test_default_excludes_retired_and_disposed(self, session: Session, sample_type_nb):
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets()
+        statuses = {a.status for a in result}
+        assert AssetStatus.IDLE in statuses
+        assert AssetStatus.IN_USE in statuses
+        assert AssetStatus.MAINTENANCE in statuses
+        assert AssetStatus.RETIRED not in statuses
+        assert AssetStatus.DISPOSED not in statuses
+
+    def test_include_retired_only(self, session: Session, sample_type_nb):
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets(include_retired=True)
+        statuses = {a.status for a in result}
+        assert AssetStatus.RETIRED in statuses
+        assert AssetStatus.DISPOSED not in statuses
+
+    def test_include_disposed_only(self, session: Session, sample_type_nb):
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets(include_disposed=True)
+        statuses = {a.status for a in result}
+        assert AssetStatus.DISPOSED in statuses
+        assert AssetStatus.RETIRED not in statuses
+
+    def test_include_both(self, session: Session, sample_type_nb):
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets(include_retired=True, include_disposed=True)
+        statuses = {a.status for a in result}
+        assert statuses == {
+            AssetStatus.IDLE,
+            AssetStatus.IN_USE,
+            AssetStatus.MAINTENANCE,
+            AssetStatus.RETIRED,
+            AssetStatus.DISPOSED,
+        }
+
+    def test_explicit_status_retired_overrides_default_exclusion(self, session: Session, sample_type_nb):
+        """显式 status=RETIRED 时，即使 include_retired=False 也应返回 RETIRED 资产。"""
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets(status=AssetStatus.RETIRED)
+        statuses = {a.status for a in result}
+        assert statuses == {AssetStatus.RETIRED}
+
+    def test_explicit_status_disposed_overrides(self, session: Session, sample_type_nb):
+        """显式 status=DISPOSED 时，即使 include_disposed=False 也应返回 DISPOSED 资产。"""
+        self._seed_5_states(session, sample_type_nb.id)
+        svc = AssetService(session)
+        result = svc.list_assets(status=AssetStatus.DISPOSED)
+        statuses = {a.status for a in result}
+        assert statuses == {AssetStatus.DISPOSED}

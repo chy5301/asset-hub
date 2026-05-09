@@ -6,6 +6,7 @@ from typing import Any, NoReturn
 from pydantic import BaseModel
 
 from asset_hub.errors import (
+    AssetHubError,
     ConflictError,
     DuplicateError,
     IllegalTransitionError,
@@ -13,6 +14,15 @@ from asset_hub.errors import (
     StateError,
     ValidationError,
 )
+
+_DOMAIN_ERROR_CODES: dict[type[AssetHubError], str] = {
+    NotFoundError: "not_found",
+    DuplicateError: "duplicate",
+    ValidationError: "validation",
+    StateError: "state_conflict",
+    ConflictError: "conflict",
+    IllegalTransitionError: "illegal_transition",
+}
 
 
 def success_envelope(data: Any, count: int | None = None, took_ms: float | None = None) -> str:
@@ -28,9 +38,14 @@ def success_envelope(data: Any, count: int | None = None, took_ms: float | None 
     )
 
 
-def error_envelope(message: str) -> str:
+def error_envelope(message: str, *, code: str) -> str:
     return json.dumps(
-        {"success": False, "data": None, "metadata": {}, "error": message},
+        {
+            "success": False,
+            "data": None,
+            "metadata": {},
+            "error": {"code": code, "message": message},
+        },
         ensure_ascii=False,
     )
 
@@ -43,9 +58,11 @@ def print_result(data: Any, json_output: bool, *, count: int | None = None) -> N
         rprint(data)
 
 
-def print_error(message: str, json_output: bool, exit_code: int = 1) -> NoReturn:
+def print_error(
+    message: str, json_output: bool, *, code: str, exit_code: int = 1
+) -> NoReturn:
     if json_output:
-        print(error_envelope(message))
+        print(error_envelope(message, code=code))
     else:
         from rich.console import Console
         Console(stderr=True).print(f"[red]错误:[/red] {message}")
@@ -73,21 +90,19 @@ def handle_domain_errors(
 ) -> Generator[None, None, None]:
     """把域异常按 CLI 退出码契约翻译成 print_error。
 
-    退出码：NotFoundError → 3；ConflictError/DuplicateError/IllegalTransitionError/StateError → 1；
-    ValidationError → 1（默认）/ 2（exit_2_on_validation=True，agent-native 用法错误约定）。
-    与 api/app.py 的 HTTP 映射对称，避免每个命令重复 try/except。
+    退出码：NotFoundError → 3；ValidationError → 1（默认）/ 2（exit_2_on_validation=True）；
+    其余 ConflictError/DuplicateError/IllegalTransitionError/StateError → 1。
+    error.code 由 _DOMAIN_ERROR_CODES 显式映射，避与状态机歧义（StateError → state_conflict）。
+    与 api/app.py 的 HTTP 映射对称。
     """
     try:
         yield
-    except NotFoundError as e:
-        print_error(str(e), json_output, exit_code=3)
-    except ValidationError as e:
-        exit_code = 2 if exit_2_on_validation else 1
-        print_error(str(e), json_output, exit_code=exit_code)
-    except (
-        ConflictError,
-        DuplicateError,
-        IllegalTransitionError,
-        StateError,
-    ) as e:
-        print_error(str(e), json_output, exit_code=1)
+    except AssetHubError as e:
+        code = _DOMAIN_ERROR_CODES[type(e)]
+        if isinstance(e, NotFoundError):
+            exit_code = 3
+        elif isinstance(e, ValidationError) and exit_2_on_validation:
+            exit_code = 2
+        else:
+            exit_code = 1
+        print_error(str(e), json_output, code=code, exit_code=exit_code)

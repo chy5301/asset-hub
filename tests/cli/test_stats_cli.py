@@ -43,7 +43,8 @@ def test_stats_unknown_field_exits_2(isolated_db):
     assert result.exit_code == 2
     payload = json.loads(result.stdout)
     assert payload["success"] is False
-    assert "fields" in payload["error"]
+    assert payload["error"]["code"] == "validation"
+    assert "fields" in payload["error"]["message"]
 
 
 def test_stats_include_retired_reflects_in_summary(populated_cli_db):

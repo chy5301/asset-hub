@@ -1,71 +1,86 @@
 # asset-hub
 
-小组资产管理工具。双接口：Web GUI 面向人类，CLI 面向 AI Agent。
-
-## 定位
-
-聚合式资产管理中心，管理小组内的各类资产：设备、服务器、计算机、硬盘、显卡等。v1 明确只服务两类使用者：
-
-- **单一人类用户**通过 Web GUI 维护资产
-- **该用户的 AI Agent**（Claude Code）通过 CLI 完成登记、派发、归还、查询、导出
+> 小组资产管理工具。双接口：Web GUI 面向人类，CLI 面向 AI Agent。
 
 ## 核心能力
 
-- **双接口访问**
-  - Web GUI（React + Vite + TanStack Router + Tailwind + shadcn/ui）
-  - Agent CLI（Typer），`--json` 输出统一信封，Agent 直接可用
-- **类型驱动的字段模型**：每类资产可定义各自的自定义字段，支持 string/int/float/bool/enum/date/text
-- **可视化看板**（规划中）：资产状态、分布、使用情况的图形化展示
-- **表格导出**（规划中）：CSV / XLSX，按当前筛选条件导出
+- **资产 CRUD** + 类型驱动的自定义字段（string / int / float / bool / enum / multi_enum / date / text / url）
+- **状态机**：5 态（闲置中 / 使用中 / 维修中 / 已退役 / 已处置）
+- **10 种 transition**：派发（组内/外借）/ 归还 / 送修 / 维修完成 / 退役 / 重新启用 / 处置 / 变更位置 / 变更保管人
+- **看板**：4 段聚合（类型分布 / 状态分布 / 保管人 Top 10 / 闲置时长 Top 10）
+- **导出**：CSV / XLSX，按当前筛选透传，走 Web GUI 或 HTTP API
+- **附件管理**：照片 / 发票，CLI + Web 都可上传
+- **服务生命周期管理**：`serve start / stop / status / restart / logs / doctor`
 
 ## 技术栈
 
 | 层 | 选型 |
 |---|---|
-| 后端 | Python 3.12 · FastAPI · SQLModel · SQLite · Typer |
-| 前端 | React · Vite · TanStack Router · Tailwind · shadcn/ui |
-| 测试 | pytest（service/CLI/API 三层） |
-| 工具链 | uv · pnpm · ruff |
+| 后端 | Python 3.12+ · FastAPI · SQLModel · SQLite · Typer · Alembic · openpyxl |
+| 前端 | React 19 · Vite · TanStack Router · TanStack Table · TanStack Query · RHF + Zod · Tailwind v4 · shadcn/ui · Recharts |
+| 测试 | pytest（unit / api / cli 三层）· vitest（unit / hooks / components）· playwright（e2e CI） |
+| 工具链 | uv · pnpm · ruff · openapi-typescript / openapi-fetch |
 
 ## 架构
 
 ```
 Web GUI (React) ──HTTP──┐
-                        ├──► FastAPI ──► Service 层（唯一事实）──► Repository/SQLModel/FS
+                        ├──► FastAPI ──► Service 层（唯一事实）──► Repository / SQLModel / FS
 CLI (Typer) ────import──┘
 ```
 
 CLI 直接 `from asset_hub.services import ...` 调用 service 层，**不**通过 HTTP 调自己的 API。
 
-## 开发
-
-前置：`uv`、`pnpm`、Python 3.12+
+## 快速开始
 
 ```bash
-# 安装依赖
+# 前置：uv / pnpm / Python 3.12+ / Node 20+
 uv sync
 pnpm --dir frontend install
+cp .env.example .env
+uv run alembic upgrade head
 
-# 运行测试
-uv run pytest
+# dev 模式（前后端并发，Vite 代理 /api → :8000）
+uv run asset-hub serve start --mode dev
+# 访问 http://127.0.0.1:5173
 
-# 启动开发环境（并发后端 + 前端）
-./scripts/dev.sh
+# prod 模式（自动 build 前端 + 单端口 :8000）
+uv run asset-hub serve start --mode prod
+# 访问 http://127.0.0.1:8000
 ```
 
-## CLI 示例
+## CLI 示例（v1.0 GA 命令）
 
 ```bash
 # 定义类型
 uv run asset-hub type define --from examples/types/laptop.json --json
 
-# 登记资产
-uv run asset-hub asset register --name "ThinkPad X1 Carbon" \
-    --type-id <uuid> --sn "PF-xxx" \
-    --custom '{"brand":"Lenovo","os":"Windows","ram_gb":16}' --json
+# 登记资产（不含照片）
+uv run asset-hub asset register \
+    --name "ThinkPad X1 Carbon" \
+    --type-id <uuid> --sn "PF-1234" \
+    --custom '{"brand":"Lenovo","ram_gb":16}' --json
 
-# 列出
-uv run asset-hub asset list --json
+# 单独上传照片附件（登记后）
+uv run asset-hub attachment add <asset_id> --file ./photo.jpg --kind photo --json
+
+# 状态流转 — 派发
+uv run asset-hub asset checkout <asset_id> --to "张三" --kind internal --location "北京办公室" --json
+
+# 状态流转 — 归还
+uv run asset-hub asset return <asset_id> --receiver "李四" --location "上海仓库" --json
+
+# 列表 + 筛选
+uv run asset-hub asset list --status IDLE --json
+
+# 看板统计
+uv run asset-hub stats --json
+
+# 导出（走 HTTP API，CLI 无 export 命令）
+curl -OJ "http://localhost:8000/api/export?format=xlsx&status=IDLE"
+
+# 诊断环境
+uv run asset-hub serve doctor --json
 ```
 
 ## 路线图
@@ -73,10 +88,18 @@ uv run asset-hub asset list --json
 | 里程碑 | 目标 | 状态 |
 |---|---|---|
 | **M1 · 骨架** | service/repo 抽象、CLI CRUD、FastAPI 端点、前端脚手架 | ✅ 已完成 |
-| **M2 · 核心流程** | checkout/return/history、附件、Web 列表+详情+动态表单 | ⏳ 规划中 |
-| **M3 · 特性完整** | 看板 4 图、CSV/XLSX 导出、SKILL.md、测试覆盖 | ⏳ 规划中 |
-| **M4 · UI 打磨** | 配色/间距/动效达到 frontend-design 审美标准 | ⏳ 规划中 |
+| **M2 · 核心流程 + 视觉收尾** | checkout/return/history、附件、Web 列表 + 详情 + 动态表单、视觉打磨 | ✅ 已完成 |
+| **M3a · 状态机基建** | 5 态 + 10 transition + StateTransitionRecord + 7 dialog | ✅ 已完成 |
+| **M3b · 看板 + /api/stats** | 4 张图表 + ChartTokenProvider | ✅ 已完成 |
+| **M3c · CSV/XLSX 导出** | /api/export + ExportButton + 5 态色条件格式 | ✅ 已完成 |
+| **M3d · timeline 视觉重构** | Group rail + 月份分段 + 派出类型染色 + 超长派发预警 | ✅ 已完成 |
+| **M3e · v1.0 GA 收口** | SKILL.md + envelope 统一 + serve doctor + Windows 部署 + e2e CI | ✅ 已完成 |
+| **M4 · UI 打磨** | 配色 / 间距 / 动效达 frontend-design 审美标准；A3 dialog 合并；§S/§U/§W | ⏳ 规划中 |
+| **M5 · People 实体化** | holder/location 实体化 + 重名/改名管理 | ⏳ 规划中 |
 
-## 设计文档
+## 文档
 
-完整设计见 [docs/superpowers/specs/2026-04-15-asset-hub-design.md](docs/superpowers/specs/2026-04-15-asset-hub-design.md)。
+- AI Agent 入口：[SKILL.md](./SKILL.md)（含 5 态 + 10 transition + envelope + 命令速查 + 任务流）
+- 部署指南：[docs/deployment.md](./docs/deployment.md)
+- v1.0 升级指南：[docs/superpowers/release-notes-v1.0.md](./docs/superpowers/release-notes-v1.0.md)
+- 设计文档：[docs/superpowers/specs/](./docs/superpowers/specs/)

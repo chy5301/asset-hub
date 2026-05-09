@@ -109,7 +109,7 @@
 | **M3b** | 看板 + /api/stats | C3、D1、H4 | 3 | ✅ 已完成（2026-05-06，merge `c21ae55` + `98052dc`） |
 | **M3c** | CSV/XLSX 导出 | — | 0 | ✅ 已完成（2026-05-07，merge `a55beec` + `5c5bab0`） |
 | **M3d** | timeline 视觉重构 + simplify §7 搭车 | §14.8 染色 / §14.8 超长派发 / C-1 / C-2 / C-3 | 5 | ✅ 已完成（2026-05-07，单 PR feat/m3d-timeline-visual） |
-| **M3e** | SKILL.md + 部署 + 测试基建 + K1 envelope 统一 | K1（HIGH）、A3（推迟 M4） | 2 | ⏳ 待启动 |
+| **M3e** | SKILL.md + 部署 + 测试基建 + K1 envelope 统一 | K1（HIGH）、A3（推迟 M4） | 2 | ✅ 已完成（2026-05-09，merge `<m3e-merge>`） |
 | 暂不动 | — | 13 项 | 13 | — |
 
 ---

@@ -5,11 +5,11 @@ from typing import Annotated
 
 import typer
 
+from asset_hub.cli.envelope import print_error, success_envelope
 from asset_hub.cli.serve import lifecycle
 from asset_hub.cli.serve import logs as logs_mod
 from asset_hub.cli.serve.lifecycle import ServeLifecycleError
 from asset_hub.cli.serve.output import (
-    render_json_envelope,
     render_plain_start,
     render_plain_status,
     render_plain_stop,
@@ -19,24 +19,9 @@ from asset_hub.config import Settings
 serve_app = typer.Typer(name="serve", help="管理后端 + 前端服务生命周期", no_args_is_help=True)
 
 
-def _emit_success(*, json_out: bool, plain_text: str = "", data=None, metadata=None,
-                  exit_code: int = 0):
-    if json_out:
-        out = render_json_envelope(success=True, data=data, metadata=metadata)
-        print(out)
-    elif plain_text:
+def _emit_success_plain(plain_text: str) -> None:
+    if plain_text:
         print(plain_text)
-    raise typer.Exit(code=exit_code)
-
-
-def _emit_error(*, json_out: bool, plain_text: str, error: dict, metadata=None,
-                exit_code: int = 1):
-    if json_out:
-        out = render_json_envelope(success=False, error=error, metadata=metadata)
-        print(out)
-    else:
-        print(plain_text, file=sys.stderr)
-    raise typer.Exit(code=exit_code)
 
 
 @serve_app.command("start")
@@ -50,11 +35,9 @@ def start(
 ):
     """启动服务（默认 prod 模式）。"""
     if mode not in ("dev", "prod"):
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ Invalid --mode '{mode}' (expected dev|prod)",
-            error={"code": "serve.usage", "message": f"invalid --mode '{mode}'"},
-            exit_code=2,
+        print_error(
+            f"invalid --mode '{mode}' (expected dev|prod)",
+            json_out, code="serve.usage", exit_code=2,
         )
     try:
         result = lifecycle.start_service(
@@ -65,19 +48,13 @@ def start(
             host_override=host,
         )
     except ServeLifecycleError as e:
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ {e.message}",
-            error={"code": e.code, "message": e.message},
-            exit_code=1,
-        )
+        print_error(e.message, json_out, code=e.code, exit_code=1)
 
-    _emit_success(
-        json_out=json_out,
-        plain_text=render_plain_start(result),
-        data=result.to_dict(),
-        metadata=result.metadata(),
-    )
+    if json_out:
+        print(success_envelope(result.to_dict()))
+    else:
+        _emit_success_plain(render_plain_start(result))
+    raise typer.Exit(code=0)
 
 
 @serve_app.command("stop")
@@ -88,19 +65,13 @@ def stop(
     try:
         result = lifecycle.stop_service()
     except ServeLifecycleError as e:
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ {e.message}",
-            error={"code": e.code, "message": e.message},
-            exit_code=1,
-        )
+        print_error(e.message, json_out, code=e.code, exit_code=1)
 
-    _emit_success(
-        json_out=json_out,
-        plain_text=render_plain_stop(result),
-        data=result.to_dict(),
-        metadata={},
-    )
+    if json_out:
+        print(success_envelope(result.to_dict()))
+    else:
+        _emit_success_plain(render_plain_stop(result))
+    raise typer.Exit(code=0)
 
 
 @serve_app.command("status")
@@ -110,12 +81,13 @@ def status(
 ):
     """查询服务状态（含 HTTP 健康探测）。"""
     report = lifecycle.status_service(no_probe=no_probe)
-    _emit_success(
-        json_out=json_out,
-        plain_text=render_plain_status(report),
-        data=report.to_dict(),
-        metadata=report.metadata(),
-    )
+    if json_out:
+        # status 的 took_ms / probed 在 report.metadata()，这里走 success_envelope 的 take_ms 路径
+        meta = report.metadata()
+        print(success_envelope(report.to_dict(), took_ms=meta.get("took_ms")))
+    else:
+        _emit_success_plain(render_plain_status(report))
+    raise typer.Exit(code=0)
 
 
 @serve_app.command("restart")
@@ -129,11 +101,9 @@ def restart(
 ):
     """重启服务（自动推断 mode；如无法推断需 --mode）。"""
     if mode is not None and mode not in ("dev", "prod"):
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ Invalid --mode '{mode}' (expected dev|prod)",
-            error={"code": "serve.usage", "message": f"invalid --mode '{mode}'"},
-            exit_code=2,
+        print_error(
+            f"invalid --mode '{mode}' (expected dev|prod)",
+            json_out, code="serve.usage", exit_code=2,
         )
     try:
         stop_res, start_res = lifecycle.restart_service(
@@ -144,24 +114,17 @@ def restart(
             host_override=host,
         )
     except ServeLifecycleError as e:
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ {e.message}",
-            error={"code": e.code, "message": e.message},
-            exit_code=1,
-        )
+        print_error(e.message, json_out, code=e.code, exit_code=1)
 
-    if not stop_res.stopped and not stop_res.stale_cleaned:
-        # spec §3.5: 服务未运行 → 直接 fresh start
-        plain = "- Not running, starting fresh\n" + render_plain_start(start_res)
+    if json_out:
+        print(success_envelope({"stop": stop_res.to_dict(), "start": start_res.to_dict()}))
     else:
-        plain = render_plain_stop(stop_res) + "\n" + render_plain_start(start_res)
-    _emit_success(
-        json_out=json_out,
-        plain_text=plain,
-        data={"stop": stop_res.to_dict(), "start": start_res.to_dict()},
-        metadata=start_res.metadata(),
-    )
+        if not stop_res.stopped and not stop_res.stale_cleaned:
+            plain = "- Not running, starting fresh\n" + render_plain_start(start_res)
+        else:
+            plain = render_plain_stop(stop_res) + "\n" + render_plain_start(start_res)
+        _emit_success_plain(plain)
+    raise typer.Exit(code=0)
 
 
 @serve_app.command("logs")
@@ -173,11 +136,9 @@ def logs(
 ):
     """查看服务日志（默认 backend，最近 200 行）。"""
     if service not in ("backend", "frontend", "all"):
-        _emit_error(
-            json_out=json_out,
-            plain_text=f"✗ Invalid --service '{service}' (expected backend|frontend|all)",
-            error={"code": "serve.usage", "message": f"invalid --service '{service}'"},
-            exit_code=2,
+        print_error(
+            f"invalid --service '{service}' (expected backend|frontend|all)",
+            json_out, code="serve.usage", exit_code=2,
         )
 
     if follow:
@@ -204,8 +165,7 @@ def logs(
     )
     if all(len(v) == 0 for v in out.values()):
         if json_out:
-            payload = {"service": service, "lines": [], "truncated": False}
-            print(render_json_envelope(success=True, data=payload, metadata={}))
+            print(success_envelope({"service": service, "lines": [], "truncated": False}))
         else:
             print(f"- No logs available for {service}")
         raise typer.Exit(code=0)
@@ -215,7 +175,7 @@ def logs(
             payload = {"services": out}
         else:
             payload = {"service": service, "lines": out[service], "truncated": False}
-        print(render_json_envelope(success=True, data=payload, metadata={}))
+        print(success_envelope(payload))
         raise typer.Exit(code=0)
 
     text_parts = []
@@ -227,3 +187,40 @@ def logs(
         text_parts = out[service]
     print("\n".join(text_parts))
     raise typer.Exit(code=0)
+
+
+@serve_app.command("doctor")
+def doctor(
+    mode: Annotated[str, typer.Option("--mode", help="检查 mode (dev|prod)")] = "prod",
+    json_out: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
+):
+    """诊断环境/版本/依赖/端口/dist 7-8 项；read-only。"""
+    from asset_hub.cli.serve.doctor import run_all_checks
+    if mode not in ("dev", "prod"):
+        print_error(
+            f"invalid --mode '{mode}' (expected dev|prod)",
+            json_out, code="serve.usage", exit_code=2,
+        )
+
+    import time
+    t0 = time.perf_counter()
+    result = run_all_checks(mode=mode)
+    took_ms = int((time.perf_counter() - t0) * 1000)
+
+    if json_out:
+        print(success_envelope(result.to_dict(), took_ms=took_ms))
+    else:
+        # plain 渲染
+        print("SERVICE                  STATUS")
+        for c in result.checks:
+            mark = "✓" if c.ok else "!"
+            line = f"{c.name:<24} {mark} {c.detail}"
+            if not c.ok and c.fix_hint:
+                line += f"\n  → {c.fix_hint}"
+            print(line)
+        print()
+        if result.ok:
+            print("All checks passed.")
+        else:
+            print(f"{result.issue_count} issue(s). Run with --json for machine-readable output.")
+    raise typer.Exit(code=0 if result.ok else 1)
