@@ -225,3 +225,29 @@ def test_get_asset_response_contains_type_name(client, idle_asset):
     body = res.json()
     assert "type_name" in body
     assert body["type_name"] is not None
+
+
+class TestListAssetsFilterRetiredDisposed:
+    """API 层覆盖 5 态 filter 4 组合 spot check + 显式 status 子句。M3e §3.2 薄弱点补测。"""
+
+    def test_query_combinations(self, client: TestClient, seed_5_states):
+        """无 flag → 不含 retired/disposed；都开 → 全 5 态。"""
+        # 默认不含 RETIRED / DISPOSED
+        r1 = client.get("/api/assets")
+        assert r1.status_code == 200
+        statuses_default = {a["status"] for a in r1.json()}
+        assert "RETIRED" not in statuses_default
+        assert "DISPOSED" not in statuses_default
+
+        # include_retired=true&include_disposed=true → 全 5 态
+        r2 = client.get("/api/assets?include_retired=true&include_disposed=true")
+        assert r2.status_code == 200
+        statuses_full = {a["status"] for a in r2.json()}
+        assert statuses_full == {"IDLE", "IN_USE", "MAINTENANCE", "RETIRED", "DISPOSED"}
+
+    def test_explicit_status_overrides_include_flags(self, client: TestClient, seed_5_states):
+        """status=RETIRED 不需要 include_retired 即返回 RETIRED 资产。"""
+        r = client.get("/api/assets?status=RETIRED")
+        assert r.status_code == 200
+        statuses = {a["status"] for a in r.json()}
+        assert statuses == {"RETIRED"}

@@ -25,8 +25,8 @@ from asset_hub.services.asset_type import TypeService
 # spec §B.4: 状态字段写人类标签 (与 frontend STATUS_META.label 同义)
 # 后续 simplify 可消除 stats / asset CLI 字面量统一指向此 dict (不在 M3c 范围)
 STATUS_LABELS: dict[AssetStatus, str] = {
-    AssetStatus.IN_USE: "在用",
-    AssetStatus.IDLE: "闲置",
+    AssetStatus.IN_USE: "使用中",
+    AssetStatus.IDLE: "闲置中",
     AssetStatus.MAINTENANCE: "维修中",
     AssetStatus.RETIRED: "已退役",
     AssetStatus.DISPOSED: "已处置",

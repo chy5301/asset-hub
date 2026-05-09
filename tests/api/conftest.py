@@ -129,6 +129,52 @@ def idle_assets_5(client, sample_type_nb_via_api):
 
 
 @pytest.fixture
+def seed_5_states(client, sample_type_nb_via_api):
+    """创建 5 个资产，每态各 1 个（IDLE/IN_USE/MAINTENANCE/RETIRED/DISPOSED）。
+
+    返回 dict: status → asset dict。
+    M3e §3.2 薄弱点补测用。
+    """
+    type_id = sample_type_nb_via_api
+
+    # IDLE: 直接注册即为 IDLE
+    idle = client.post("/api/assets", json={"name": "Filter-IDLE", "type_id": type_id, "custom_data": {}}).json()
+
+    # IN_USE: 注册后 CHECKOUT_INTERNAL
+    in_use_resp = client.post("/api/assets", json={"name": "Filter-IN_USE", "type_id": type_id, "custom_data": {}})
+    in_use_id = in_use_resp.json()["id"]
+    client.post(f"/api/assets/{in_use_id}/transitions", json={"kind": "CHECKOUT_INTERNAL", "to_holder": "张三"})
+    in_use = client.get(f"/api/assets/{in_use_id}").json()
+
+    # MAINTENANCE: 注册后 BEGIN_MAINTENANCE
+    maint_resp = client.post("/api/assets", json={"name": "Filter-MAINT", "type_id": type_id, "custom_data": {}})
+    maint_id = maint_resp.json()["id"]
+    client.post(f"/api/assets/{maint_id}/transitions", json={"kind": "SEND_TO_MAINTENANCE"})
+    maint = client.get(f"/api/assets/{maint_id}").json()
+
+    # RETIRED: 注册后 RETIRE
+    retired_resp = client.post("/api/assets", json={"name": "Filter-RETIRED", "type_id": type_id, "custom_data": {}})
+    retired_id = retired_resp.json()["id"]
+    client.post(f"/api/assets/{retired_id}/transitions", json={"kind": "RETIRE"})
+    retired = client.get(f"/api/assets/{retired_id}").json()
+
+    # DISPOSED: 注册后 RETIRE → DISPOSE
+    disposed_resp = client.post("/api/assets", json={"name": "Filter-DISPOSED", "type_id": type_id, "custom_data": {}})
+    disposed_id = disposed_resp.json()["id"]
+    client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "RETIRE"})
+    client.post(f"/api/assets/{disposed_id}/transitions", json={"kind": "DISPOSE"})
+    disposed = client.get(f"/api/assets/{disposed_id}").json()
+
+    return {
+        "IDLE": idle,
+        "IN_USE": in_use,
+        "MAINTENANCE": maint,
+        "RETIRED": retired,
+        "DISPOSED": disposed,
+    }
+
+
+@pytest.fixture
 def populated_db(client, sample_type_nb_via_api):
     """创若干资产（含 IDLE/IN_USE/RETIRED）用于 stats 测试。
 
