@@ -187,3 +187,40 @@ def logs(
         text_parts = out[service]
     print("\n".join(text_parts))
     raise typer.Exit(code=0)
+
+
+@serve_app.command("doctor")
+def doctor(
+    mode: Annotated[str, typer.Option("--mode", help="检查 mode (dev|prod)")] = "prod",
+    json_out: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
+):
+    """诊断环境/版本/依赖/端口/dist 7-8 项；read-only。"""
+    from asset_hub.cli.serve.doctor import run_all_checks
+    if mode not in ("dev", "prod"):
+        print_error(
+            f"invalid --mode '{mode}' (expected dev|prod)",
+            json_out, code="serve.usage", exit_code=2,
+        )
+
+    import time
+    t0 = time.perf_counter()
+    result = run_all_checks(mode=mode)
+    took_ms = int((time.perf_counter() - t0) * 1000)
+
+    if json_out:
+        print(success_envelope(result.to_dict(), took_ms=took_ms))
+    else:
+        # plain 渲染
+        print("SERVICE                  STATUS")
+        for c in result.checks:
+            mark = "✓" if c.ok else "!"
+            line = f"{c.name:<24} {mark} {c.detail}"
+            if not c.ok and c.fix_hint:
+                line += f"\n  → {c.fix_hint}"
+            print(line)
+        print()
+        if result.ok:
+            print("All checks passed.")
+        else:
+            print(f"{result.issue_count} issue(s). Run with --json for machine-readable output.")
+    raise typer.Exit(code=0 if result.ok else 1)
