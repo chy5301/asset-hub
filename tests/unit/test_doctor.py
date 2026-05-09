@@ -35,9 +35,7 @@ def test_check_uv_ok(monkeypatch):
 
 
 def test_check_uv_missing(monkeypatch):
-    def _raise(*a, **kw):
-        raise FileNotFoundError("uv not found")
-    monkeypatch.setattr("asset_hub.cli.serve.doctor.subprocess.run", _raise)
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: None)
     c = check_uv()
     assert c.ok is False
     assert c.code == "serve.uv_missing"
@@ -54,9 +52,7 @@ def test_check_pnpm_ok(monkeypatch):
 
 
 def test_check_pnpm_missing(monkeypatch):
-    def _raise(*a, **kw):
-        raise FileNotFoundError("pnpm not found")
-    monkeypatch.setattr("asset_hub.cli.serve.doctor.subprocess.run", _raise)
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: None)
     c = check_pnpm()
     assert c.ok is False
     assert c.code == "serve.pnpm_missing"

@@ -5,6 +5,7 @@ M3e §2.4。
 """
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -50,36 +51,41 @@ class DoctorResult:
         }
 
 
-def _run_version(cmd: str) -> str:
-    """运行 `<cmd> --version`，返回 stdout（已 strip）。FileNotFoundError 让 caller 捕。"""
+def _resolve(cmd: str) -> str | None:
+    """跨平台找 cmd 的可执行 path；Windows 自动读 PATHEXT 找 .cmd/.bat/.exe。"""
+    return shutil.which(cmd)
+
+
+def _run_version(path: str) -> str:
+    """运行 `<path> --version`，返回 stdout（已 strip）。接收完整路径，不依赖 PATH 解析。"""
     result = subprocess.run(
-        [cmd, "--version"], capture_output=True, text=True, check=False
+        [path, "--version"], capture_output=True, text=True, check=False
     )
     return result.stdout.strip()
 
 
 def check_uv() -> DoctorCheck:
-    try:
-        out = _run_version("uv")
-        return DoctorCheck(name="uv (>= 0.4)", ok=True, detail=out)
-    except FileNotFoundError:
+    path = _resolve("uv")
+    if path is None:
         return DoctorCheck(
             name="uv (>= 0.4)", ok=False, detail="not found",
             code="serve.uv_missing",
             fix_hint="install uv: https://docs.astral.sh/uv/getting-started/installation/",
         )
+    out = _run_version(path)
+    return DoctorCheck(name="uv (>= 0.4)", ok=True, detail=out)
 
 
 def check_pnpm() -> DoctorCheck:
-    try:
-        out = _run_version("pnpm")
-        return DoctorCheck(name="pnpm (>= 9)", ok=True, detail=out)
-    except FileNotFoundError:
+    path = _resolve("pnpm")
+    if path is None:
         return DoctorCheck(
             name="pnpm (>= 9)", ok=False, detail="not found",
             code="serve.pnpm_missing",
             fix_hint="install pnpm: npm install -g pnpm@9",
         )
+    out = _run_version(path)
+    return DoctorCheck(name="pnpm (>= 9)", ok=True, detail=out)
 
 
 def check_python_version() -> DoctorCheck:
