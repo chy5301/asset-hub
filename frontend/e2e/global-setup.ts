@@ -45,7 +45,9 @@ export default async function globalSetup() {
   console.log(`[e2e setup] seeded laptop type id=${typeId}`);
 
   // 3. 把 type_id 落盘到文件，worker 进程通过文件读取（process.env 修改不跨 worker）
-  fs.mkdirSync("frontend/e2e/.state", { recursive: true });
-  fs.writeFileSync("frontend/e2e/.state/type-id.txt", typeId, "utf8");
-  console.log("[e2e setup] wrote type-id to frontend/e2e/.state/type-id.txt");
+  // playwright globalSetup 默认 cwd = playwright.config.ts 所在 dir = frontend/，
+  // 与 register-asset.ts (worker cwd 也是 frontend/) 用同一相对路径
+  fs.mkdirSync("e2e/.state", { recursive: true });
+  fs.writeFileSync("e2e/.state/type-id.txt", typeId, "utf8");
+  console.log("[e2e setup] wrote type-id to e2e/.state/type-id.txt");
 }
