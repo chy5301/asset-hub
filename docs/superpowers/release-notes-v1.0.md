@@ -12,7 +12,7 @@ v1.0 GA 收口了 M3a–M3e 五个里程碑，在 M2d（基础 CRUD + 附件 + s
 | M3b | /api/stats + 看板 4 图表 + ChartTokenProvider | c21ae55 + 98052dc |
 | M3c | /api/export CSV/XLSX + ExportButton | a55beec + 5c5bab0 |
 | M3d | timeline Group rail + 月份分段 + 派出类型染色 + 超长派发预警 + simplify §7 | 5320804 |
-| M3e | SKILL.md + envelope 统一 + serve doctor + 5 态文案对齐 + Windows 部署文档 + playwright e2e CI + 烟测发现 3 fix（M1 baseline create_table / doctor shutil.which / e2e webServer 前台 uvicorn） | \<m3e-merge\>（实施期回填） |
+| M3e | SKILL.md + envelope 统一 + serve doctor + 5 态文案对齐 + Windows 部署文档 + playwright e2e CI + 烟测发现 3 fix（M1 baseline create_table / doctor shutil.which / e2e webServer 前台 uvicorn） | 98a3a80 |
 
 ---
 
