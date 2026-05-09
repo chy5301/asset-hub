@@ -123,21 +123,21 @@ def check_data_writable() -> DoctorCheck:
 
 
 def check_alembic_head() -> DoctorCheck:
-    try:
-        cur = subprocess.run(
-            ["uv", "run", "alembic", "current"],
-            capture_output=True, text=True, check=False,
-        ).stdout.strip()
-        head = subprocess.run(
-            ["uv", "run", "alembic", "heads"],
-            capture_output=True, text=True, check=False,
-        ).stdout.strip()
-    except FileNotFoundError:
+    uv_path = _resolve("uv")
+    if uv_path is None:
         return DoctorCheck(
-            name="alembic head", ok=False, detail="uv/alembic not available",
+            name="alembic head", ok=False, detail="uv not available",
             code="serve.alembic_outdated",
-            fix_hint="run `uv sync` then `uv run alembic upgrade head`",
+            fix_hint="install uv then run `uv sync` and `uv run alembic upgrade head`",
         )
+    cur = subprocess.run(
+        [uv_path, "run", "alembic", "current"],
+        capture_output=True, text=True, check=False,
+    ).stdout.strip()
+    head = subprocess.run(
+        [uv_path, "run", "alembic", "heads"],
+        capture_output=True, text=True, check=False,
+    ).stdout.strip()
 
     cur_rev = cur.split()[0] if cur else ""
     head_rev = head.split()[0] if head else ""

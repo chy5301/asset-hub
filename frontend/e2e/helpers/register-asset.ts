@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
 export interface RegisteredAsset {
@@ -19,22 +19,26 @@ export function registerAsset(opts: {
   sn: string;
   custom?: Record<string, unknown>;
 }): RegisteredAsset {
-  // 读文件（worker cwd = frontend/）
   const typeId = fs.readFileSync("e2e/.state/type-id.txt", "utf8").trim();
   if (!typeId) throw new Error("type-id.txt 为空（global-setup 未跑？）");
 
   const customJson = JSON.stringify(opts.custom ?? { brand: "Lenovo", ram_gb: 16 });
-  const cmd = [
-    "uv run asset-hub asset register",
-    `--name ${JSON.stringify(opts.name)}`,
-    `--type-id ${typeId}`,
-    `--sn ${JSON.stringify(opts.sn)}`,
-    `--custom ${JSON.stringify(customJson)}`,
-    "--json",
-  ].join(" ");
-
-  // cwd ".." 回到 repo root 跑 CLI（asset-hub CLI 从 repo root 解析数据目录）
-  const out = execSync(cmd, { env: process.env, cwd: ".." }).toString();
+  // execFileSync argv 数组直传子进程，不走 shell — 避免 name/sn 含元字符时注入或解析错
+  const out = execFileSync(
+    "uv",
+    [
+      "run",
+      "asset-hub",
+      "asset",
+      "register",
+      "--name", opts.name,
+      "--type-id", typeId,
+      "--sn", opts.sn,
+      "--custom", customJson,
+      "--json",
+    ],
+    { env: process.env, cwd: "..", encoding: "utf8" },
+  );
   const parsed = JSON.parse(out);
   if (!parsed.success) throw new Error(`register failed: ${JSON.stringify(parsed.error)}`);
   return parsed.data as RegisteredAsset;

@@ -5,6 +5,8 @@ M3e §2.6 Phase 1 验收。
 """
 from __future__ import annotations
 
+import pytest
+
 from asset_hub.cli.serve.doctor import (
     DoctorCheck,
     check_alembic_head,
@@ -80,7 +82,7 @@ def test_check_data_writable_missing(tmp_path, monkeypatch):
 
 
 def test_check_alembic_head_ok(monkeypatch):
-    # alembic current 与 alembic heads 输出一致
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
     outputs = iter(["abc123 (head)\n", "abc123\n"])
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
@@ -91,6 +93,7 @@ def test_check_alembic_head_ok(monkeypatch):
 
 
 def test_check_alembic_head_outdated(monkeypatch):
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
     outputs = iter(["abc123\n", "def456\n"])
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
@@ -99,6 +102,14 @@ def test_check_alembic_head_outdated(monkeypatch):
     c = check_alembic_head()
     assert c.ok is False
     assert c.code == "serve.alembic_outdated"
+
+
+def test_check_alembic_head_uv_missing(monkeypatch):
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: None)
+    c = check_alembic_head()
+    assert c.ok is False
+    assert c.code == "serve.alembic_outdated"
+    assert "install uv" in c.fix_hint.lower()
 
 
 def test_check_frontend_dist_ok(tmp_path, monkeypatch):
@@ -137,73 +148,34 @@ def test_check_port_free_occupied(monkeypatch):
     assert c.code == "serve.port_occupied"
 
 
-def test_run_all_checks_aggregates(monkeypatch, tmp_path):
-    """全部 ok 时 result.ok=True；至少一个 fail 时 ok=False。"""
-    # mock 全 ok
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_uv",
-        lambda: DoctorCheck(name="uv", ok=True, detail="0.5.4"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_pnpm",
-        lambda: DoctorCheck(name="pnpm", ok=True, detail="9.12.3"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_python_version",
-        lambda: DoctorCheck(name="python", ok=True, detail="3.12.7"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_data_writable",
-        lambda: DoctorCheck(name="data_dir", ok=True, detail="/tmp"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_alembic_head",
-        lambda: DoctorCheck(name="alembic", ok=True, detail="head"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_frontend_dist",
-        lambda: DoctorCheck(name="frontend_dist", ok=True, detail="ok"),
-    )
+@pytest.fixture
+def mock_all_checks_ok(monkeypatch):
+    """全部 7 个 check_* 函数 mock 为 ok，run_all_checks_* 测共用。"""
+    fakes = {
+        "check_uv": DoctorCheck(name="uv", ok=True, detail="0.5.4"),
+        "check_pnpm": DoctorCheck(name="pnpm", ok=True, detail="9.12.3"),
+        "check_python_version": DoctorCheck(name="python", ok=True, detail="3.12.7"),
+        "check_data_writable": DoctorCheck(name="data_dir", ok=True, detail="/tmp"),
+        "check_alembic_head": DoctorCheck(name="alembic", ok=True, detail="head"),
+        "check_frontend_dist": DoctorCheck(name="frontend_dist", ok=True, detail="ok"),
+    }
+    for name, check in fakes.items():
+        monkeypatch.setattr(f"asset_hub.cli.serve.doctor.{name}", lambda c=check: c)
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.check_port_free",
         lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
     )
 
+
+def test_run_all_checks_aggregates(mock_all_checks_ok):
+    """全部 ok 时 result.ok=True；prod 模式 7 项（含单 :8000 port）。"""
     result = run_all_checks(mode="prod")
     assert result.ok is True
     assert result.issue_count == 0
     assert len(result.checks) == 7  # uv/pnpm/python/data/alembic/dist + 1 port (prod 不查 5173)
 
 
-def test_run_all_checks_dev_mode_includes_5173(monkeypatch):
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_uv",
-        lambda: DoctorCheck(name="uv", ok=True, detail="0.5.4"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_pnpm",
-        lambda: DoctorCheck(name="pnpm", ok=True, detail="9.12.3"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_python_version",
-        lambda: DoctorCheck(name="python", ok=True, detail="3.12.7"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_data_writable",
-        lambda: DoctorCheck(name="data_dir", ok=True, detail="/tmp"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_alembic_head",
-        lambda: DoctorCheck(name="alembic", ok=True, detail="head"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_frontend_dist",
-        lambda: DoctorCheck(name="frontend_dist", ok=True, detail="ok"),
-    )
-    monkeypatch.setattr(
-        "asset_hub.cli.serve.doctor.check_port_free",
-        lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
-    )
-
+def test_run_all_checks_dev_mode_includes_5173(mock_all_checks_ok):
+    """dev 模式额外查 :5173，共 8 项。"""
     result = run_all_checks(mode="dev")
     assert len(result.checks) == 8  # +5173

@@ -11,12 +11,12 @@ export default async function globalTeardown() {
     }
   }
 
-  // 清理 .state 目录（仅 CI）
+  // .state 路径与 global-setup 一致 — playwright globalSetup/Teardown 同 cwd (frontend/)
   if (process.env.CI) {
     try {
-      rmSync("frontend/e2e/.state", { recursive: true, force: true });
-    } catch {
-      // 忽略
+      rmSync("e2e/.state", { recursive: true, force: true });
+    } catch (e) {
+      console.warn(`[e2e teardown] failed to rm e2e/.state: ${e}`);
     }
   }
 }
