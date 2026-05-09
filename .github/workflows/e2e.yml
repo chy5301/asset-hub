@@ -27,10 +27,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: uv sync
-      - run: pnpm --dir frontend install --frozen-lockfile
-      - run: pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: Install playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: frontend
       - name: Run e2e
-        run: pnpm --dir frontend exec playwright test
+        run: pnpm exec playwright test
+        working-directory: frontend
         env:
           ASSET_HUB_DATA_DIR: ${{ runner.temp }}/asset-hub-e2e-${{ github.run_id }}
       - if: failure()
