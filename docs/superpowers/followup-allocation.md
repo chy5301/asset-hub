@@ -145,5 +145,7 @@ PR：https://github.com/chy5301/asset-hub/pull/3
 - 简化 CLI flag 不一致（M3 followup）—— 完全闭环
 
 未解决 followup（PR-1 范围外）：
-- ReassignDialog 表单时序 bug（spec 11 skip 中）：关闭弹窗时 form.reset 先于异步 form.trigger 完成，导致 mutation 不触发。Phase 5 Group D 实施期发现，留待 PR-1 merge 后处理。
-- PR-1 visual smoke 手动 QA 由 reviewer 完成。
+- ReassignDialog 表单时序 bug（spec 11 skip 中）：关闭弹窗时 form.reset 先于异步 form.trigger 完成，导致 mutation 不触发。Phase 5 Group D 实施期发现；2026-05-13 visual smoke 现场复现——用户不改任何字段点"确认"→ AlertDialog 默认 close 触发 onOpenChange(false) → form.reset() 同步执行；onConfirm 内 `await form.trigger()` 还在 pending，等校验返回时表单已清。表现是沉默失败（无 form error / 无 mutation）。修复方向：onConfirm 内 `e.preventDefault()` 阻止 AlertDialogAction 默认 close，等 mutation 成功再手动 onOpenChange(false)；或用 Dialog 代替 AlertDialog（后者 Action 不默认 close）。
+- Dashboard 与列表 filter toggle 文案风格不统一（2026-05-13 visual smoke 发现）：`/dashboard` 顶部 toggle 是"已退役 / 已注销"（保留"已"前缀，过去时表达"已在此态"），而 `/` 列表的 filter toggle 是"显示退役 / 显示注销"（无"已"，动作 + 状态名）。两处都是用户可见 v2 文案，建议下一轮 polish 时统一为同一句式（推荐"显示退役 / 显示注销"句式，与 STATUS_META label 配套使用更清晰）。属 cosmetic 一致性问题，不阻塞 PR-1。
+- `asset-hub serve stop` 不清非自管端口占用（2026-05-13 visual smoke 发现）：当 5173 端口被非 serve 拉起的旧 Vite 实例占住时，`serve start` 会让新 Vite 自动切到 5174，但 health probe 和提示信息仍按 5173 走 → 浏览器访问 5173 加载到旧 bundle，hot-reload 也不生效。`serve stop` 只 kill 自己 PID 文件里记的进程，不清这种"外部占用者"。修复方向：（a）`serve start` 启动前 probe `frontend_port`，若被外部进程占用应明确 fail 而不是放任 Vite 切端口；或（b）`serve doctor` 增加"端口占用者不在我管理范围"的检测项。
+- PR-1 visual smoke 手动 QA：已于 2026-05-13 用 Playwright MCP 完成，6 态 / 4 新 dialog / dispose phrase "注销" / BROKEN 资产 5 按钮路径全部对齐 v2 spec，详见 controller 烟测报告。
