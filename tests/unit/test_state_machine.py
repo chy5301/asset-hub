@@ -64,6 +64,7 @@ def test_disposed_is_terminal_for_every_kind():
 def test_holder_rule_includes_keep():
     """HolderRule v2.0 加 'keep' 值。"""
     from typing import get_args
+
     from asset_hub.services.state_machine import HolderRule, LocationRule
 
     assert "keep" in get_args(HolderRule)

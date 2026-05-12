@@ -10,9 +10,9 @@ v2.0 状态机焕新：
 3. 数据迁移：旧 RELOCATE/TRANSFER_HOLDER state_transition_records 改写为 REASSIGN
 """
 from collections.abc import Sequence
+
 import sqlalchemy as sa
 from alembic import op
-
 
 revision: str = "2b6e5509aeef"
 down_revision: str | Sequence[str] | None = "c6c0960805a9"

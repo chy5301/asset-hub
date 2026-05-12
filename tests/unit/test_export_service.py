@@ -17,8 +17,8 @@ from asset_hub.services.export import STATUS_HEX, STATUS_LABELS, ExportService
 
 class TestStatusDicts:
     def test_status_labels_covers_6_enum_values(self):
-        from asset_hub.services.export import STATUS_LABELS
         from asset_hub.models.asset import AssetStatus
+        from asset_hub.services.export import STATUS_LABELS
         # 应覆盖全部 6 个 enum 值
         assert set(STATUS_LABELS.keys()) == set(AssetStatus)
         assert len(STATUS_LABELS) == 6
@@ -32,8 +32,8 @@ class TestStatusDicts:
         assert STATUS_LABELS[AssetStatus.DISPOSED] == "注销"
 
     def test_status_hex_covers_6_enum_values(self):
-        from asset_hub.services.export import STATUS_HEX
         from asset_hub.models.asset import AssetStatus
+        from asset_hub.services.export import STATUS_HEX
         assert set(STATUS_HEX.keys()) == set(AssetStatus)
         assert len(STATUS_HEX) == 6
 

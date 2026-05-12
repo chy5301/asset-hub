@@ -2,11 +2,11 @@
 import sys
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-from alembic.config import Config
 from alembic import command
+from alembic.config import Config
 from sqlalchemy import create_engine, text
 
 
