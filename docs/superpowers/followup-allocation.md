@@ -121,3 +121,29 @@ M2d 实施 + final code review + simplify review 过程中又产生了一批新 
 - [`simplify-followups.md` §5 M2d 范围](./simplify-followups.md#5-m2d-范围2026-04-29)：K1-K9（已落地 4 项，未修 9 项；其中 **K1 envelope 统一**为 HIGH 优先级，登记到 M3 SKILL.md 完善同周期）
 - [`specs/2026-04-29-m2d-cli-serve-design.md` 附录 B](./specs/2026-04-29-m2d-cli-serve-design.md)：M2d 已知 Gap（Linux 真机烟测延后 / 多代日志轮转 / serve doctor / serve build 独立子命令 / --workers）
 - [`release-notes-m2d.md`](./release-notes-m2d.md)：部署清单 + Windows 烟测 checklist
+
+---
+
+## v2.0 PR-1 · 状态机焕新 + 文案 + CLI flag 标准化 ⏳
+
+合并 commit：<等 PR-1 merge 后回填>
+PR：https://github.com/chy5301/asset-hub/pull/3
+
+落地范围：
+- 6 态状态机（+ BROKEN）
+- 12 transition kind（+REASSIGN / +REPORT_BROKEN / +DECLARE_UNREPAIRABLE / +DISMISS, - RELOCATE / -TRANSFER_HOLDER）
+- keep rule 引入（_UNSET 哨兵 / model_dump exclude_unset 透传）
+- 派出集 closes 通用化
+- CLI flag 12 处 rename（统一 --to-holder / --to-location）
+- 全 6 态文案两字对齐（DISPOSE：处置 → 注销）
+- status-broken 色 token + 4 新 dialog + transition-timeline KIND_META v2
+- e2e 4 新 spec（BROKEN 生命周期）
+- SKILL.md / references v2 全面重写
+
+搭车闭环 followup：
+- KIND_META 跨文件合一（M3 §U）—— 部分闭环（KIND_META 重写时新增 4 kind 已对齐多文件，旧不一致仍存）
+- 简化 CLI flag 不一致（M3 followup）—— 完全闭环
+
+未解决 followup（PR-1 范围外）：
+- ReassignDialog 表单时序 bug（spec 11 skip 中）：关闭弹窗时 form.reset 先于异步 form.trigger 完成，导致 mutation 不触发。Phase 5 Group D 实施期发现，留待 PR-1 merge 后处理。
+- PR-1 visual smoke 手动 QA 由 reviewer 完成。
