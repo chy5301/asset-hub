@@ -21,7 +21,7 @@ test.describe("04 · retire-reinstate", () => {
     await page.getByRole("button", { name: "确认退役" }).click();
     await assertStatusChip(page, "RETIRED");
 
-    // 默认列表不显示已退役资产
+    // 默认列表不显示退役资产
     await page.goto("/");
     await expect(page.getByText("X1 测试机 04")).not.toBeVisible();
 
