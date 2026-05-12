@@ -218,11 +218,11 @@ def test_reinstate_from_retired_to_idle(session, asset_type):
 
 
 def test_optional_location_null_preserves_current(session, asset_type):
-    """v2.0 keep rule: SEND_TO_MAINTENANCE 不传 to_location（_UNSET）→ 保留 asset.location。"""
+    """v2.0 keep rule: SEND_TO_MAINTENANCE 不传 to_location（UNSET）→ 保留 asset.location。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, location="原位置")
     TransitionService(session).record_transition(
         asset_id=a.id, kind=TransitionKind.SEND_TO_MAINTENANCE
-        # 不传 to_location → _UNSET → keep
+        # 不传 to_location → UNSET → keep
     )
     session.refresh(a)
     assert a.location == "原位置"
@@ -359,7 +359,7 @@ def test_reassign_changes_holder_only(session, asset_type):
     rec = svc.record_transition(a.id, TransitionKind.REASSIGN, to_holder="Y")
     session.refresh(a)
     assert a.holder == "Y"
-    assert a.location == "L1"  # 保留（_UNSET → keep）
+    assert a.location == "L1"  # 保留（UNSET → keep）
     assert rec.kind == TransitionKind.REASSIGN
     assert rec.from_holder == "X"
     assert rec.to_holder == "Y"

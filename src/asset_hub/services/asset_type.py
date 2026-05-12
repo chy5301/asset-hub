@@ -105,7 +105,7 @@ class TypeService:
         参数为 None 表示"未传"，对应字段不动；显式传值才更新。
         custom_fields 传入时按 CustomFieldDef 校验后**完全替换**（非 merge）。
 
-        v1 设计取舍：本方法不采用 ``AssetService.update_asset`` 的 ``_Unset`` 哨兵
+        v1 设计取舍：本方法不采用 ``AssetService.update_asset`` 的 ``UnsetType`` 哨兵
         模式（CLAUDE.md §5）。``description=None`` 视为"未传"而非"清空为 NULL"。
         清空 description 请传 ``""``。理由见 spec §4.2（M2c-4 design doc）：
         v1 不区分 null/未传，前端按需。

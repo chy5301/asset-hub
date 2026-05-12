@@ -1,12 +1,12 @@
 from asset_hub.cli.deps import parse_unset_or_value
-from asset_hub.services.transition import _UNSET, _UnsetType
+from asset_hub.services._common import UNSET, UnsetType
 
 
 def test_parse_unset_or_value_none_returns_unset():
-    """Typer 默认 None（未传）→ _UNSET 哨兵。"""
+    """Typer 默认 None（未传）→ UNSET 哨兵。"""
     result = parse_unset_or_value(None)
-    assert isinstance(result, _UnsetType)
-    assert result is _UNSET  # 单例
+    assert isinstance(result, UnsetType)
+    assert result is UNSET  # 单例
 
 
 def test_parse_unset_or_value_empty_string_returns_none():

@@ -10,6 +10,7 @@ from asset_hub.errors import DuplicateError, NotFoundError, ValidationError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.repositories.asset import AssetRepository
 from asset_hub.repositories.asset_type import TypeRepository
+from asset_hub.services._common import UNSET, UnsetType
 from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_idle_subq
 from asset_hub.services.validation import validate_custom_data
 
@@ -19,13 +20,6 @@ SORT_FIELD_WHITELIST = frozenset({
     "name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days",
 })
 LIMIT_MAX = 1000
-
-
-class _Unset:
-    pass
-
-
-_UNSET = _Unset()
 
 
 class AssetService:
@@ -176,10 +170,10 @@ class AssetService:
         self,
         asset_id: uuid.UUID,
         name: str | None = None,
-        serial_number: str | _Unset = _UNSET,
-        notes: str | _Unset = _UNSET,
-        custom_data: dict | _Unset = _UNSET,
-        acquired_at: date | None | _Unset = _UNSET,
+        serial_number: str | UnsetType = UNSET,
+        notes: str | UnsetType = UNSET,
+        custom_data: dict | UnsetType = UNSET,
+        acquired_at: date | None | UnsetType = UNSET,
     ) -> Asset:
         """更新资产非状态字段。
 
@@ -189,14 +183,14 @@ class AssetService:
         a = self.get_asset(asset_id)
         if name is not None:
             a.name = name
-        if not isinstance(serial_number, _Unset):
+        if not isinstance(serial_number, UnsetType):
             a.serial_number = serial_number
-        if not isinstance(notes, _Unset):
+        if not isinstance(notes, UnsetType):
             a.notes = notes
-        if not isinstance(custom_data, _Unset):
+        if not isinstance(custom_data, UnsetType):
             asset_type = self.type_repo.get(a.type_id)
             a.custom_data = validate_custom_data(asset_type.custom_fields, custom_data)
-        if not isinstance(acquired_at, _Unset):
+        if not isinstance(acquired_at, UnsetType):
             a.acquired_at = acquired_at
         a.updated_at = datetime.now(UTC)
         try:

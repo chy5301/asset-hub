@@ -2,12 +2,6 @@
 
 TRANSITION_RULES 是合法 from/to + holder/location 规则的唯一来源。
 service 层不写 if-block 双层防御。
-
-v2.0 焕新：
-- 6 态状态机（加 BROKEN）
-- 12 transition kind（删 RELOCATE/TRANSFER_HOLDER，加 REASSIGN/REPORT_BROKEN/DECLARE_UNREPAIRABLE/DISMISS）
-- HolderRule / LocationRule 加 "keep" 值（部分更新哨兵语义）
-- PERSISTED_CHECKOUT_STATES 集合用于派出 closes 通用化
 """
 from typing import Literal, NamedTuple
 
@@ -126,7 +120,7 @@ def validate_transition(
 
     注：v2.0 中 to_holder/to_location 在 keep rule 下由 service 层（transition.py）
     决定是否清空/保留——此函数只校验 required 规则。"keep" rule 不要求字段，但若
-    显式传 None 表示清空（service 层会区分 _UNSET 哨兵 vs None）。
+    显式传 None 表示清空（service 层会区分 UNSET 哨兵 vs None）。
     """
     rule = TRANSITION_RULES[kind]
     if current_status not in rule.valid_from:
