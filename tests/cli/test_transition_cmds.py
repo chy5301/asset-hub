@@ -30,7 +30,7 @@ def idle_asset_id(isolated_db):
 def test_checkout_internal_default_kind(idle_asset_id):
     res = runner.invoke(app, [
         "asset", "checkout", idle_asset_id,
-        "--to", "张三", "--json",
+        "--to-holder", "张三", "--json",
     ])
     assert res.exit_code == 0, res.stdout
     body = json.loads(res.stdout)
@@ -42,7 +42,7 @@ def test_checkout_internal_default_kind(idle_asset_id):
 def test_checkout_external_with_kind_flag(idle_asset_id):
     res = runner.invoke(app, [
         "asset", "checkout", idle_asset_id,
-        "--to", "客户A", "--kind", "external", "--json",
+        "--to-holder", "客户A", "--kind", "external", "--json",
     ])
     assert res.exit_code == 0, res.stdout
     assert json.loads(res.stdout)["data"]["kind"] == "CHECKOUT_EXTERNAL"
@@ -51,16 +51,16 @@ def test_checkout_external_with_kind_flag(idle_asset_id):
 def test_checkout_invalid_kind_returns_error(idle_asset_id):
     res = runner.invoke(app, [
         "asset", "checkout", idle_asset_id,
-        "--to", "X", "--kind", "weird", "--json",
+        "--to-holder", "X", "--kind", "weird", "--json",
     ])
     assert res.exit_code != 0
 
 
 def test_return_after_checkout(idle_asset_id):
-    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to", "X", "--json"])
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "X", "--json"])
     res = runner.invoke(app, [
         "asset", "return", idle_asset_id,
-        "--receiver", "仓管", "--json",
+        "--to-holder", "仓管", "--json",
     ])
     assert res.exit_code == 0, res.stdout
     body = json.loads(res.stdout)
@@ -158,7 +158,7 @@ def test_transfer_holder(idle_asset_id):
 
 
 def test_history_after_multiple_transitions(idle_asset_id):
-    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to", "X", "--json"])
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "X", "--json"])
     runner.invoke(app, ["asset", "return", idle_asset_id, "--json"])
     res = runner.invoke(app, ["asset", "history", idle_asset_id, "--json"])
     assert res.exit_code == 0, res.stdout
