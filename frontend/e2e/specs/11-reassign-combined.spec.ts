@@ -8,15 +8,10 @@ import { assertStatusChip } from "../helpers/assert-status";
 // - 提交：AlertDialogAction "确认"
 // - timeline：formatLine REASSIGN 显示 "持有人 X → Y · 位置 A → B"
 //
-// NOTE: ReassignDialog 使用 AlertDialogAction（RadixUI 自动关闭）+ form.trigger() 异步校验
-// 存在 async 竞争：AlertDialogAction 关闭时触发 handleOpenChange → form.reset()，
-// 先于 form.trigger() 返回，导致校验拿到重置后的值而非新输入值，校验失败后 mutation 不执行。
-// 这是 UI 层已知问题（await form.trigger() vs dialog 关闭时机），独立于 v2.0 改动。
-// REASSIGN 的 API/service/CLI 层已被单测覆盖（tests/unit/test_transition.py）。
-// TODO: 修复 ReassignDialog 为 Dialog（非 AlertDialog）或改用 onSubmit 模式后取消 skip。
+// NOTE: ReassignDialog 已修复 AlertDialogAction 沉默失败问题（e.preventDefault() + 手动 onOpenChange(false)）
 
 test.describe("11 · reassign-combined", () => {
-  test.skip("REASSIGN 同时改 holder + location 一步完成", async ({ page }) => {
+  test("REASSIGN 同时改 holder + location 一步完成", async ({ page }) => {
     const asset = registerAsset({ name: "X1 测试机 11", sn: "PF-E2E-11" });
     await page.goto(`/assets/${asset.id}`);
     await assertStatusChip(page, "IDLE");

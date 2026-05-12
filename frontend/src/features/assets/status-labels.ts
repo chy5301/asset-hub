@@ -1,6 +1,7 @@
 import { AlertTriangle, Archive, Circle, CircleDot, Moon, Wrench, type LucideIcon } from "lucide-react";
 
-export type AssetStatus = "IDLE" | "IN_USE" | "MAINTENANCE" | "BROKEN" | "RETIRED" | "DISPOSED";
+import type { AssetStatus } from "@/features/assets/types";
+export type { AssetStatus } from "@/features/assets/types";
 
 export interface StatusMeta {
   label: string;

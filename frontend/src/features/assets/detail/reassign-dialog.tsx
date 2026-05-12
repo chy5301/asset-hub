@@ -1,4 +1,5 @@
 import { Shuffle } from "lucide-react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toFriendlyMessage } from "@/lib/error";
+import type { TransitionCreate, TransitionKind } from "@/features/assets/types";
 
 export function reassignSchema(
   currentHolder: string | null,
@@ -70,8 +72,12 @@ export function ReassignDialog({
   currentHolder,
   currentLocation,
 }: ReassignDialogProps) {
+  const schema = useMemo(
+    () => reassignSchema(currentHolder, currentLocation),
+    [currentHolder, currentLocation],
+  );
   const form = useForm<FormValues>({
-    resolver: zodResolver(reassignSchema(currentHolder, currentLocation)),
+    resolver: zodResolver(schema),
     defaultValues: {
       to_holder: currentHolder ?? "",
       to_location: currentLocation ?? "",
@@ -91,33 +97,6 @@ export function ReassignDialog({
       });
     }
     onOpenChange(v);
-  }
-
-  async function onConfirm() {
-    const valid = await form.trigger();
-    if (!valid) return;
-    const values = form.getValues();
-    try {
-      const payload: Record<string, string | null | undefined> = {
-        kind: "REASSIGN",
-      };
-      if ((values.to_holder ?? "") !== (currentHolder ?? "")) {
-        payload.to_holder = (values.to_holder ?? "").trim() || null;
-      }
-      if ((values.to_location ?? "") !== (currentLocation ?? "")) {
-        payload.to_location = (values.to_location ?? "").trim() || null;
-      }
-      if (values.note?.trim()) {
-        payload.note = values.note.trim();
-      }
-      await mutation.mutateAsync(
-        payload as Parameters<typeof mutation.mutateAsync>[0],
-      );
-      toast.success("已重新分配");
-      onOpenChange(false);
-    } catch (err) {
-      form.setError("root", { message: toFriendlyMessage(err) });
-    }
   }
 
   return (
@@ -192,7 +171,36 @@ export function ReassignDialog({
           <AlertDialogCancel disabled={mutation.isPending}>
             取消
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={mutation.isPending}>
+          <AlertDialogAction
+            onClick={async (e) => {
+              e.preventDefault(); // 阻止 Radix 默认同步关闭
+              const valid = await form.trigger();
+              if (!valid) return;
+              const values = form.getValues();
+              try {
+                const payload: Partial<TransitionCreate> & {
+                  kind: TransitionKind;
+                } = { kind: "REASSIGN" };
+                if ((values.to_holder ?? "") !== (currentHolder ?? "")) {
+                  payload.to_holder =
+                    (values.to_holder ?? "").trim() || null;
+                }
+                if ((values.to_location ?? "") !== (currentLocation ?? "")) {
+                  payload.to_location =
+                    (values.to_location ?? "").trim() || null;
+                }
+                if (values.note?.trim()) {
+                  payload.note = values.note.trim();
+                }
+                await mutation.mutateAsync(payload);
+                toast.success("已重新分配");
+                onOpenChange(false); // 成功后才关 dialog
+              } catch (err) {
+                form.setError("root", { message: toFriendlyMessage(err) });
+              }
+            }}
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? "提交中…" : "确认"}
           </AlertDialogAction>
         </AlertDialogFooter>

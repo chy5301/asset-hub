@@ -26,10 +26,8 @@ import { cn } from "@/lib/utils";
 import { MENU_ACTIONS, PRIMARY_ACTIONS } from "./available-transitions";
 import { CheckoutDialog } from "./checkout-dialog";
 import { DeclareUnrepairableAlertDialog } from "./declare-unrepairable-alert-dialog";
-import { DismissDialog } from "./dismiss-dialog";
 import { DisposeAlertDialog } from "./dispose-alert-dialog";
 import { ReassignDialog } from "./reassign-dialog";
-import { ReportBrokenDialog } from "./report-broken-dialog";
 import { RetireAlertDialog } from "./retire-alert-dialog";
 import { ReturnDialog } from "./return-dialog";
 import { SimpleTransitionDialog } from "./simple-transition-dialog";
@@ -189,8 +187,17 @@ function ActionArea({
       )}
       {(openDialog === "SEND_TO_MAINTENANCE" ||
         openDialog === "RECOVER_FROM_MAINTENANCE" ||
-        openDialog === "REINSTATE") && (
-        <SimpleTransitionDialog open onOpenChange={closeDialog} assetId={asset.id} kind={openDialog} />
+        openDialog === "REINSTATE" ||
+        openDialog === "REPORT_BROKEN" ||
+        openDialog === "DISMISS") && (
+        <SimpleTransitionDialog
+          open
+          onOpenChange={closeDialog}
+          assetId={asset.id}
+          kind={openDialog}
+          currentHolder={asset.holder ?? null}
+          currentLocation={asset.location ?? null}
+        />
       )}
       {openDialog === "RETIRE" && (
         <RetireAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
@@ -198,30 +205,12 @@ function ActionArea({
       {openDialog === "DISPOSE" && (
         <DisposeAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
       )}
-      {openDialog === "REPORT_BROKEN" && (
-        <ReportBrokenDialog
-          open
-          onOpenChange={closeDialog}
-          assetId={asset.id}
-          currentHolder={asset.holder ?? null}
-          currentLocation={asset.location ?? null}
-        />
-      )}
       {openDialog === "DECLARE_UNREPAIRABLE" && (
         <DeclareUnrepairableAlertDialog
           open
           onOpenChange={closeDialog}
           assetId={asset.id}
           assetName={asset.name}
-        />
-      )}
-      {openDialog === "DISMISS" && (
-        <DismissDialog
-          open
-          onOpenChange={closeDialog}
-          assetId={asset.id}
-          currentHolder={asset.holder ?? null}
-          currentLocation={asset.location ?? null}
         />
       )}
       {openDialog === "REASSIGN" && (
