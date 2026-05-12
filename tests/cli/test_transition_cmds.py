@@ -135,26 +135,89 @@ def test_dispose_from_idle_exits_1(idle_asset_id):
     assert res.exit_code == 1
 
 
-def test_relocate(idle_asset_id):
+def test_report_broken_keeps_holder_by_default(idle_asset_id):
+    """report-broken 不传 --to-holder → 保留 current holder（v2 keep）。"""
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "A", "--json"])
+    res = runner.invoke(app, ["asset", "report-broken", idle_asset_id, "--json"])
+    assert res.exit_code == 0, res.stdout
+    body = json.loads(res.stdout)
+    assert body["data"]["kind"] == "REPORT_BROKEN"
+    assert body["data"]["to_status"] == "BROKEN"
+    assert body["data"]["to_holder"] == "A"  # 保留
+
+
+def test_report_broken_explicit_clear_holder(idle_asset_id):
+    """--to-holder \"\" 显式清空 holder。"""
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "B", "--json"])
+    res = runner.invoke(app, ["asset", "report-broken", idle_asset_id, "--to-holder", "", "--json"])
+    assert res.exit_code == 0, res.stdout
+    body = json.loads(res.stdout)
+    assert body["data"]["to_holder"] is None
+
+
+def test_declare_unrepairable_yes_skips_prompt(idle_asset_id):
+    """--yes 跳过 prompt 完成 MAINTENANCE → BROKEN。"""
+    runner.invoke(app, ["asset", "send-to-maintenance", idle_asset_id, "--json"])
     res = runner.invoke(app, [
-        "asset", "relocate", idle_asset_id,
-        "--to-location", "新仓库", "--json",
+        "asset", "declare-unrepairable", idle_asset_id, "--yes", "--json",
     ])
     assert res.exit_code == 0, res.stdout
     body = json.loads(res.stdout)
-    assert body["data"]["kind"] == "RELOCATE"
-    assert body["data"]["to_location"] == "新仓库"
+    assert body["data"]["kind"] == "DECLARE_UNREPAIRABLE"
+    assert body["data"]["to_status"] == "BROKEN"
 
 
-def test_transfer_holder(idle_asset_id):
+def test_declare_unrepairable_dry_run(idle_asset_id):
+    """--dry-run 不写入，返回 dry-run envelope（exit 10）。"""
+    runner.invoke(app, ["asset", "send-to-maintenance", idle_asset_id, "--json"])
     res = runner.invoke(app, [
-        "asset", "transfer-holder", idle_asset_id,
-        "--to-holder", "李四", "--json",
+        "asset", "declare-unrepairable", idle_asset_id, "--dry-run", "--json",
+    ])
+    assert res.exit_code == 10
+
+
+def test_dismiss_keeps_holder(idle_asset_id):
+    """BROKEN → IDLE 经 dismiss，holder 保留（keep）。"""
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "C", "--json"])
+    runner.invoke(app, ["asset", "report-broken", idle_asset_id, "--json"])
+    res = runner.invoke(app, ["asset", "dismiss", idle_asset_id, "--json"])
+    assert res.exit_code == 0, res.stdout
+    body = json.loads(res.stdout)
+    assert body["data"]["kind"] == "DISMISS"
+    assert body["data"]["to_status"] == "IDLE"
+    assert body["data"]["to_holder"] == "C"  # keep
+
+
+def test_reassign_holder_only(idle_asset_id):
+    """REASSIGN --to-holder 改持有人，OK。"""
+    runner.invoke(app, ["asset", "checkout", idle_asset_id, "--to-holder", "A", "--json"])
+    res = runner.invoke(app, [
+        "asset", "reassign", idle_asset_id, "--to-holder", "B", "--json",
     ])
     assert res.exit_code == 0, res.stdout
     body = json.loads(res.stdout)
-    assert body["data"]["kind"] == "TRANSFER_HOLDER"
-    assert body["data"]["to_holder"] == "李四"
+    assert body["data"]["kind"] == "REASSIGN"
+    assert body["data"]["to_holder"] == "B"
+
+
+def test_reassign_no_change_fails(idle_asset_id):
+    """REASSIGN 不传 → service IllegalTransitionError → exit 1。"""
+    res = runner.invoke(app, ["asset", "reassign", idle_asset_id, "--json"])
+    assert res.exit_code == 1
+    body = json.loads(res.stdout)
+    assert body["success"] is False
+    assert "至少一项" in body["error"]["message"]
+
+
+def test_relocate_command_removed(idle_asset_id):
+    """v1 relocate 命令已删，调用应触发 typer usage error。"""
+    res = runner.invoke(app, ["asset", "relocate", idle_asset_id, "--to-location", "L"])
+    assert res.exit_code == 2  # typer usage error
+
+
+def test_transfer_holder_command_removed(idle_asset_id):
+    res = runner.invoke(app, ["asset", "transfer-holder", idle_asset_id, "--to-holder", "Y"])
+    assert res.exit_code == 2
 
 
 def test_history_after_multiple_transitions(idle_asset_id):
