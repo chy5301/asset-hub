@@ -50,6 +50,8 @@
 | `--status-idle-fg` | 同色相深 fg | IDLE chip 文字色 |
 | `--status-maintenance` | 橙黄，hue ≈ 65° | MAINTENANCE 状态 chip / 背景 |
 | `--status-maintenance-fg` | 同色相深 fg | MAINTENANCE chip 文字色 |
+| `--status-broken` | 红橙，hue ≈ 30°（v2.0） | BROKEN 状态 chip / 背景 |
+| `--status-broken-fg` | 同色相深 fg（v2.0） | BROKEN chip 文字色 |
 | `--status-retired` | 蓝灰，hue ≈ 247° | RETIRED 状态 chip / 背景 |
 | `--status-retired-fg` | 同色相深 fg | RETIRED chip 文字色 |
 | `--status-disposed` | 纯灰，chroma=0 | DISPOSED 状态 chip / 背景（无色相） |
@@ -60,6 +62,8 @@
 | `--warning-fg`         | 同色相深 fg              | warning 文字色 / 角标 fg                                |
 
 light/dark 独立调（不做反转），双套落地于 `globals.css` `:root` + `.dark` + `@theme inline` 映射。
+
+**status-broken**（v2.0）：用于资产"故障"态 chip / badge / chart slice。Light H=30 红橙色调（`oklch(0.93 0.13 30)` bg / `oklch(0.42 0.18 28)` fg），与 status-maintenance（H=65 橙黄）保持 35° hue 距离避免视觉混淆。Dark 模式 `oklch(0.32 0.13 25)` bg / `oklch(0.82 0.15 30)` fg，保持区分度。XLSX 导出 hex：`FFFCCFC1`（`#FCCFC1`，oklch(0.93 0.13 30) 的近似 sRGB）。
 
 ### Dashboard Atmosphere
 

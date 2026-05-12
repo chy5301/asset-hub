@@ -60,11 +60,13 @@
   --color-status-in-use: var(--status-in-use);
   --color-status-idle: var(--status-idle);
   --color-status-maintenance: var(--status-maintenance);
+  --color-status-broken: var(--status-broken);
   --color-status-retired: var(--status-retired);
   --color-status-disposed: var(--status-disposed);
   --color-status-in-use-fg: var(--status-in-use-fg);
   --color-status-idle-fg: var(--status-idle-fg);
   --color-status-maintenance-fg: var(--status-maintenance-fg);
+  --color-status-broken-fg: var(--status-broken-fg);
   --color-status-retired-fg: var(--status-retired-fg);
   --color-status-disposed-fg: var(--status-disposed-fg);
   --color-status-borrowed: var(--status-borrowed);
@@ -116,6 +118,8 @@
   --status-idle-fg: oklch(0.45 0.03 247);
   --status-maintenance: oklch(0.93 0.09 65);
   --status-maintenance-fg: oklch(0.42 0.14 55);
+  --status-broken: oklch(0.93 0.13 30);
+  --status-broken-fg: oklch(0.42 0.18 28);
   --status-retired: oklch(0.93 0.005 247);
   --status-retired-fg: oklch(0.50 0.008 247);
   --status-disposed: oklch(0.95 0.000 0);
@@ -189,6 +193,8 @@
   --status-idle-fg: oklch(0.75 0.02 247);
   --status-maintenance: oklch(0.30 0.09 60);
   --status-maintenance-fg: oklch(0.85 0.13 65);
+  --status-broken: oklch(0.32 0.13 25);
+  --status-broken-fg: oklch(0.82 0.15 30);
   --status-retired: oklch(0.22 0.005 247);
   --status-retired-fg: oklch(0.62 0.008 247);
   --status-disposed: oklch(0.18 0.000 0);

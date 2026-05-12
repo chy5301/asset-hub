@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 import {
-  ArrowRightFromLine, ArrowLeftRight,
+  AlertTriangle,
+  ArrowRightFromLine,
   Archive, ArchiveRestore,
-  Clock, MapPin, PackageCheck,
+  Clock,
+  PackageCheck,
+  ShieldCheck, ShieldOff, Shuffle,
   Trash2, Undo2, Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -39,9 +42,11 @@ const KIND_META: Record<TransitionKind, KindMeta> = {
   RECOVER_FROM_MAINTENANCE: { label: "维修完成",   Icon: PackageCheck,       bgClass: "bg-status-idle/15",        fgClass: "text-status-idle-fg" },
   RETIRE:                   { label: "退役",       Icon: Archive,            bgClass: "bg-status-retired/15",     fgClass: "text-status-retired-fg" },
   REINSTATE:                { label: "重新启用",   Icon: ArchiveRestore,     bgClass: "bg-status-idle/15",        fgClass: "text-status-idle-fg" },
-  DISPOSE:                  { label: "处置",       Icon: Trash2,             bgClass: "bg-status-disposed/15",    fgClass: "text-status-disposed-fg" },
-  RELOCATE:                 { label: "变更位置",   Icon: MapPin,             bgClass: "bg-muted",                 fgClass: "text-muted-foreground" },
-  TRANSFER_HOLDER:          { label: "变更保管人", Icon: ArrowLeftRight,     bgClass: "bg-muted",                 fgClass: "text-muted-foreground" },
+  DISPOSE:                  { label: "注销",       Icon: Trash2,             bgClass: "bg-status-disposed/15",    fgClass: "text-status-disposed-fg" },
+  REASSIGN:                 { label: "重新分配",   Icon: Shuffle,            bgClass: "bg-muted",                 fgClass: "text-muted-foreground" },
+  REPORT_BROKEN:            { label: "出现故障",   Icon: AlertTriangle,      bgClass: "bg-status-broken/15",      fgClass: "text-status-broken-fg" },
+  DECLARE_UNREPAIRABLE:     { label: "故障报废",   Icon: ShieldOff,          bgClass: "bg-status-broken/15",      fgClass: "text-status-broken-fg" },
+  DISMISS:                  { label: "故障解除",   Icon: ShieldCheck,        bgClass: "bg-status-idle/15",        fgClass: "text-status-idle-fg" },
 };
 
 function formatLine(t: TransitionRead): string {
@@ -61,11 +66,23 @@ function formatLine(t: TransitionRead): string {
     case "REINSTATE":
       return "重新启用";
     case "DISPOSE":
-      return "处置";
-    case "RELOCATE":
-      return `变更位置至 ${t.to_location}`;
-    case "TRANSFER_HOLDER":
-      return `变更保管人 ${t.from_holder ?? "无"} → ${t.to_holder}`;
+      return "注销";
+    case "REASSIGN": {
+      const parts: string[] = [];
+      if (t.from_holder !== t.to_holder) {
+        parts.push(`持有人 ${t.from_holder ?? "(空)"} → ${t.to_holder ?? "(空)"}`);
+      }
+      if (t.from_location !== t.to_location) {
+        parts.push(`位置 ${t.from_location ?? "(空)"} → ${t.to_location ?? "(空)"}`);
+      }
+      return parts.join(" · ") || "重新分配";
+    }
+    case "REPORT_BROKEN":
+      return "出现故障" + (t.note ? ` · ${t.note}` : "");
+    case "DECLARE_UNREPAIRABLE":
+      return "判定不可修复" + (t.note ? ` · ${t.note}` : "");
+    case "DISMISS":
+      return "故障解除" + (t.note ? ` · ${t.note}` : "");
   }
 }
 

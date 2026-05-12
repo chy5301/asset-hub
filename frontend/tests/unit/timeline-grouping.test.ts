@@ -55,10 +55,10 @@ describe("groupByCheckout", () => {
     ]);
   });
 
-  it("EXTERNAL CHECKOUT + 中间夹 RELOCATE + RETURN", () => {
+  it("EXTERNAL CHECKOUT + 中间夹 REASSIGN + RETURN", () => {
     const ts: TransitionRead[] = [
       mkT("ret", "RETURN", "2026-05-10T10:00:00Z", { closes_transition_id: "co" }),
-      mkT("relo", "RELOCATE", "2026-05-05T10:00:00Z"),
+      mkT("reassign", "REASSIGN", "2026-05-05T10:00:00Z"),
       mkT("co", "CHECKOUT_EXTERNAL", "2026-04-20T10:00:00Z"),
     ];
     const out = groupByCheckout(ts);
@@ -69,12 +69,25 @@ describe("groupByCheckout", () => {
 
   it("OPEN CHECKOUT（没有对应 RETURN，向更新方向延伸）", () => {
     const ts: TransitionRead[] = [
-      mkT("trans", "TRANSFER_HOLDER", "2026-05-05T10:00:00Z"),
+      mkT("reassign", "REASSIGN", "2026-05-05T10:00:00Z"),
       mkT("co", "CHECKOUT_INTERNAL", "2026-04-20T10:00:00Z"),
     ];
     const out = groupByCheckout(ts);
     expect(out[0].group).toEqual({ kind: "in-use", position: "middle" });
     expect(out[1].group).toEqual({ kind: "in-use", position: "start" });
+  });
+
+  it("v2: OPEN CHECKOUT 期间 REPORT_BROKEN → DISMISS 均为 middle（派出集不闭合）", () => {
+    // IN_USE → REPORT_BROKEN → DISMISS 整段应归属同一 in-use 派出周期
+    const ts: TransitionRead[] = [
+      mkT("dismiss", "DISMISS", "2026-05-10T10:00:00Z"),
+      mkT("broken", "REPORT_BROKEN", "2026-05-05T10:00:00Z"),
+      mkT("co", "CHECKOUT_INTERNAL", "2026-04-20T10:00:00Z"),
+    ];
+    const out = groupByCheckout(ts);
+    expect(out[0].group).toEqual({ kind: "in-use", position: "middle" });
+    expect(out[1].group).toEqual({ kind: "in-use", position: "middle" });
+    expect(out[2].group).toEqual({ kind: "in-use", position: "start" });
   });
 
   it("周期外 transition group=null", () => {

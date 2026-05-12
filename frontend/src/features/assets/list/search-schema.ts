@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ASSET_STATUS_VALUES = ["IN_USE", "IDLE", "MAINTENANCE", "RETIRED", "DISPOSED"] as const;
+export const ASSET_STATUS_VALUES = ["IDLE", "IN_USE", "MAINTENANCE", "BROKEN", "RETIRED", "DISPOSED"] as const;
 
 /** 默认排序键（升序）。后端默认按 asset_code 升序，前端 URL 同步保持一致。 */
 export const DEFAULT_SORT = "asset_code";

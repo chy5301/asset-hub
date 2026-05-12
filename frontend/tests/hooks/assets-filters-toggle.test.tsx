@@ -59,12 +59,12 @@ function renderFiltersWithRouter(search: AssetsSearch = defaultSearch) {
 }
 
 describe("AssetsFilters Toggle URL sync", () => {
-  it("toggle 显示已退役 → URL 加 show_retired=true", async () => {
+  it("toggle 显示退役 → URL 加 show_retired=true", async () => {
     const user = userEvent.setup();
     const { router } = renderFiltersWithRouter();
 
     // 等组件挂载完成
-    const toggle = await screen.findByRole("button", { name: "显示已退役资产" });
+    const toggle = await screen.findByRole("button", { name: "显示退役资产" });
     await user.click(toggle);
 
     await waitFor(() => {
@@ -72,11 +72,11 @@ describe("AssetsFilters Toggle URL sync", () => {
     });
   });
 
-  it("toggle 显示已处置 → URL 加 show_disposed=true", async () => {
+  it("toggle 显示注销 → URL 加 show_disposed=true", async () => {
     const user = userEvent.setup();
     const { router } = renderFiltersWithRouter();
 
-    const toggle = await screen.findByRole("button", { name: "显示已处置资产" });
+    const toggle = await screen.findByRole("button", { name: "显示注销资产" });
     await user.click(toggle);
 
     await waitFor(() => {

@@ -6,7 +6,7 @@ interface Props {
   data: Record<string, number> | null;
 }
 
-const ORDER: AssetStatus[] = ["IDLE", "IN_USE", "MAINTENANCE", "RETIRED", "DISPOSED"];
+const ORDER: AssetStatus[] = ["IDLE", "IN_USE", "MAINTENANCE", "BROKEN", "RETIRED", "DISPOSED"];
 const SEGMENT_LABEL_MIN_PCT = 6;
 
 export function StatusDistributionChart({ data }: Props) {
