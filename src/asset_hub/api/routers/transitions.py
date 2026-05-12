@@ -21,14 +21,8 @@ def create_transition(
     body: TransitionCreate,
     svc: Annotated[TransitionService, Depends(_get_svc)],
 ):
-    return svc.record_transition(
-        asset_id=asset_id,
-        kind=body.kind,
-        to_holder=body.to_holder,
-        to_location=body.to_location,
-        note=body.note,
-        due_at=body.due_at,
-    )
+    kwargs = body.model_dump(exclude_unset=True, exclude={"kind"})
+    return svc.record_transition(asset_id=asset_id, kind=body.kind, **kwargs)
 
 
 @router.get("/{asset_id}/transitions", response_model=list[TransitionRead])

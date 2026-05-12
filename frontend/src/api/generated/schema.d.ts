@@ -287,7 +287,7 @@ export interface components {
          * AssetStatus
          * @enum {string}
          */
-        AssetStatus: "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED" | "DISPOSED";
+        AssetStatus: "IDLE" | "IN_USE" | "MAINTENANCE" | "BROKEN" | "RETIRED" | "DISPOSED";
         /**
          * AssetUpdate
          * @description 注意：
@@ -471,7 +471,7 @@ export interface components {
          * TransitionKind
          * @enum {string}
          */
-        TransitionKind: "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL" | "RETURN" | "SEND_TO_MAINTENANCE" | "RECOVER_FROM_MAINTENANCE" | "RETIRE" | "REINSTATE" | "DISPOSE" | "RELOCATE" | "TRANSFER_HOLDER";
+        TransitionKind: "CHECKOUT_INTERNAL" | "CHECKOUT_EXTERNAL" | "RETURN" | "SEND_TO_MAINTENANCE" | "RECOVER_FROM_MAINTENANCE" | "RETIRE" | "REINSTATE" | "DISPOSE" | "REASSIGN" | "REPORT_BROKEN" | "DECLARE_UNREPAIRABLE" | "DISMISS";
         /** TransitionRead */
         TransitionRead: {
             /**
