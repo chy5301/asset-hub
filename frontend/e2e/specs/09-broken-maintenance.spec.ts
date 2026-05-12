@@ -2,9 +2,9 @@ import { test } from "@playwright/test";
 import { registerAsset } from "../helpers/register-asset";
 import { assertStatusChip } from "../helpers/assert-status";
 
-// 实测 selector（来自 report-broken-dialog.tsx / simple-transition-dialog.tsx / available-transitions.ts）：
+// 实测 selector（来自 simple-transition-dialog.tsx / available-transitions.ts）：
 // - 出现故障触发（IDLE）：MENU_ACTIONS[IDLE] → "出现故障…"（DropdownMenuItem 加 …）
-// - ReportBrokenDialog：AlertDialogAction "确认标记"
+// - SimpleTransitionDialog(REPORT_BROKEN)：AlertDialogAction "确认出现故障"
 // - BROKEN 菜单：MENU_ACTIONS[BROKEN] → "送修…"（DropdownMenuItem 加 …）
 // - SimpleTransitionDialog(SEND_TO_MAINTENANCE)：AlertDialogAction "确认送修"
 // - 维修完成：PRIMARY_ACTIONS[MAINTENANCE] → "维修完成"
@@ -19,7 +19,7 @@ test.describe("09 · broken-maintenance", () => {
     // IDLE → BROKEN（直接从 IDLE 触发出现故障）
     await page.getByRole("button", { name: "更多操作" }).click();
     await page.getByRole("menuitem", { name: /出现故障/i }).click();
-    await page.getByRole("button", { name: "确认标记" }).click();
+    await page.getByRole("button", { name: "确认出现故障" }).click();
     await assertStatusChip(page, "BROKEN");
 
     // BROKEN → MAINTENANCE（MENU_ACTIONS[BROKEN] → "送修…"）

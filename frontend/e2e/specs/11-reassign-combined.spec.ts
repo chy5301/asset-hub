@@ -5,7 +5,7 @@ import { assertStatusChip } from "../helpers/assert-status";
 // 实测 selector（来自 reassign-dialog.tsx / available-transitions.ts）：
 // - REASSIGN 触发：MENU_ACTIONS[IN_USE/IDLE/...] → "重新分配…"（DropdownMenuItem 加 …）
 // - ReassignDialog 字段：FormLabel "持有人"、FormLabel "位置"
-// - 提交：AlertDialogAction "确认"
+// - 提交：AlertDialogAction "确认重新分配"
 // - timeline：formatLine REASSIGN 显示 "持有人 X → Y · 位置 A → B"
 //
 // NOTE: ReassignDialog 已修复 AlertDialogAction 沉默失败问题（e.preventDefault() + 手动 onOpenChange(false)）
@@ -35,8 +35,8 @@ test.describe("11 · reassign-combined", () => {
     await dialog.locator("input").nth(0).fill("李四");
     await dialog.locator("input").nth(1).fill("L2");
 
-    // 提交（AlertDialogAction text: "确认"）
-    await dialog.getByRole("button", { name: "确认" }).click();
+    // 提交（AlertDialogAction text: "确认重新分配"）
+    await dialog.getByRole("button", { name: "确认重新分配" }).click();
 
     // 等待 toast "已重新分配" 出现（证明 mutation 成功）
     await expect(page.getByText("已重新分配")).toBeVisible({ timeout: 8000 });

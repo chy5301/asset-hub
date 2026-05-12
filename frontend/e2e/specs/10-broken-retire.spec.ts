@@ -4,7 +4,7 @@ import { assertStatusChip } from "../helpers/assert-status";
 
 // 实测 selector（来自 declare-unrepairable-alert-dialog.tsx / retire-alert-dialog.tsx / dispose-alert-dialog.tsx）：
 // - IDLE → MAINTENANCE：MENU_ACTIONS[IDLE] → "送修…" → "确认送修"
-// - MAINTENANCE → BROKEN：MENU_ACTIONS[MAINTENANCE] → "判定不可修复…" → "确认判定"
+// - MAINTENANCE → BROKEN：MENU_ACTIONS[MAINTENANCE] → "判定不可修复…" → "确认不可修复"
 // - BROKEN → RETIRED：MENU_ACTIONS[BROKEN] → "退役…" → "确认退役"
 // - RETIRED → DISPOSED：MENU_ACTIONS[RETIRED] → "注销…"
 //     → placeholder "输入\"注销\"以解锁" → fill "注销" → "确认注销"
@@ -25,7 +25,7 @@ test.describe("10 · broken-retire", () => {
     // MAINTENANCE → BROKEN（判定不可修复）
     await page.getByRole("button", { name: "更多操作" }).click();
     await page.getByRole("menuitem", { name: /判定不可修复/i }).click();
-    await page.getByRole("button", { name: "确认判定" }).click();
+    await page.getByRole("button", { name: "确认不可修复" }).click();
     await assertStatusChip(page, "BROKEN");
 
     // BROKEN → RETIRED

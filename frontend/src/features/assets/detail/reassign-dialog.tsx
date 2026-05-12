@@ -201,7 +201,7 @@ export function ReassignDialog({
             }}
             disabled={mutation.isPending}
           >
-            {mutation.isPending ? "提交中…" : "确认"}
+            {mutation.isPending ? "提交中…" : "确认重新分配"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

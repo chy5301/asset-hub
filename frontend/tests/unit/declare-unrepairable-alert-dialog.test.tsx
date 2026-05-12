@@ -37,7 +37,7 @@ describe("DeclareUnrepairableAlertDialog", () => {
       />,
       { wrapper },
     );
-    expect(screen.getByRole("button", { name: "确认判定" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认不可修复" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
   });
 

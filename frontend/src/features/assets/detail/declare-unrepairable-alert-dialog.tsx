@@ -94,7 +94,7 @@ export function DeclareUnrepairableAlertDialog({
             取消
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={mutation.isPending}>
-            {mutation.isPending ? "提交中…" : "确认判定"}
+            {mutation.isPending ? "提交中…" : "确认不可修复"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

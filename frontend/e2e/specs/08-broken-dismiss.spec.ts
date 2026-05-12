@@ -2,11 +2,11 @@ import { test, expect } from "@playwright/test";
 import { registerAsset } from "../helpers/register-asset";
 import { assertStatusChip } from "../helpers/assert-status";
 
-// 实测 selector（来自 report-broken-dialog.tsx / dismiss-dialog.tsx / available-transitions.ts）：
+// 实测 selector（来自 simple-transition-dialog.tsx / available-transitions.ts）：
 // - 出现故障触发：MENU_ACTIONS[IN_USE] → "出现故障"（在 ⋯ DropdownMenu）
-// - ReportBrokenDialog：AlertDialogAction "确认标记"
+// - SimpleTransitionDialog(REPORT_BROKEN)：AlertDialogAction "确认出现故障"
 // - BROKEN 主按钮：PRIMARY_ACTIONS[BROKEN] → "故障解除"
-// - DismissDialog：AlertDialogAction "确认解除"
+// - SimpleTransitionDialog(DISMISS)：AlertDialogAction "确认故障解除"
 // - timeline：含 CHECKOUT_INTERNAL / REPORT_BROKEN / DISMISS 3 条
 
 test.describe("08 · broken-dismiss", () => {
@@ -25,14 +25,14 @@ test.describe("08 · broken-dismiss", () => {
     await page.getByRole("button", { name: "更多操作" }).click();
     await page.getByRole("menuitem", { name: /出现故障/i }).click();
     // ReportBrokenDialog：直接确认（holder 默认预填）
-    await page.getByRole("button", { name: "确认标记" }).click();
+    await page.getByRole("button", { name: "确认出现故障" }).click();
     // 资产进入 BROKEN，StatusBadge 显示"故障"
     await assertStatusChip(page, "BROKEN");
 
     // BROKEN 状态：主按钮"故障解除"（PRIMARY_ACTIONS[BROKEN]）
     await page.getByRole("button", { name: "故障解除" }).click();
     // DismissDialog：确认解除
-    await page.getByRole("button", { name: "确认解除" }).click();
+    await page.getByRole("button", { name: "确认故障解除" }).click();
     // 回到 IDLE
     await assertStatusChip(page, "IDLE");
 
