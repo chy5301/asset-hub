@@ -17,8 +17,10 @@ class TransitionKind(StrEnum):
     RETIRE = "RETIRE"
     REINSTATE = "REINSTATE"
     DISPOSE = "DISPOSE"
-    RELOCATE = "RELOCATE"
-    TRANSFER_HOLDER = "TRANSFER_HOLDER"
+    REASSIGN = "REASSIGN"                              # v2.0 新（合并 RELOCATE + TRANSFER_HOLDER）
+    REPORT_BROKEN = "REPORT_BROKEN"                    # v2.0 新
+    DECLARE_UNREPAIRABLE = "DECLARE_UNREPAIRABLE"      # v2.0 新
+    DISMISS = "DISMISS"                                # v2.0 新
 
 
 class StateTransitionRecord(SQLModel, table=True):

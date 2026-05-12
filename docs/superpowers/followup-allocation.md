@@ -121,3 +121,33 @@ M2d 实施 + final code review + simplify review 过程中又产生了一批新 
 - [`simplify-followups.md` §5 M2d 范围](./simplify-followups.md#5-m2d-范围2026-04-29)：K1-K9（已落地 4 项，未修 9 项；其中 **K1 envelope 统一**为 HIGH 优先级，登记到 M3 SKILL.md 完善同周期）
 - [`specs/2026-04-29-m2d-cli-serve-design.md` 附录 B](./specs/2026-04-29-m2d-cli-serve-design.md)：M2d 已知 Gap（Linux 真机烟测延后 / 多代日志轮转 / serve doctor / serve build 独立子命令 / --workers）
 - [`release-notes-m2d.md`](./release-notes-m2d.md)：部署清单 + Windows 烟测 checklist
+
+---
+
+## v2.0 PR-1 · 状态机焕新 + 文案 + CLI flag 标准化 ⏳
+
+合并 commit：<等 PR-1 merge 后回填>
+PR：https://github.com/chy5301/asset-hub/pull/3
+
+落地范围：
+- 6 态状态机（+ BROKEN）
+- 12 transition kind（+REASSIGN / +REPORT_BROKEN / +DECLARE_UNREPAIRABLE / +DISMISS, - RELOCATE / -TRANSFER_HOLDER）
+- keep rule 引入（_UNSET 哨兵 / model_dump exclude_unset 透传）
+- 派出集 closes 通用化
+- CLI flag 12 处 rename（统一 --to-holder / --to-location）
+- 全 6 态文案两字对齐（DISPOSE：处置 → 注销）
+- status-broken 色 token + 4 新 dialog + transition-timeline KIND_META v2
+- e2e 4 新 spec（BROKEN 生命周期）
+- SKILL.md / references v2 全面重写
+
+搭车闭环 followup：
+- KIND_META 跨文件合一（M3 §U）—— 部分闭环（KIND_META 重写时新增 4 kind 已对齐多文件，旧不一致仍存）
+- 简化 CLI flag 不一致（M3 followup）—— 完全闭环
+
+未解决 followup（PR-1 范围外）：
+- ~~ReassignDialog 表单时序 bug~~ **已在 2026-05-13 /simplify pass 修复**（commit `6852a3a`）：用 `e.preventDefault()` 阻止 AlertDialogAction 默认 close + 手动 `onOpenChange(false)`（mutation 成功后才关），spec 11 e2e 已从 `test.skip` 改回 `test` 并验证通过。
+- Dashboard 与列表 filter toggle 文案风格不统一（2026-05-13 visual smoke 发现）：`/dashboard` 顶部 toggle 是"已退役 / 已注销"（保留"已"前缀，过去时表达"已在此态"），而 `/` 列表的 filter toggle 是"显示退役 / 显示注销"（无"已"，动作 + 状态名）。两处都是用户可见 v2 文案，建议下一轮 polish 时统一为同一句式（推荐"显示退役 / 显示注销"句式，与 STATUS_META label 配套使用更清晰）。属 cosmetic 一致性问题，不阻塞 PR-1。
+- `asset-hub serve stop` 不清非自管端口占用（2026-05-13 visual smoke 发现）：当 5173 端口被非 serve 拉起的旧 Vite 实例占住时，`serve start` 会让新 Vite 自动切到 5174，但 health probe 和提示信息仍按 5173 走 → 浏览器访问 5173 加载到旧 bundle，hot-reload 也不生效。`serve stop` 只 kill 自己 PID 文件里记的进程，不清这种"外部占用者"。修复方向：（a）`serve start` 启动前 probe `frontend_port`，若被外部进程占用应明确 fail 而不是放任 Vite 切端口；或（b）`serve doctor` 增加"端口占用者不在我管理范围"的检测项。
+- 2026-05-13 /simplify pass 衍生 minor 项（reviewer 标 Minor，未修）：dialog test wrapper 重复（reassign/declare-unrepairable test 各自创建 QueryClient + provider，可抽 `createWrapper()`）；checkout 的 `to_holder` 不走 `parse_unset_or_value` 缺解释注释；test docstring `v2.0:` 前缀属变更日志噪音；`find_open_checkout_id` 2 次查询可合并为单次 LEFT JOIN；migration UPDATE / downgrade 全表扫描（无 `status`/`kind` 索引；对小团队工具可接受）；`useTransitionsQuery` 无分页（v2 后单资产 transition 数量上限可能↑）。
+- `asset-header.test.tsx:225` "逾期 3 天" 测时间敏感 flaky（commit `3dcdf56` M3d 引入，main 也 fail，与 PR-1 无关）：测试构造 `due_at = Date.now() - 3*86400000` 解析时无时区导致按 local 时间偏移得到 3+ 天而非 3 天。修复方向：用 `vi.useFakeTimers()` 冻结时间，或断言 `/逾期 \d 天/` 正则（不强 3）。
+- PR-1 visual smoke 手动 QA：已于 2026-05-13 用 Playwright MCP 完成，6 态 / 4 新 dialog / dispose phrase "注销" / BROKEN 资产 5 按钮路径全部对齐 v2 spec，详见 controller 烟测报告。

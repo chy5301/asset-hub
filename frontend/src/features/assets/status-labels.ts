@@ -1,6 +1,7 @@
-import { Archive, Circle, CircleDot, Moon, Wrench, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Archive, Circle, CircleDot, Moon, Wrench, type LucideIcon } from "lucide-react";
 
-export type AssetStatus = "IN_USE" | "IDLE" | "MAINTENANCE" | "RETIRED" | "DISPOSED";
+import type { AssetStatus } from "@/features/assets/types";
+export type { AssetStatus } from "@/features/assets/types";
 
 export interface StatusMeta {
   label: string;
@@ -10,32 +11,38 @@ export interface StatusMeta {
 }
 
 export const STATUS_META: Record<AssetStatus, StatusMeta> = {
-  IN_USE: {
-    label: "使用中",
-    bgVar: "--status-in-use",
-    fgVar: "--status-in-use-fg",
-    Icon: CircleDot,
-  },
   IDLE: {
-    label: "闲置中",
+    label: "闲置",
     bgVar: "--status-idle",
     fgVar: "--status-idle-fg",
     Icon: Circle,
   },
+  IN_USE: {
+    label: "在用",
+    bgVar: "--status-in-use",
+    fgVar: "--status-in-use-fg",
+    Icon: CircleDot,
+  },
   MAINTENANCE: {
-    label: "维修中",
+    label: "送修",
     bgVar: "--status-maintenance",
     fgVar: "--status-maintenance-fg",
     Icon: Wrench,
   },
+  BROKEN: {
+    label: "故障",
+    bgVar: "--status-broken",
+    fgVar: "--status-broken-fg",
+    Icon: AlertTriangle,
+  },
   RETIRED: {
-    label: "已退役",
+    label: "退役",
     bgVar: "--status-retired",
     fgVar: "--status-retired-fg",
     Icon: Moon,
   },
   DISPOSED: {
-    label: "已处置",
+    label: "注销",
     bgVar: "--status-disposed",
     fgVar: "--status-disposed-fg",
     Icon: Archive,

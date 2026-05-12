@@ -13,7 +13,7 @@ describe("DashboardHeader", () => {
   it("toggle pills reflect prop state via data-state", () => {
     render(<DashboardHeader includeRetired={true} includeDisposed={false} onToggle={vi.fn()} />);
     expect(screen.getByRole("button", { name: /已退役/ })).toHaveAttribute("data-state", "on");
-    expect(screen.getByRole("button", { name: /已处置/ })).toHaveAttribute("data-state", "off");
+    expect(screen.getByRole("button", { name: /已注销/ })).toHaveAttribute("data-state", "off");
   });
 
   it("clicking pill calls onToggle with toggled state", () => {

@@ -30,7 +30,7 @@ describe("StatusDistributionChart", () => {
 
   it("renders dot legend labels", () => {
     render(<StatusDistributionChart data={{ IDLE: 5, IN_USE: 5 }} />);
-    expect(screen.getByText("使用中")).toBeInTheDocument();
-    expect(screen.getByText("闲置中")).toBeInTheDocument();
+    expect(screen.getByText("在用")).toBeInTheDocument();
+    expect(screen.getByText("闲置")).toBeInTheDocument();
   });
 });

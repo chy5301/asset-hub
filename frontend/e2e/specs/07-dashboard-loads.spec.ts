@@ -20,7 +20,7 @@ test.describe("07 · dashboard-loads", () => {
     await expect(page.getByText("状态分布")).toBeVisible();
     await expect(page.getByText("保管人持有")).toBeVisible();
 
-    // 状态分布应显示新文案（seeded 资产为 IDLE → 闲置中）
-    await expect(page.getByText(/闲置中/i)).toBeVisible();
+    // 状态分布应显示新文案（seeded 资产为 IDLE → 闲置）
+    await expect(page.getByText(/^闲置$/i)).toBeVisible();
   });
 });

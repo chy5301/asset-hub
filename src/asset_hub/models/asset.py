@@ -12,9 +12,10 @@ if TYPE_CHECKING:
 
 
 class AssetStatus(StrEnum):
-    IN_USE = "IN_USE"
     IDLE = "IDLE"
+    IN_USE = "IN_USE"
     MAINTENANCE = "MAINTENANCE"
+    BROKEN = "BROKEN"
     RETIRED = "RETIRED"
     DISPOSED = "DISPOSED"
 

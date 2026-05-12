@@ -23,27 +23,28 @@ from asset_hub.services.asset import AssetService
 from asset_hub.services.asset_type import TypeService
 
 # spec §B.4: 状态字段写人类标签 (与 frontend STATUS_META.label 同义)
-# 后续 simplify 可消除 stats / asset CLI 字面量统一指向此 dict (不在 M3c 范围)
+# v2.0：6 态全两字对齐
 STATUS_LABELS: dict[AssetStatus, str] = {
-    AssetStatus.IN_USE: "使用中",
-    AssetStatus.IDLE: "闲置中",
-    AssetStatus.MAINTENANCE: "维修中",
-    AssetStatus.RETIRED: "已退役",
-    AssetStatus.DISPOSED: "已处置",
+    AssetStatus.IDLE: "闲置",
+    AssetStatus.IN_USE: "在用",
+    AssetStatus.MAINTENANCE: "送修",
+    AssetStatus.BROKEN: "故障",  # v2.0 新
+    AssetStatus.RETIRED: "退役",
+    AssetStatus.DISPOSED: "注销",  # v2.0 改名
 }
 
 # 反向: label → enum (用于 _render_xlsx 染色时把 row 中的中文 status 反查回 enum)
 _LABEL_TO_STATUS: dict[str, AssetStatus] = {v: k for k, v in STATUS_LABELS.items()}
 
-# spec §B.7: 5 态 light 模式 OKLCH 转 sRGB ARGB hex.
-# 输入 OKLCH 来自 frontend/src/styles/globals.css line 102-110 light 模式,
-# 用 colour-science 实施期一次性算出 (脚本见 PR-1 plan Task 2).
+# spec §B.7: 6 态 light 模式 OKLCH 转 sRGB ARGB hex.
+# v2.0 加 BROKEN hex（基于 globals.css line ~121: oklch(0.93 0.13 30) → 红橙色调）
 # 与 frontend 视觉对齐, 但导出文件永远用 light hex (打印友好, 与浏览器
 # dark/light 切换无关).
 STATUS_HEX: dict[AssetStatus, str] = {
-    AssetStatus.IN_USE: "FFBBF5CD",
     AssetStatus.IDLE: "FFE4ECF5",
+    AssetStatus.IN_USE: "FFBBF5CD",
     AssetStatus.MAINTENANCE: "FFFFDCA8",
+    AssetStatus.BROKEN: "FFFCCFC1",  # v2.0 新（oklch(0.93 0.13 30) 红橙近似）
     AssetStatus.RETIRED: "FFE5E8EB",
     AssetStatus.DISPOSED: "FFEEEEEE",
 }
@@ -140,7 +141,7 @@ class ExportService:
         rows: list[dict[str, str]],
         column_names: list[str],
     ) -> bytes:
-        """spec §B.7 / §B.7.1: openpyxl + 5 态 PatternFill + freeze A2 + autofilter."""
+        """spec §B.7 / §B.7.1: openpyxl + 6 态 PatternFill + freeze A2 + autofilter."""
         wb = Workbook()
         ws = wb.active
         ws.title = self._SHEET_NAME
@@ -153,7 +154,7 @@ class ExportService:
 
         # Data rows
         wrap_align = Alignment(wrap_text=True, vertical="top")
-        # 预生成 5 态 PatternFill 对象, 与 Alignment/Font 一样在 method 顶部复用
+        # 预生成 6 态 PatternFill 对象, 与 Alignment/Font 一样在 method 顶部复用
         status_fills: dict[AssetStatus, PatternFill] = {
             status: PatternFill(
                 start_color=hex_val,

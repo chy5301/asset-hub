@@ -1,5 +1,5 @@
-import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { useRecordTransitionMutation } from "@/api/hooks/transitions";
@@ -13,58 +13,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { buttonVariants } from "@/components/ui/button";
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { toFriendlyMessage } from "@/lib/error";
 
-const CONFIRM_PHRASE = "注销";
-
-interface DisposeAlertDialogProps {
+interface DeclareUnrepairableAlertDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assetId: string;
   assetName: string;
 }
 
-export function DisposeAlertDialog({
+export function DeclareUnrepairableAlertDialog({
   open,
   onOpenChange,
   assetId,
   assetName,
-}: DisposeAlertDialogProps) {
-  const [confirmText, setConfirmText] = useState("");
+}: DeclareUnrepairableAlertDialogProps) {
   const [note, setNote] = useState("");
-  const [rootError, setRootError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const mutation = useRecordTransitionMutation(assetId);
-
-  const unlocked = confirmText === CONFIRM_PHRASE;
 
   function handleOpenChange(v: boolean) {
     if (mutation.isPending) return;
     if (!v) {
-      setConfirmText("");
       setNote("");
-      setRootError(null);
+      setError(null);
     }
     onOpenChange(v);
   }
 
   async function onConfirm() {
-    setRootError(null);
+    setError(null);
     try {
       await mutation.mutateAsync({
-        kind: "DISPOSE",
+        kind: "DECLARE_UNREPAIRABLE",
         note: note.trim() || null,
       });
-      toast.success("已注销");
-      setConfirmText("");
+      toast.success("已判定不可修复");
       setNote("");
       onOpenChange(false);
     } catch (err) {
-      setRootError(toFriendlyMessage(err));
+      setError(toFriendlyMessage(err));
     }
   }
 
@@ -74,32 +65,25 @@ export function DisposeAlertDialog({
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive">
-              <Trash2 className="size-3.5" aria-hidden />
-              注销
+              <ShieldOff className="size-3.5" aria-hidden />
+              判定不可修复
             </span>
           </div>
-          <AlertDialogTitle>注销 {assetName}？</AlertDialogTitle>
+          <AlertDialogTitle>判定不可修复</AlertDialogTitle>
           <AlertDialogDescription>
-            <strong>此操作不可撤销</strong>
-            。资产 holder 与 location 将被清空，状态置为已注销。
-            如需确认，请在下方输入"{CONFIRM_PHRASE}"二字。
+            将"{assetName}"判定为不可修复（送修 → 故障）。后续可走故障报废或故障解除。
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {rootError && <InlineErrorBanner message={rootError} />}
+        {error && <InlineErrorBanner message={error} />}
 
-        <div className="space-y-3">
-          <Input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={`输入"${CONFIRM_PHRASE}"以解锁`}
-            autoComplete="off"
-            disabled={mutation.isPending}
-          />
+        <div className="space-y-2">
+          <Label htmlFor="declare-unrepairable-note">判定备注（可选）</Label>
           <Textarea
+            id="declare-unrepairable-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="备注（可选，如卖给/捐赠/销毁原因）"
+            placeholder="判定备注（可选）"
             disabled={mutation.isPending}
             rows={3}
           />
@@ -109,12 +93,8 @@ export function DisposeAlertDialog({
           <AlertDialogCancel disabled={mutation.isPending}>
             取消
           </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={!unlocked || mutation.isPending}
-            className={cn(buttonVariants({ variant: "destructive" }))}
-          >
-            {mutation.isPending ? "注销中…" : "确认注销"}
+          <AlertDialogAction onClick={onConfirm} disabled={mutation.isPending}>
+            {mutation.isPending ? "提交中…" : "确认不可修复"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

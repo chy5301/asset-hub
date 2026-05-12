@@ -22,6 +22,7 @@ export const PRIMARY_ACTIONS: Record<AssetStatus, PrimaryAction[]> = {
   ],
   IN_USE:      [{ kind: "RETURN", label: "归还" }],
   MAINTENANCE: [{ kind: "RECOVER_FROM_MAINTENANCE", label: "维修完成" }],
+  BROKEN:      [{ kind: "DISMISS", label: "故障解除" }],
   RETIRED:     [{ kind: "REINSTATE", label: "重新启用" }],
   DISPOSED:    [],
 };
@@ -30,24 +31,30 @@ export const PRIMARY_ACTIONS: Record<AssetStatus, PrimaryAction[]> = {
 export const MENU_ACTIONS: Record<AssetStatus, MenuAction[]> = {
   IDLE: [
     { kind: "SEND_TO_MAINTENANCE", label: "送修" },
+    { kind: "REPORT_BROKEN",       label: "出现故障" },
+    { kind: "REASSIGN",            label: "重新分配" },
     { kind: "RETIRE",              label: "退役" },
-    { kind: "RELOCATE",            label: "变更位置" },
-    { kind: "TRANSFER_HOLDER",     label: "变更保管人" },
   ],
   IN_USE: [
-    { kind: "RELOCATE",            label: "变更位置" },
-    { kind: "TRANSFER_HOLDER",     label: "变更保管人" },
+    { kind: "REPORT_BROKEN",       label: "出现故障" },
+    { kind: "REASSIGN",            label: "重新分配" },
   ],
   MAINTENANCE: [
-    { kind: "RETIRE",              label: "退役" },
-    { kind: "DISPOSE",             label: "处置" },
-    { kind: "RELOCATE",            label: "变更位置" },
-    { kind: "TRANSFER_HOLDER",     label: "变更保管人" },
+    { kind: "DECLARE_UNREPAIRABLE", label: "判定不可修复" },
+    { kind: "REASSIGN",             label: "重新分配" },
+    { kind: "RETIRE",               label: "退役" },
+    { kind: "DISPOSE",              label: "注销" },
+  ],
+  BROKEN: [
+    { kind: "SEND_TO_MAINTENANCE",  label: "送修" },
+    { kind: "DECLARE_UNREPAIRABLE", label: "判定不可修复" },
+    { kind: "REASSIGN",             label: "重新分配" },
+    { kind: "RETIRE",               label: "退役" },
+    { kind: "DISPOSE",              label: "注销" },
   ],
   RETIRED: [
-    { kind: "DISPOSE",             label: "处置" },
-    { kind: "RELOCATE",            label: "变更位置" },
-    { kind: "TRANSFER_HOLDER",     label: "变更保管人" },
+    { kind: "REASSIGN",            label: "重新分配" },
+    { kind: "DISPOSE",             label: "注销" },
   ],
   DISPOSED: [],
 };

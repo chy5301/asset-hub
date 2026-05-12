@@ -25,12 +25,12 @@ import { cn } from "@/lib/utils";
 
 import { MENU_ACTIONS, PRIMARY_ACTIONS } from "./available-transitions";
 import { CheckoutDialog } from "./checkout-dialog";
+import { DeclareUnrepairableAlertDialog } from "./declare-unrepairable-alert-dialog";
 import { DisposeAlertDialog } from "./dispose-alert-dialog";
-import { RelocateDialog } from "./relocate-dialog";
+import { ReassignDialog } from "./reassign-dialog";
 import { RetireAlertDialog } from "./retire-alert-dialog";
 import { ReturnDialog } from "./return-dialog";
 import { SimpleTransitionDialog } from "./simple-transition-dialog";
-import { TransferHolderDialog } from "./transfer-holder-dialog";
 
 interface AssetHeaderProps {
   asset: AssetRead;
@@ -187,8 +187,17 @@ function ActionArea({
       )}
       {(openDialog === "SEND_TO_MAINTENANCE" ||
         openDialog === "RECOVER_FROM_MAINTENANCE" ||
-        openDialog === "REINSTATE") && (
-        <SimpleTransitionDialog open onOpenChange={closeDialog} assetId={asset.id} kind={openDialog} />
+        openDialog === "REINSTATE" ||
+        openDialog === "REPORT_BROKEN" ||
+        openDialog === "DISMISS") && (
+        <SimpleTransitionDialog
+          open
+          onOpenChange={closeDialog}
+          assetId={asset.id}
+          kind={openDialog}
+          currentHolder={asset.holder ?? null}
+          currentLocation={asset.location ?? null}
+        />
       )}
       {openDialog === "RETIRE" && (
         <RetireAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
@@ -196,11 +205,22 @@ function ActionArea({
       {openDialog === "DISPOSE" && (
         <DisposeAlertDialog open onOpenChange={closeDialog} assetId={asset.id} assetName={asset.name} />
       )}
-      {openDialog === "RELOCATE" && (
-        <RelocateDialog open onOpenChange={closeDialog} assetId={asset.id} />
+      {openDialog === "DECLARE_UNREPAIRABLE" && (
+        <DeclareUnrepairableAlertDialog
+          open
+          onOpenChange={closeDialog}
+          assetId={asset.id}
+          assetName={asset.name}
+        />
       )}
-      {openDialog === "TRANSFER_HOLDER" && (
-        <TransferHolderDialog open onOpenChange={closeDialog} assetId={asset.id} />
+      {openDialog === "REASSIGN" && (
+        <ReassignDialog
+          open
+          onOpenChange={closeDialog}
+          assetId={asset.id}
+          currentHolder={asset.holder ?? null}
+          currentLocation={asset.location ?? null}
+        />
       )}
     </div>
   );

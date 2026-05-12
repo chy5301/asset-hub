@@ -222,3 +222,42 @@ uv run asset-hub serve stop --json
 ```
 
 > `code` 和 `fix_hint` **只在 `ok=false` 的检查项才出现**（`DoctorCheck.to_dict()` 控制）。
+
+---
+
+## 任务 5：出现故障 → 故障解除（自愈/自修）
+
+```bash
+# 资产 A 在 IN_USE 状态，holder=李四
+uv run asset-hub asset report-broken <id> --note "屏幕背光偶发异常"
+# → 进入 BROKEN，holder 保留为李四（keep）
+
+# 李四发现重启就好了，自愈
+uv run asset-hub asset dismiss <id> --note "重启后恢复正常"
+# → 回到 IDLE，holder 仍是李四（如需清空传 --to-holder ""）
+# 注：DISMISS 触发派出集 closes 通用化，原 CHECKOUT 在此闭合
+```
+
+---
+
+## 任务 6：出现故障 → 送修 → 维修完成
+
+```bash
+uv run asset-hub asset report-broken <id>
+uv run asset-hub asset send-to-maintenance <id> --to-location "维修车间"
+# 维修完成后
+uv run asset-hub asset recover <id> --to-location "原工位"
+```
+
+---
+
+## 任务 7：出现故障 → 故障报废 → 注销
+
+```bash
+uv run asset-hub asset send-to-maintenance <id>
+# 维修过程中判定不可修
+uv run asset-hub asset declare-unrepairable <id> --yes --note "主板损坏不修"
+# 故障态下直接走退役 + 注销
+uv run asset-hub asset retire <id> --yes
+uv run asset-hub asset dispose <id> --yes --note "由二手回收商处理"
+```

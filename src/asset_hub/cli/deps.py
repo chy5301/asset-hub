@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from asset_hub.cli.envelope import print_error
 from asset_hub.db import get_engine
+from asset_hub.services._common import UNSET, UnsetType
 
 
 @contextmanager
@@ -54,6 +55,20 @@ def parse_enum[E: Enum](cls: type[E], raw: str | None, json_output: bool) -> E |
             code="validation",
             exit_code=2,
         )
+
+
+def parse_unset_or_value(value: str | None) -> str | None | UnsetType:
+    """CLI flag → service 语义转换。
+
+    Typer 默认 None（用户未传）→ UNSET（service 走 keep 路径，保留当前字段）
+    用户传空字符串 ""（显式清空约定）→ None（service 走清空路径）
+    用户传非空字符串 → 原值
+    """
+    if value is None:
+        return UNSET
+    if value == "":
+        return None
+    return value
 
 
 def load_schema_from_file(path: Path, json_output: bool) -> dict:

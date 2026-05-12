@@ -1,6 +1,61 @@
 import uuid
 
 
+def test_send_to_maintenance_no_holder_keeps_current(client, sample_type_nb_via_api):
+    """v2.0：POST transitions 不传 to_holder（字段不在 JSON 中）→ keep current。"""
+    # 直接创建 IDLE 资产并设置 holder="张三"
+    resp = client.post(
+        "/api/assets",
+        json={"name": "待送修笔记本", "type_id": sample_type_nb_via_api, "holder": "张三", "custom_data": {}},
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+
+    # SEND_TO_MAINTENANCE，不传 to_holder 字段
+    r = client.post(f"/api/assets/{aid}/transitions", json={"kind": "SEND_TO_MAINTENANCE"})
+    assert r.status_code == 201
+    body = r.json()
+    assert body["to_holder"] == "张三"  # keep rule 保留
+    assert body["to_status"] == "MAINTENANCE"
+
+
+def test_send_to_maintenance_explicit_null_clears(client, sample_type_nb_via_api):
+    """v2.0：传 to_holder=null（字段在 JSON 中显式为 null）→ 清空。"""
+    resp = client.post(
+        "/api/assets",
+        json={"name": "待送修笔记本2", "type_id": sample_type_nb_via_api, "holder": "张三", "custom_data": {}},
+    )
+    assert resp.status_code == 201
+    aid = resp.json()["id"]
+
+    r = client.post(
+        f"/api/assets/{aid}/transitions",
+        json={"kind": "SEND_TO_MAINTENANCE", "to_holder": None},  # explicit null
+    )
+    assert r.status_code == 201
+    assert r.json()["to_holder"] is None
+
+
+def test_relocate_kind_rejected(client, idle_asset):
+    """v1 RELOCATE 已删，TransitionKind enum 不含，应 422 Pydantic validation。"""
+    aid = idle_asset["id"]
+    r = client.post(
+        f"/api/assets/{aid}/transitions",
+        json={"kind": "RELOCATE", "to_location": "L2"},
+    )
+    assert r.status_code == 422
+
+
+def test_reassign_at_least_one_change(client, idle_asset):
+    """REASSIGN 不传任何字段 → service 抛 IllegalTransitionError → 409。"""
+    aid = idle_asset["id"]
+    # idle_asset 默认 holder=None
+    # REASSIGN 必须改一项，但 holder/location 都 None 且不传 → no-op → 409
+    r = client.post(f"/api/assets/{aid}/transitions", json={"kind": "REASSIGN"})
+    assert r.status_code == 409
+    assert "至少一项" in r.json()["detail"]
+
+
 def test_post_transition_checkout_internal(client, idle_asset):
     resp = client.post(
         f"/api/assets/{idle_asset['id']}/transitions",

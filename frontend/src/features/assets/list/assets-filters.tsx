@@ -149,10 +149,10 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
         className="rounded-full h-7 px-3 text-xs gap-1.5 transition-colors duration-200
                    data-[state=on]:bg-status-retired/15 data-[state=on]:text-status-retired-fg
                    data-[state=on]:border-status-retired/30 border border-border/40"
-        aria-label="显示已退役资产"
+        aria-label="显示退役资产"
       >
         <Moon className="size-3.5" aria-hidden />
-        显示已退役
+        显示退役
       </Toggle>
 
       <Toggle
@@ -162,10 +162,10 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
         className="rounded-full h-7 px-3 text-xs gap-1.5 transition-colors duration-200
                    data-[state=on]:bg-status-disposed/15 data-[state=on]:text-status-disposed-fg
                    data-[state=on]:border-status-disposed/30 border border-border/40"
-        aria-label="显示已处置资产"
+        aria-label="显示注销资产"
       >
         <Archive className="size-3.5" aria-hidden />
-        显示已处置
+        显示注销
       </Toggle>
 
       <Button variant="outline" size="sm" onClick={onReset}>

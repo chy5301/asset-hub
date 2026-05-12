@@ -16,18 +16,26 @@ from asset_hub.services.export import STATUS_HEX, STATUS_LABELS, ExportService
 
 
 class TestStatusDicts:
-    def test_status_labels_covers_5_enum_values(self):
+    def test_status_labels_covers_6_enum_values(self):
+        from asset_hub.models.asset import AssetStatus
+        from asset_hub.services.export import STATUS_LABELS
+        # 应覆盖全部 6 个 enum 值
         assert set(STATUS_LABELS.keys()) == set(AssetStatus)
+        assert len(STATUS_LABELS) == 6
 
     def test_status_labels_chinese(self):
-        assert STATUS_LABELS[AssetStatus.IN_USE] == "使用中"
-        assert STATUS_LABELS[AssetStatus.IDLE] == "闲置中"
-        assert STATUS_LABELS[AssetStatus.MAINTENANCE] == "维修中"
-        assert STATUS_LABELS[AssetStatus.RETIRED] == "已退役"
-        assert STATUS_LABELS[AssetStatus.DISPOSED] == "已处置"
+        assert STATUS_LABELS[AssetStatus.IN_USE] == "在用"
+        assert STATUS_LABELS[AssetStatus.IDLE] == "闲置"
+        assert STATUS_LABELS[AssetStatus.MAINTENANCE] == "送修"
+        assert STATUS_LABELS[AssetStatus.BROKEN] == "故障"
+        assert STATUS_LABELS[AssetStatus.RETIRED] == "退役"
+        assert STATUS_LABELS[AssetStatus.DISPOSED] == "注销"
 
-    def test_status_hex_covers_5_enum_values(self):
+    def test_status_hex_covers_6_enum_values(self):
+        from asset_hub.models.asset import AssetStatus
+        from asset_hub.services.export import STATUS_HEX
         assert set(STATUS_HEX.keys()) == set(AssetStatus)
+        assert len(STATUS_HEX) == 6
 
     def test_status_hex_format(self):
         # ARGB hex: 8 大写 char, 前 2 char 是 FF (full alpha)
@@ -99,7 +107,7 @@ class TestBuildRows:
         a = asset_svc.register(name="X", type_id=t.id, custom_data={})
 
         rows = svc._build_rows([a], custom_fields=[])
-        assert rows[0]["状态"] == "闲置中"  # register 默认 IDLE
+        assert rows[0]["状态"] == "闲置"  # register 默认 IDLE
 
     def test_acquired_at_iso_date(self, session: Session):
         type_svc = TypeService(session)
@@ -347,7 +355,7 @@ class TestRenderXlsx:
         ws = self._load(data)["资产清单"]
         # 状态列固定第 4 列 (D), data row=2
         status_cell = ws.cell(row=2, column=4)
-        assert status_cell.value == "闲置中"
+        assert status_cell.value == "闲置"
         # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致
         assert status_cell.fill.fgColor.rgb == STATUS_HEX[AssetStatus.IDLE]
 
