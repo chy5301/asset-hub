@@ -14,7 +14,14 @@ def _create_type_and_asset(client: TestClient) -> str:
     return r.json()["id"]
 
 
-def _upload(client: TestClient, asset_id: str, content: bytes, *, kind: str = "photo", filename: str = "a.jpg"):
+def _upload(
+    client: TestClient,
+    asset_id: str,
+    content: bytes,
+    *,
+    kind: str = "photo",
+    filename: str = "a.jpg",
+):
     return client.post(
         f"/api/assets/{asset_id}/attachments",
         data={"kind": kind},

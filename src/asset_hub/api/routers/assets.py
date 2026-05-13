@@ -92,9 +92,7 @@ def get_asset(
     if fields is None:
         return annotated
     read = AssetRead.model_validate(annotated)
-    return JSONResponse(
-        content=serialize_with_fields(read, fields, _ASSET_READ_FIELDS)
-    )
+    return JSONResponse(content=serialize_with_fields(read, fields, _ASSET_READ_FIELDS))
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)

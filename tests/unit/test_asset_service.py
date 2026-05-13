@@ -28,7 +28,12 @@ def laptop_type(type_svc: TypeService):
         code_prefix="NB",
         custom_fields=[
             {"key": "brand", "label": "品牌", "type": "string", "required": True},
-            {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},
+            {
+                "key": "os",
+                "label": "操作系统",
+                "type": "enum",
+                "options": ["Windows", "macOS", "Linux"],
+            },
             {"key": "ram_gb", "label": "内存(GB)", "type": "int"},
         ],
     )
@@ -64,11 +69,23 @@ class TestRegisterAsset:
             svc.register(name="X", type_id=uuid4(), custom_data={})
 
     def test_register_duplicate_sn_raises(self, svc: AssetService, laptop_type):
-        svc.register(name="A", type_id=laptop_type.id, serial_number="SN001", custom_data={"brand": "X"})
+        svc.register(
+            name="A",
+            type_id=laptop_type.id,
+            serial_number="SN001",
+            custom_data={"brand": "X"},
+        )
         with pytest.raises(DuplicateError):
-            svc.register(name="B", type_id=laptop_type.id, serial_number="SN001", custom_data={"brand": "Y"})
+            svc.register(
+                name="B",
+                type_id=laptop_type.id,
+                serial_number="SN001",
+                custom_data={"brand": "Y"},
+            )
 
-    def test_register_missing_required_field_raises(self, svc: AssetService, laptop_type):
+    def test_register_missing_required_field_raises(
+        self, svc: AssetService, laptop_type
+    ):
         with pytest.raises(ValidationError, match="品牌"):
             svc.register(name="X", type_id=laptop_type.id, custom_data={})
 
@@ -99,15 +116,21 @@ class TestListAssets:
         assert len(svc.list_assets()) == 2
 
     def test_filter_by_q(self, svc: AssetService, laptop_type):
-        svc.register(name="ThinkPad X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
-        svc.register(name="MacBook Pro", type_id=laptop_type.id, custom_data={"brand": "Apple"})
+        svc.register(
+            name="ThinkPad X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+        )
+        svc.register(
+            name="MacBook Pro", type_id=laptop_type.id, custom_data={"brand": "Apple"}
+        )
         result = svc.list_assets(q="ThinkPad")
         assert len(result) == 1
 
 
 class TestGetAsset:
     def test_get_existing(self, svc: AssetService, laptop_type):
-        created = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        created = svc.register(
+            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+        )
         fetched = svc.get_asset(created.id)
         assert fetched.name == "X1"
 
@@ -118,7 +141,9 @@ class TestGetAsset:
 
 class TestUpdateAsset:
     def test_update_notes(self, svc: AssetService, laptop_type):
-        a = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        a = svc.register(
+            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+        )
         updated = svc.update_asset(a.id, notes="新备注")
         assert updated.notes == "新备注"
 
@@ -129,7 +154,9 @@ class TestUpdateAsset:
 
 class TestDeleteAsset:
     def test_delete_existing(self, svc: AssetService, laptop_type):
-        a = svc.register(name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"})
+        a = svc.register(
+            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+        )
         svc.delete_asset(a.id)
         with pytest.raises(NotFoundError):
             svc.get_asset(a.id)
@@ -180,6 +207,7 @@ def test_register_acquired_at_optional(session, sample_type_nb):
 
 def test_asset_read_includes_type_name(session, sample_type_nb):
     from asset_hub.api.schemas.asset import AssetRead
+
     svc = AssetService(session)
     a = svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
     a_read = AssetRead.model_validate(a)
@@ -189,6 +217,7 @@ def test_asset_read_includes_type_name(session, sample_type_nb):
 
 def test_list_assets_each_has_type_name(session, sample_type_nb, sample_type_pj):
     from asset_hub.api.schemas.asset import AssetRead
+
     svc = AssetService(session)
     svc.register(name="X1", type_id=sample_type_nb.id, custom_data={})
     svc.register(name="投影仪", type_id=sample_type_pj.id, custom_data={})
@@ -270,11 +299,15 @@ def test_list_q_matches_model(session, sample_type_nb):
     """list_assets q 参数命中 model 字段。"""
     svc = AssetService(session)
     svc.register(
-        name="A", type_id=sample_type_nb.id, custom_data={},
+        name="A",
+        type_id=sample_type_nb.id,
+        custom_data={},
         model="ThinkPad X1 Carbon",
     )
     svc.register(
-        name="B", type_id=sample_type_nb.id, custom_data={},
+        name="B",
+        type_id=sample_type_nb.id,
+        custom_data={},
         model="MacBook Pro",
     )
 
@@ -286,9 +319,16 @@ def test_list_q_matches_model(session, sample_type_nb):
 def test_register_duplicate_serial_number_message(session, sample_type_nb):
     """SN 重复时错误消息应该是'序列号重复'，不该被误读为'asset_code 撞车'"""
     svc = AssetService(session)
-    svc.register(name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+    svc.register(
+        name="X1", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001"
+    )
     with pytest.raises(DuplicateError, match="序列号"):
-        svc.register(name="X2", type_id=sample_type_nb.id, custom_data={}, serial_number="SN-DUP-001")
+        svc.register(
+            name="X2",
+            type_id=sample_type_nb.id,
+            custom_data={},
+            serial_number="SN-DUP-001",
+        )
 
 
 # ── sort / limit / offset tests ────────────────────────────────────────────────
@@ -301,7 +341,12 @@ def _create_idle_assets(session: Session, count: int) -> list[Asset]:
     session.flush()
     assets = []
     for i in range(count):
-        a = Asset(asset_code=f"L-{i:03d}", name=f"L{i}", type_id=at.id, status=AssetStatus.IDLE)
+        a = Asset(
+            asset_code=f"L-{i:03d}",
+            name=f"L{i}",
+            type_id=at.id,
+            status=AssetStatus.IDLE,
+        )
         session.add(a)
         session.flush()
         # 让 created_at 错开
@@ -383,11 +428,23 @@ def test_list_assets_sort_by_acquired_at(session: Session):
     at = AssetType(name="L", code_prefix="ACQ", custom_fields=[])
     session.add(at)
     session.flush()
-    a1 = Asset(asset_code="A-001", name="A1", type_id=at.id, status=AssetStatus.IDLE,
-               acquired_at=date(2026, 1, 1))
-    a2 = Asset(asset_code="A-002", name="A2", type_id=at.id, status=AssetStatus.IDLE,
-               acquired_at=date(2026, 3, 1))
-    a3 = Asset(asset_code="A-003", name="A3", type_id=at.id, status=AssetStatus.IDLE)  # NULL
+    a1 = Asset(
+        asset_code="A-001",
+        name="A1",
+        type_id=at.id,
+        status=AssetStatus.IDLE,
+        acquired_at=date(2026, 1, 1),
+    )
+    a2 = Asset(
+        asset_code="A-002",
+        name="A2",
+        type_id=at.id,
+        status=AssetStatus.IDLE,
+        acquired_at=date(2026, 3, 1),
+    )
+    a3 = Asset(
+        asset_code="A-003", name="A3", type_id=at.id, status=AssetStatus.IDLE
+    )  # NULL
     for a in [a1, a2, a3]:
         session.add(a)
     session.flush()
@@ -395,7 +452,9 @@ def test_list_assets_sort_by_acquired_at(session: Session):
     svc = AssetService(session)
     desc_result = svc.list_assets(sort_by="acquired_at", sort_order="desc")
     # 仅断言非 NULL 的 a2 (2026-03-01) 排在 a1 (2026-01-01) 之前
-    asset_codes_with_dates = [a.asset_code for a in desc_result if a.acquired_at is not None]
+    asset_codes_with_dates = [
+        a.asset_code for a in desc_result if a.acquired_at is not None
+    ]
     assert asset_codes_with_dates == ["A-002", "A-001"]
 
 
@@ -440,7 +499,9 @@ class TestListAssetsRetiredDisposedFilter:
         session.commit()
         return assets
 
-    def test_default_excludes_retired_and_disposed(self, session: Session, sample_type_nb):
+    def test_default_excludes_retired_and_disposed(
+        self, session: Session, sample_type_nb
+    ):
         self._seed_5_states(session, sample_type_nb.id)
         svc = AssetService(session)
         result = svc.list_assets()
@@ -480,7 +541,9 @@ class TestListAssetsRetiredDisposedFilter:
             AssetStatus.DISPOSED,
         }
 
-    def test_explicit_status_retired_overrides_default_exclusion(self, session: Session, sample_type_nb):
+    def test_explicit_status_retired_overrides_default_exclusion(
+        self, session: Session, sample_type_nb
+    ):
         """显式 status=RETIRED 时，即使 include_retired=False 也应返回 RETIRED 资产。"""
         self._seed_5_states(session, sample_type_nb.id)
         svc = AssetService(session)

@@ -19,6 +19,7 @@ class TestStatusDicts:
     def test_status_labels_covers_6_enum_values(self):
         from asset_hub.models.asset import AssetStatus
         from asset_hub.services.export import STATUS_LABELS
+
         # 应覆盖全部 6 个 enum 值
         assert set(STATUS_LABELS.keys()) == set(AssetStatus)
         assert len(STATUS_LABELS) == 6
@@ -34,6 +35,7 @@ class TestStatusDicts:
     def test_status_hex_covers_6_enum_values(self):
         from asset_hub.models.asset import AssetStatus
         from asset_hub.services.export import STATUS_HEX
+
         assert set(STATUS_HEX.keys()) == set(AssetStatus)
         assert len(STATUS_HEX) == 6
 
@@ -154,14 +156,21 @@ class TestBuildRows:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(
-            name="Laptop", code_prefix="NBX",
+            name="Laptop",
+            code_prefix="NBX",
             custom_fields=[
-                {"key": "sn", "label": "铭牌编号 (custom)", "type": "string", "required": False},
+                {
+                    "key": "sn",
+                    "label": "铭牌编号 (custom)",
+                    "type": "string",
+                    "required": False,
+                },
                 {"key": "cpu", "label": "CPU", "type": "string", "required": False},
             ],
         )
         a = asset_svc.register(
-            name="X", type_id=t.id,
+            name="X",
+            type_id=t.id,
             custom_data={"sn": "SN-001", "cpu": "i9-12900K"},
         )
 
@@ -179,7 +188,8 @@ class TestBuildRows:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(
-            name="L", code_prefix="LE",
+            name="L",
+            code_prefix="LE",
             custom_fields=[
                 {"key": "sn", "label": "SN", "type": "string", "required": False},
             ],
@@ -256,8 +266,17 @@ class TestRenderCsv:
         svc = ExportService(session, asset_svc, type_svc)
 
         column_names = [
-            "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
-            "闲置天数", "入账日期", "铭牌编号", "备注",
+            "资产编号",
+            "名称",
+            "型号",
+            "类型",
+            "状态",
+            "保管人",
+            "位置",
+            "闲置天数",
+            "入账日期",
+            "铭牌编号",
+            "备注",
         ]
         data = svc._render_csv([], column_names=column_names)
         text = data.decode("utf-8-sig")
@@ -366,8 +385,17 @@ class TestRenderXlsx:
         svc = ExportService(session, asset_svc, type_svc)
 
         column_names = [
-            "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
-            "闲置天数", "入账日期", "铭牌编号", "备注",
+            "资产编号",
+            "名称",
+            "型号",
+            "类型",
+            "状态",
+            "保管人",
+            "位置",
+            "闲置天数",
+            "入账日期",
+            "铭牌编号",
+            "备注",
         ]
         data = svc._render_xlsx([], column_names=column_names)
         ws = self._load(data)["资产清单"]
@@ -382,7 +410,9 @@ class TestRenderXlsx:
 
         t = type_svc.create_type(name="L", code_prefix="XF", custom_fields=[])
         a = asset_svc.register(
-            name="X", type_id=t.id, custom_data={},
+            name="X",
+            type_id=t.id,
+            custom_data={},
             notes="x" * 100,  # 100 char 长文本, 列宽应 cap 60
         )
         rows = svc._build_rows([a], custom_fields=[])
@@ -399,7 +429,9 @@ class TestRenderXlsx:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(name="L", code_prefix="XG", custom_fields=[])
-        a = asset_svc.register(name="X", type_id=t.id, custom_data={}, notes="long text")
+        a = asset_svc.register(
+            name="X", type_id=t.id, custom_data={}, notes="long text"
+        )
         rows = svc._build_rows([a], custom_fields=[])
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
@@ -452,7 +484,8 @@ class TestExport:
         svc = ExportService(session, asset_svc, type_svc)
 
         t1 = type_svc.create_type(
-            name="Laptop", code_prefix="EC",
+            name="Laptop",
+            code_prefix="EC",
             custom_fields=[
                 {"key": "sn", "label": "SN", "type": "string", "required": False},
             ],
@@ -478,7 +511,8 @@ class TestExport:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(
-            name="Laptop", code_prefix="EE",
+            name="Laptop",
+            code_prefix="EE",
             custom_fields=[
                 {"key": "sn", "label": "SN", "type": "string", "required": False},
             ],

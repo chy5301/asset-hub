@@ -92,7 +92,9 @@ def test_return_closes_open_checkout(session, asset_type):
 def test_return_with_null_to_holder_sets_asset_holder_null(session, asset_type):
     a = _new_asset(session, asset_type.id)
     svc = TransitionService(session)
-    svc.record_transition(asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="X")
+    svc.record_transition(
+        asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="X"
+    )
     svc.record_transition(asset_id=a.id, kind=TransitionKind.RETURN, to_holder=None)
     session.refresh(a)
     assert a.holder is None  # 无人值守仓库
@@ -107,7 +109,9 @@ def test_return_without_open_checkout_raises(session, asset_type):
 
 
 def test_dispose_forces_null_holder_location(session, asset_type):
-    a = _new_asset(session, asset_type.id, status=AssetStatus.RETIRED, holder="X", location="L")
+    a = _new_asset(
+        session, asset_type.id, status=AssetStatus.RETIRED, holder="X", location="L"
+    )
     svc = TransitionService(session)
     rec = svc.record_transition(
         asset_id=a.id,
@@ -186,7 +190,9 @@ def test_due_at_only_for_checkout(session, asset_type):
 def test_list_transitions_returns_desc_order(session, asset_type):
     a = _new_asset(session, asset_type.id)
     svc = TransitionService(session)
-    svc.record_transition(asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="X")
+    svc.record_transition(
+        asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="X"
+    )
     svc.record_transition(asset_id=a.id, kind=TransitionKind.RETURN)
 
     rows = svc.list_transitions(a.id)
@@ -221,7 +227,8 @@ def test_optional_location_null_preserves_current(session, asset_type):
     """v2.0 keep rule: SEND_TO_MAINTENANCE 不传 to_location（UNSET）→ 保留 asset.location。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, location="原位置")
     TransitionService(session).record_transition(
-        asset_id=a.id, kind=TransitionKind.SEND_TO_MAINTENANCE
+        asset_id=a.id,
+        kind=TransitionKind.SEND_TO_MAINTENANCE,
         # 不传 to_location → UNSET → keep
     )
     session.refresh(a)
@@ -246,7 +253,9 @@ def test_send_to_maintenance_keep_holder_explicit_none_clears(session, asset_typ
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, holder="李四")
     svc = TransitionService(session)
 
-    rec = svc.record_transition(a.id, TransitionKind.SEND_TO_MAINTENANCE, to_holder=None)
+    rec = svc.record_transition(
+        a.id, TransitionKind.SEND_TO_MAINTENANCE, to_holder=None
+    )
 
     session.refresh(a)
     assert a.holder is None  # 清空
@@ -258,7 +267,9 @@ def test_send_to_maintenance_keep_holder_explicit_value_updates(session, asset_t
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, holder="王五")
     svc = TransitionService(session)
 
-    rec = svc.record_transition(a.id, TransitionKind.SEND_TO_MAINTENANCE, to_holder="维修方")
+    rec = svc.record_transition(
+        a.id, TransitionKind.SEND_TO_MAINTENANCE, to_holder="维修方"
+    )
 
     session.refresh(a)
     assert a.holder == "维修方"
@@ -272,7 +283,9 @@ def test_closes_in_use_to_idle_via_return(session, asset_type):
     """IN_USE → IDLE(RETURN) 闭合 OPEN CHECKOUT（v1.0 行为保留）。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE)
     svc = TransitionService(session)
-    checkout = svc.record_transition(a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="张三")
+    checkout = svc.record_transition(
+        a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="张三"
+    )
     ret = svc.record_transition(a.id, TransitionKind.RETURN)
     assert ret.closes_transition_id == checkout.id
 
@@ -290,9 +303,15 @@ def test_closes_broken_to_idle_via_dismiss(session, asset_type):
     """BROKEN → IDLE(DISMISS) 闭合 OPEN CHECKOUT（走出派出集）。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE)
     svc = TransitionService(session)
-    checkout = svc.record_transition(a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="王五")
-    svc.record_transition(a.id, TransitionKind.REPORT_BROKEN)  # IN_USE → BROKEN（不闭合）
-    dismiss = svc.record_transition(a.id, TransitionKind.DISMISS)  # BROKEN → IDLE（闭合）
+    checkout = svc.record_transition(
+        a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="王五"
+    )
+    svc.record_transition(
+        a.id, TransitionKind.REPORT_BROKEN
+    )  # IN_USE → BROKEN（不闭合）
+    dismiss = svc.record_transition(
+        a.id, TransitionKind.DISMISS
+    )  # BROKEN → IDLE（闭合）
     assert dismiss.closes_transition_id == checkout.id
 
 
@@ -300,7 +319,9 @@ def test_closes_broken_to_maintenance(session, asset_type):
     """BROKEN → MAINTENANCE(SEND_TO_MAINTENANCE) 闭合 OPEN CHECKOUT。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE)
     svc = TransitionService(session)
-    checkout = svc.record_transition(a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="A")
+    checkout = svc.record_transition(
+        a.id, TransitionKind.CHECKOUT_INTERNAL, to_holder="A"
+    )
     svc.record_transition(a.id, TransitionKind.REPORT_BROKEN)
     send = svc.record_transition(a.id, TransitionKind.SEND_TO_MAINTENANCE)
     assert send.closes_transition_id == checkout.id
@@ -328,8 +349,12 @@ def test_dismiss_no_open_checkout_ok(session, asset_type):
     """DISMISS 找不到 OPEN CHECKOUT 不报错（资产未派发就出现故障的边缘场景）。"""
     a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE)
     svc = TransitionService(session)
-    svc.record_transition(a.id, TransitionKind.REPORT_BROKEN)  # IDLE → BROKEN（IDLE 不在派出集，不闭合）
-    dismiss = svc.record_transition(a.id, TransitionKind.DISMISS)  # BROKEN → IDLE（走出派出集）
+    svc.record_transition(
+        a.id, TransitionKind.REPORT_BROKEN
+    )  # IDLE → BROKEN（IDLE 不在派出集，不闭合）
+    dismiss = svc.record_transition(
+        a.id, TransitionKind.DISMISS
+    )  # BROKEN → IDLE（走出派出集）
     assert dismiss.closes_transition_id is None  # 没 OPEN 也合法
 
 
@@ -338,7 +363,9 @@ def test_dismiss_no_open_checkout_ok(session, asset_type):
 
 def test_reassign_no_change_raises(session, asset_type):
     """REASSIGN 不传任何字段 → 报错（必改一项）。"""
-    a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1")
+    a = _new_asset(
+        session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1"
+    )
     svc = TransitionService(session)
     with pytest.raises(IllegalTransitionError, match="至少一项"):
         svc.record_transition(a.id, TransitionKind.REASSIGN)
@@ -346,15 +373,21 @@ def test_reassign_no_change_raises(session, asset_type):
 
 def test_reassign_same_value_raises(session, asset_type):
     """REASSIGN 传当前值（无变化）→ 报错。"""
-    a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1")
+    a = _new_asset(
+        session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1"
+    )
     svc = TransitionService(session)
     with pytest.raises(IllegalTransitionError, match="至少一项"):
-        svc.record_transition(a.id, TransitionKind.REASSIGN, to_holder="X", to_location="L1")
+        svc.record_transition(
+            a.id, TransitionKind.REASSIGN, to_holder="X", to_location="L1"
+        )
 
 
 def test_reassign_changes_holder_only(session, asset_type):
     """REASSIGN --to-holder 改持有人，OK，location 保留（keep）。"""
-    a = _new_asset(session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1")
+    a = _new_asset(
+        session, asset_type.id, status=AssetStatus.IDLE, holder="X", location="L1"
+    )
     svc = TransitionService(session)
     rec = svc.record_transition(a.id, TransitionKind.REASSIGN, to_holder="Y")
     session.refresh(a)

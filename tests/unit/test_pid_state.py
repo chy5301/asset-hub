@@ -27,8 +27,10 @@ def test_read_pid_state_running_when_match(tmp_path):
     f = tmp_path / "backend.pid"
     write_pid_file(f, pid=12345, mode="prod", started_at=datetime.now(UTC))
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process:
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process,
+    ):
         mock_process.return_value = _mock_proc(
             cmdline=["python", "-m", "uvicorn", "asset_hub.api.app:app"]
         )
@@ -51,8 +53,10 @@ def test_read_pid_state_stale_when_zombie(tmp_path):
     f = tmp_path / "backend.pid"
     write_pid_file(f, pid=12345, mode="prod", started_at=None)
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process:
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process,
+    ):
         mock_process.return_value = _mock_proc(
             cmdline=["python", "-m", "uvicorn", "asset_hub.api.app:app"],
             status=psutil.STATUS_ZOMBIE,
@@ -66,8 +70,10 @@ def test_read_pid_state_stale_when_cmdline_mismatch(tmp_path):
     f = tmp_path / "backend.pid"
     write_pid_file(f, pid=12345, mode="prod", started_at=None)
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process:
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process") as mock_process,
+    ):
         mock_process.return_value = _mock_proc(
             cmdline=["bash", "-c", "sleep 99"]  # 不含 uvicorn / asset_hub
         )

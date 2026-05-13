@@ -63,7 +63,9 @@ class TypeService:
             self.session.rollback()
             msg = str(e).lower()
             if "code_prefix" in msg:
-                raise DuplicateError(f"code_prefix 已存在: {normalized_prefix}") from None
+                raise DuplicateError(
+                    f"code_prefix 已存在: {normalized_prefix}"
+                ) from None
             raise DuplicateError(f"类型名称已存在: {name}") from None
         self.session.refresh(asset_type)
         return self._to_read(asset_type, ref_count=0)
@@ -126,7 +128,9 @@ class TypeService:
                 changed = True
 
         if not changed:
-            return self._to_read(t, ref_count=self.count_refs(type_id))  # 跳 commit 避免 updated_at 漂移
+            return self._to_read(
+                t, ref_count=self.count_refs(type_id)
+            )  # 跳 commit 避免 updated_at 漂移
 
         t.updated_at = datetime.now(UTC)
         try:

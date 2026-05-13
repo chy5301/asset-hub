@@ -35,11 +35,12 @@ def test_stop_running_service(isolated_db):
     mp.status.return_value = "running"
     mp.children.return_value = []
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp), \
-         patch("asset_hub.cli.serve.proc.psutil.Process", return_value=mp), \
-         patch("asset_hub.cli.serve.proc.psutil.wait_procs",
-               return_value=([mp], [])):
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp),
+        patch("asset_hub.cli.serve.proc.psutil.Process", return_value=mp),
+        patch("asset_hub.cli.serve.proc.psutil.wait_procs", return_value=([mp], [])),
+    ):
         res = runner.invoke(app, ["serve", "stop", "--json"])
     assert res.exit_code == 0, res.stdout
     payload = json.loads(res.stdout)

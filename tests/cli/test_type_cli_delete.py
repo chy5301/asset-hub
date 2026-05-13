@@ -18,9 +18,7 @@ def test_type_delete_dry_run_no_db_change(isolated_db):
         t = TypeService(s).create_type(name="CLI-DR", code_prefix="DR")
         type_id = t.id
 
-    res = runner.invoke(
-        app, ["type", "delete", str(type_id), "--dry-run", "--json"]
-    )
+    res = runner.invoke(app, ["type", "delete", str(type_id), "--dry-run", "--json"])
     assert res.exit_code == 10  # dry-run 预览
     payload = json.loads(res.stdout)
     assert payload["success"] is True
@@ -58,9 +56,7 @@ def test_type_delete_with_refs_returns_exit_1(isolated_db):
 
 
 def test_type_delete_not_found_returns_exit_3(isolated_db):
-    res = runner.invoke(
-        app, ["type", "delete", str(uuid.uuid4()), "--yes", "--json"]
-    )
+    res = runner.invoke(app, ["type", "delete", str(uuid.uuid4()), "--yes", "--json"])
     assert res.exit_code == 3
 
 
@@ -96,14 +92,14 @@ def test_type_delete_dry_run_with_refs_returns_exit_1(isolated_db):
         AssetService(session).register(type_id=t.id, name="A1", custom_data={})
         type_id = t.id
 
-    res = runner.invoke(
-        app, ["type", "delete", str(type_id), "--dry-run", "--json"]
-    )
+    res = runner.invoke(app, ["type", "delete", str(type_id), "--dry-run", "--json"])
     assert res.exit_code == 1
     payload = json.loads(res.stdout)
     assert payload["success"] is False
     assert payload["error"]["code"] == "conflict"
-    assert "1" in payload["error"]["message"] and "dry-run" in payload["error"]["message"]
+    assert (
+        "1" in payload["error"]["message"] and "dry-run" in payload["error"]["message"]
+    )
 
     # type 仍存在（未真删）
     with cli_session() as session:

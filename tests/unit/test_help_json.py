@@ -1,4 +1,5 @@
 """--help-json 双模（agent 元数据导出）单元测试。v2.0 spec §4.3。"""
+
 from __future__ import annotations
 
 import json
@@ -46,6 +47,7 @@ def test_help_json_payload_schema():
 def test_print_help_json_unit():
     """直接调 deps.print_help_json 工具函数（无 Typer 包装）"""
     from asset_hub.cli.deps import print_help_json  # noqa
+
     # 单元测：验证函数存在（详细单测可加 click.Context mock）
     assert callable(print_help_json)
 

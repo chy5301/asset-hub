@@ -22,7 +22,12 @@ class TestCreateType:
     def test_create_with_custom_fields(self, svc: TypeService):
         fields = [
             {"key": "brand", "label": "品牌", "type": "string", "required": True},
-            {"key": "os", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux"]},
+            {
+                "key": "os",
+                "label": "操作系统",
+                "type": "enum",
+                "options": ["Windows", "macOS", "Linux"],
+            },
         ]
         t = svc.create_type(name="笔记本电脑", code_prefix="NB", custom_fields=fields)
         assert len(t.custom_fields) == 2
@@ -63,6 +68,7 @@ class TestGetType:
 
     def test_get_nonexistent_raises(self, svc: TypeService):
         from uuid import uuid4
+
         with pytest.raises(NotFoundError):
             svc.get_type(uuid4())
 
@@ -105,7 +111,9 @@ class TestRefCount:
     def test_list_batch_count_per_type(self, svc: TypeService, session: Session):
         a = svc.create_type(name="A", code_prefix="AA")
         b = svc.create_type(name="B", code_prefix="BB")
-        svc.create_type(name="C", code_prefix="CC")  # C 无 asset，验证 GROUP BY 包含 0 计数
+        svc.create_type(
+            name="C", code_prefix="CC"
+        )  # C 无 asset，验证 GROUP BY 包含 0 计数
         asset_svc = AssetService(session)
         asset_svc.register(name="a1", type_id=a.id, custom_data={})
         asset_svc.register(name="a2", type_id=a.id, custom_data={})

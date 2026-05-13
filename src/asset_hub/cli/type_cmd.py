@@ -21,10 +21,14 @@ type_app = typer.Typer(name="type", help="资产类型管理", no_args_is_help=T
 @type_app.command("define")
 def type_define(
     name: Annotated[str | None, typer.Option(help="类型名称")] = None,
-    prefix: Annotated[str | None, typer.Option("--prefix", help="编号前缀（2-4 大写字母，如 NB）")] = None,
+    prefix: Annotated[
+        str | None, typer.Option("--prefix", help="编号前缀（2-4 大写字母，如 NB）")
+    ] = None,
     description: Annotated[str | None, typer.Option(help="类型描述")] = None,
     fields: Annotated[str | None, typer.Option(help="自定义字段 JSON 数组")] = None,
-    from_file: Annotated[Path | None, typer.Option("--from", help="JSON schema 文件路径")] = None,
+    from_file: Annotated[
+        Path | None, typer.Option("--from", help="JSON schema 文件路径")
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
 ) -> None:
     """定义新的资产类型。"""
@@ -37,10 +41,17 @@ def type_define(
     elif name is not None:
         custom_fields = json.loads(fields) if fields else []
     else:
-        print_error("必须提供 --name 或 --from", json_output, code="validation", exit_code=2)
+        print_error(
+            "必须提供 --name 或 --from", json_output, code="validation", exit_code=2
+        )
 
     if not prefix:
-        print_error("必须提供 --prefix（2-4 大写字母）", json_output, code="validation", exit_code=2)
+        print_error(
+            "必须提供 --prefix（2-4 大写字母）",
+            json_output,
+            code="validation",
+            exit_code=2,
+        )
 
     with cli_session() as session, handle_domain_errors(json_output):
         svc = TypeService(session)
@@ -82,7 +93,9 @@ def type_show(
 @type_app.command("delete")
 def type_delete(
     type_id: Annotated[str, typer.Argument(help="要删除的 AssetType id")],
-    yes: Annotated[bool, typer.Option("--yes", "-y", help="跳过二次确认（--json 模式自动跳过）")] = False,
+    yes: Annotated[
+        bool, typer.Option("--yes", "-y", help="跳过二次确认（--json 模式自动跳过）")
+    ] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="预览不真删")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
 ) -> None:
@@ -132,7 +145,9 @@ def type_delete(
 @type_app.command("update")
 def type_update(
     type_id: Annotated[str, typer.Argument(help="要更新的 AssetType id")],
-    from_file: Annotated[Path | None, typer.Option("--from", help="JSON schema 文件路径（整体替换）")] = None,
+    from_file: Annotated[
+        Path | None, typer.Option("--from", help="JSON schema 文件路径（整体替换）")
+    ] = None,
     name: Annotated[str | None, typer.Option(help="新类型名称")] = None,
     description: Annotated[str | None, typer.Option(help="新描述")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="预览不真改")] = False,

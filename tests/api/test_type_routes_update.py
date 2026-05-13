@@ -19,6 +19,7 @@ class TestPatchType:
 
     def test_patch_404_on_unknown_id(self, client: TestClient):
         import uuid
+
         resp = client.patch(f"/api/types/{uuid.uuid4()}", json={"name": "x"})
         assert resp.status_code == 404
 

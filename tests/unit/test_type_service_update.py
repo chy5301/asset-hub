@@ -26,7 +26,8 @@ class TestUpdateType:
 
     def test_update_custom_fields_replace(self, svc: TypeService):
         t = svc.create_type(
-            name="B", code_prefix="BB",
+            name="B",
+            code_prefix="BB",
             custom_fields=[{"key": "old", "type": "string"}],
         )
         new_fields = [
@@ -54,7 +55,9 @@ class TestUpdateType:
     def test_update_partial_does_not_clear_unset_fields(self, svc: TypeService):
         # 三参数都默认 None → 不动任何字段
         t = svc.create_type(
-            name="D", code_prefix="DD", description="orig",
+            name="D",
+            code_prefix="DD",
+            description="orig",
             custom_fields=[{"key": "k1", "type": "string"}],
         )
         updated = svc.update_type(t.id)
@@ -70,6 +73,7 @@ class TestUpdateType:
 
     def test_update_not_found_raises_404(self, svc: TypeService):
         import uuid
+
         with pytest.raises(NotFoundError):
             svc.update_type(uuid.uuid4(), name="x")
 

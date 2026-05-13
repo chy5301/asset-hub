@@ -10,9 +10,7 @@ from asset_hub.models.attachment import AttachmentKind
 from asset_hub.services.attachment import AttachmentService
 from asset_hub.storage import get_default_storage
 
-attachment_app = typer.Typer(
-    name="attachment", help="附件管理", no_args_is_help=True
-)
+attachment_app = typer.Typer(name="attachment", help="附件管理", no_args_is_help=True)
 
 
 @attachment_app.command("add")
@@ -20,9 +18,13 @@ def attachment_add(
     asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
     file: Annotated[
         Path,
-        typer.Option("--file", exists=True, dir_okay=False, readable=True, help="要上传的文件"),
+        typer.Option(
+            "--file", exists=True, dir_okay=False, readable=True, help="要上传的文件"
+        ),
     ],
-    kind: Annotated[AttachmentKind, typer.Option(help="附件类型")] = AttachmentKind.OTHER,
+    kind: Annotated[
+        AttachmentKind, typer.Option(help="附件类型")
+    ] = AttachmentKind.OTHER,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     """上传附件到指定资产。"""

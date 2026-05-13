@@ -3,6 +3,7 @@
 4 段聚合 + summary 业务摘要；fields 子集查询省 token。
 idle_top 复用 services/_idle_days helper（与 list_assets 同源）。
 """
+
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -21,9 +22,14 @@ from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.asset_type import AssetType
 from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_idle_subq
 
-ALL_FIELDS: frozenset[StatsField] = frozenset({
-    "type_distribution", "status_distribution", "holder_ranking", "idle_top",
-})
+ALL_FIELDS: frozenset[StatsField] = frozenset(
+    {
+        "type_distribution",
+        "status_distribution",
+        "holder_ranking",
+        "idle_top",
+    }
+)
 
 
 def parse_stats_fields(raw: str | None) -> set[StatsField] | None:
@@ -132,7 +138,9 @@ class StatsService:
         sq = last_idle_subq()
         idle_since = idle_since_expr(Asset, subq=sq)
         stmt = (
-            select(Asset.id, Asset.asset_code, AssetType.name, Asset.location, idle_since)
+            select(
+                Asset.id, Asset.asset_code, AssetType.name, Asset.location, idle_since
+            )
             .join(AssetType, AssetType.id == Asset.type_id)
             .outerjoin(sq, sq.c.asset_id == Asset.id)
             .where(Asset.status == AssetStatus.IDLE)
@@ -144,14 +152,16 @@ class StatsService:
         for aid, code, type_name, location, since in self.session.exec(stmt).all():
             since_aware = ensure_aware(since)
             days = int((now - since_aware).total_seconds() // 86400)
-            items.append(IdleTopItem(
-                asset_id=aid,
-                asset_code=code,
-                type_name=type_name,
-                current_location=location,
-                idle_days=days,
-                idle_since=since_aware,
-            ))
+            items.append(
+                IdleTopItem(
+                    asset_id=aid,
+                    asset_code=code,
+                    type_name=type_name,
+                    current_location=location,
+                    idle_days=days,
+                    idle_since=since_aware,
+                )
+            )
         return items
 
     def _summary(self, ir: bool, idp: bool) -> StatsSummary:

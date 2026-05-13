@@ -81,7 +81,9 @@ class AssetRepository:
             # idle_days asc ≡ idle_since desc
             idle_since = idle_since_expr(Asset, subq=sq)
             sort_dir = asc if sort_order == "desc" else desc
-            stmt = stmt.outerjoin(sq, sq.c.asset_id == Asset.id).order_by(sort_dir(idle_since))
+            stmt = stmt.outerjoin(sq, sq.c.asset_id == Asset.id).order_by(
+                sort_dir(idle_since)
+            )
         elif sort_by is not None:
             col = _SORT_COLUMN_MAP.get(sort_by)
             if col is None:

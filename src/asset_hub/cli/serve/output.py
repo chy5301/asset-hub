@@ -74,9 +74,7 @@ def render_plain_start(result: StartResult) -> str:
         lines.append(f"  {b.log}")
     if result.frontend:
         f = result.frontend
-        lines.append(
-            f"✓ Frontend started    pid={f.pid}  http://{f.host}:{f.port}"
-        )
+        lines.append(f"✓ Frontend started    pid={f.pid}  http://{f.host}:{f.port}")
     return "\n".join(lines)
 
 
@@ -94,9 +92,7 @@ def render_plain_stop(result: StopResult) -> str:
                 f"! {s['service'].capitalize()} stopped via SIGKILL  pid={s['pid']}  (SIGTERM timeout 5s)"
             )
         else:
-            lines.append(
-                f"✓ {s['service'].capitalize()} stopped     pid={s['pid']}"
-            )
+            lines.append(f"✓ {s['service'].capitalize()} stopped     pid={s['pid']}")
     return "\n".join(lines)
 
 
@@ -106,7 +102,10 @@ def render_plain_status(report: StatusReport) -> str:
 
     header = "SERVICE   STATUS    PID    PORT  MODE  UPTIME    HEALTHY"
     lines = [header]
-    for service_name, info in [("backend", report.backend), ("frontend", report.frontend)]:
+    for service_name, info in [
+        ("backend", report.backend),
+        ("frontend", report.frontend),
+    ]:
         if info is None:
             lines.append(f"{service_name:<9} -         -      -     -     -         -")
             continue

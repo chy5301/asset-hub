@@ -42,17 +42,27 @@ def start_service(
     settings = Settings()
     backend_port = port_override if port_override is not None else settings.backend_port
     frontend_port = (
-        frontend_port_override if frontend_port_override is not None else settings.frontend_port
+        frontend_port_override
+        if frontend_port_override is not None
+        else settings.frontend_port
     )
-    host = host_override if host_override is not None else settings.resolve_backend_host(mode)
+    host = (
+        host_override
+        if host_override is not None
+        else settings.resolve_backend_host(mode)
+    )
 
     # Phase 0 · 前置检查
     _ensure_dirs_writable(settings)
     _check_pids_or_clean_stale(settings)
     if proc_mod.is_port_in_use(backend_port):
-        raise ServeLifecycleError("serve.port_occupied", f"port {backend_port} is in use")
+        raise ServeLifecycleError(
+            "serve.port_occupied", f"port {backend_port} is in use"
+        )
     if mode == "dev" and proc_mod.is_port_in_use(frontend_port):
-        raise ServeLifecycleError("serve.port_occupied", f"port {frontend_port} is in use")
+        raise ServeLifecycleError(
+            "serve.port_occupied", f"port {frontend_port} is in use"
+        )
 
     # Phase 1 · 构建（仅 prod；默认总是 rebuild 确保拿到最新前端代码，--skip-build 显式跳过）
     build_ran = False
@@ -79,8 +89,14 @@ def start_service(
 
     started_at = datetime.now(UTC)
     backend_cmd = [
-        "uv", "run", "uvicorn", "asset_hub.api.app:app",
-        "--host", host, "--port", str(backend_port),
+        "uv",
+        "run",
+        "uvicorn",
+        "asset_hub.api.app:app",
+        "--host",
+        host,
+        "--port",
+        str(backend_port),
     ]
     if mode == "dev":
         backend_cmd.append("--reload")
@@ -90,7 +106,9 @@ def start_service(
     )
     pid_mod.write_pid_file(
         settings.pids_dir / "backend.pid",
-        pid=backend_pid, mode=mode, started_at=started_at,
+        pid=backend_pid,
+        mode=mode,
+        started_at=started_at,
     )
 
     frontend_pid: int | None = None
@@ -98,15 +116,20 @@ def start_service(
         frontend_log = settings.logs_dir / "frontend.log"
         frontend_pid = proc_mod.start_detached(
             ["pnpm", "--dir", "frontend", "dev"],
-            log_file=frontend_log, cwd=Path.cwd(),
+            log_file=frontend_log,
+            cwd=Path.cwd(),
         )
         pid_mod.write_pid_file(
             settings.pids_dir / "frontend.pid",
-            pid=frontend_pid, mode=mode, started_at=started_at,
+            pid=frontend_pid,
+            mode=mode,
+            started_at=started_at,
         )
 
     # Phase 4 · 健康探测
-    spawned: list[tuple[Literal["backend", "frontend"], int]] = [("backend", backend_pid)]
+    spawned: list[tuple[Literal["backend", "frontend"], int]] = [
+        ("backend", backend_pid)
+    ]
     if frontend_pid is not None:
         spawned.append(("frontend", frontend_pid))
     healthz_url = f"http://127.0.0.1:{backend_port}/api/healthz"
@@ -134,14 +157,18 @@ def start_service(
 
     # Phase 5 · 输出
     backend_info = ServiceInfo(
-        pid=backend_pid, port=backend_port, host=host,
+        pid=backend_pid,
+        port=backend_port,
+        host=host,
         log=str(backend_log),
     )
     frontend_info = None
     if mode == "dev" and frontend_pid is not None:
         # frontend host 用 "localhost"，见 Phase 4 注释
         frontend_info = ServiceInfo(
-            pid=frontend_pid, port=frontend_port, host="localhost",
+            pid=frontend_pid,
+            port=frontend_port,
+            host="localhost",
             log=str(settings.logs_dir / "frontend.log"),
         )
     return StartResult(
@@ -185,12 +212,8 @@ def _run_build() -> None:
     # Windows pnpm 是 .cmd/.ps1 wrapper，subprocess 不解析 PATHEXT，必须用 which 显式解析
     pnpm = shutil.which("pnpm")
     if pnpm is None:
-        raise ServeLifecycleError(
-            "serve.build_failed", "pnpm not found on PATH"
-        )
-    proc = subprocess.run(
-        [pnpm, "--dir", "frontend", "build"], check=False
-    )
+        raise ServeLifecycleError("serve.build_failed", "pnpm not found on PATH")
+    proc = subprocess.run([pnpm, "--dir", "frontend", "build"], check=False)
     if proc.returncode != 0:
         raise ServeLifecycleError(
             "serve.build_failed",
@@ -241,9 +264,13 @@ def stop_service() -> StopResult:
                 f"failed to kill {service} pid={state.pid}: {e}; "
                 "manual cleanup required (PID file kept)",
             ) from e
-        result.stopped.append({
-            "service": service, "pid": state.pid, "method": method.value,
-        })
+        result.stopped.append(
+            {
+                "service": service,
+                "pid": state.pid,
+                "method": method.value,
+            }
+        )
         pid_mod.remove_pid_file(f)
     return result
 
@@ -251,17 +278,19 @@ def stop_service() -> StopResult:
 def status_service(*, no_probe: bool) -> StatusReport:
     t0 = time.monotonic()
     settings = Settings()
-    backend_state = pid_mod.read_pid_state(
-        settings.pids_dir / "backend.pid", "backend"
-    )
+    backend_state = pid_mod.read_pid_state(settings.pids_dir / "backend.pid", "backend")
     frontend_state = pid_mod.read_pid_state(
         settings.pids_dir / "frontend.pid", "frontend"
     )
 
     if backend_state.status is pid_mod.PidStateStatus.NONE:
         return StatusReport(
-            running=False, mode=None, backend=None, frontend=None,
-            probed=False, took_ms=int((time.monotonic() - t0) * 1000),
+            running=False,
+            mode=None,
+            backend=None,
+            frontend=None,
+            probed=False,
+            took_ms=int((time.monotonic() - t0) * 1000),
         )
 
     mode = backend_state.mode
@@ -271,13 +300,15 @@ def status_service(*, no_probe: bool) -> StatusReport:
 
     backend_info = _build_status_info(
         backend_state,
-        no_probe=no_probe, port_for_probe=settings.backend_port,
+        no_probe=no_probe,
+        port_for_probe=settings.backend_port,
     )
     frontend_info = None
     if mode == "dev" and frontend_state.status is not pid_mod.PidStateStatus.NONE:
         frontend_info = _build_status_info(
             frontend_state,
-            no_probe=no_probe, port_for_probe=settings.frontend_port,
+            no_probe=no_probe,
+            port_for_probe=settings.frontend_port,
         )
     return StatusReport(
         running=backend_state.status is pid_mod.PidStateStatus.RUNNING,
@@ -291,8 +322,13 @@ def status_service(*, no_probe: bool) -> StatusReport:
 
 def _build_status_info(state, *, no_probe: bool, port_for_probe: int):
     if state.status is pid_mod.PidStateStatus.STALE:
-        return {"status": "stale", "pid": state.pid, "port": None,
-                "uptime_sec": 0, "healthy": False}
+        return {
+            "status": "stale",
+            "pid": state.pid,
+            "port": None,
+            "uptime_sec": 0,
+            "healthy": False,
+        }
     uptime = 0
     if state.started_at is not None:
         uptime = int((datetime.now(UTC) - state.started_at).total_seconds())
@@ -323,15 +359,16 @@ def restart_service(
     host_override: str | None,
 ) -> tuple[StopResult, StartResult]:
     settings = Settings()
-    backend_state = pid_mod.read_pid_state(
-        settings.pids_dir / "backend.pid", "backend"
-    )
+    backend_state = pid_mod.read_pid_state(settings.pids_dir / "backend.pid", "backend")
     frontend_state = pid_mod.read_pid_state(
         settings.pids_dir / "frontend.pid", "frontend"
     )
 
     inferred_mode: Literal["dev", "prod"] | None = backend_state.mode
-    if inferred_mode is None and backend_state.status is not pid_mod.PidStateStatus.NONE:
+    if (
+        inferred_mode is None
+        and backend_state.status is not pid_mod.PidStateStatus.NONE
+    ):
         inferred_mode = "dev" if frontend_state.file_exists else "prod"
 
     target_mode = mode_override or inferred_mode

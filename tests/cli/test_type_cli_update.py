@@ -42,9 +42,7 @@ class TestUpdateBasic:
             "name": "改自 from",
             "code_prefix": "OO",  # 被忽略（spec §5.3）
             "description": "from 来",
-            "custom_fields": [
-                {"key": "cpu", "type": "string", "required": True}
-            ],
+            "custom_fields": [{"key": "cpu", "type": "string", "required": True}],
         }
         f = tmp_path / "new.json"
         f.write_text(json.dumps(schema), encoding="utf-8")
@@ -74,7 +72,9 @@ class TestUpdateExitCodes:
         assert res.exit_code == 2
 
     def test_update_invalid_uuid_exit_2(self, isolated_db):
-        res = runner.invoke(app, ["type", "update", "not-a-uuid", "--name", "x", "--json"])
+        res = runner.invoke(
+            app, ["type", "update", "not-a-uuid", "--name", "x", "--json"]
+        )
         assert res.exit_code == 2
 
     def test_update_invalid_json_in_file_exit_2(self, isolated_db, tmp_path):
@@ -144,9 +144,7 @@ class TestUpdateDryRun:
 
     def test_update_json_envelope_shape(self, isolated_db):
         tid = _make_type()
-        res = runner.invoke(
-            app, ["type", "update", str(tid), "--name", "X", "--json"]
-        )
+        res = runner.invoke(app, ["type", "update", str(tid), "--name", "X", "--json"])
         payload = json.loads(res.stdout)
         # success envelope 标准 4 字段
         assert set(payload.keys()) == {"success", "data", "metadata", "error"}

@@ -32,9 +32,11 @@ def test_status_running_with_probe(isolated_db):
     mp.cmdline.return_value = ["python", "-m", "uvicorn", "asset_hub.api.app"]
     mp.status.return_value = "running"
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp), \
-         patch("asset_hub.cli.serve.lifecycle.probe_mod.probe_once", return_value=True):
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp),
+        patch("asset_hub.cli.serve.lifecycle.probe_mod.probe_once", return_value=True),
+    ):
         res = runner.invoke(app, ["serve", "status", "--json"])
     assert res.exit_code == 0, res.stdout
     payload = json.loads(res.stdout)
@@ -53,9 +55,11 @@ def test_status_no_probe_skips_http(isolated_db):
     mp.cmdline.return_value = ["python", "-m", "uvicorn", "asset_hub.api.app"]
     mp.status.return_value = "running"
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp), \
-         patch("asset_hub.cli.serve.lifecycle.probe_mod.probe_once") as mock_probe:
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp),
+        patch("asset_hub.cli.serve.lifecycle.probe_mod.probe_once") as mock_probe,
+    ):
         res = runner.invoke(app, ["serve", "status", "--no-probe", "--json"])
     assert res.exit_code == 0, res.stdout
     mock_probe.assert_not_called()

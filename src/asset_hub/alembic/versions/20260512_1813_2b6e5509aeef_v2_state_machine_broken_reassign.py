@@ -9,6 +9,7 @@ v2.0 状态机焕新：
 2. TransitionKind enum 删 RELOCATE/TRANSFER_HOLDER，加 REASSIGN/REPORT_BROKEN/DECLARE_UNREPAIRABLE/DISMISS（12 个）
 3. 数据迁移：旧 RELOCATE/TRANSFER_HOLDER state_transition_records 改写为 REASSIGN
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -26,11 +27,20 @@ def upgrade() -> None:
         batch_op.alter_column(
             "status",
             existing_type=sa.Enum(
-                "IN_USE", "IDLE", "MAINTENANCE", "RETIRED", "DISPOSED",
+                "IN_USE",
+                "IDLE",
+                "MAINTENANCE",
+                "RETIRED",
+                "DISPOSED",
                 name="assetstatus",
             ),
             type_=sa.Enum(
-                "IDLE", "IN_USE", "MAINTENANCE", "BROKEN", "RETIRED", "DISPOSED",
+                "IDLE",
+                "IN_USE",
+                "MAINTENANCE",
+                "BROKEN",
+                "RETIRED",
+                "DISPOSED",
                 name="assetstatus",
             ),
             existing_nullable=False,
@@ -47,18 +57,31 @@ def upgrade() -> None:
         batch_op.alter_column(
             "kind",
             existing_type=sa.Enum(
-                "CHECKOUT_INTERNAL", "CHECKOUT_EXTERNAL", "RETURN",
-                "SEND_TO_MAINTENANCE", "RECOVER_FROM_MAINTENANCE",
-                "RETIRE", "REINSTATE", "DISPOSE",
-                "RELOCATE", "TRANSFER_HOLDER",
+                "CHECKOUT_INTERNAL",
+                "CHECKOUT_EXTERNAL",
+                "RETURN",
+                "SEND_TO_MAINTENANCE",
+                "RECOVER_FROM_MAINTENANCE",
+                "RETIRE",
+                "REINSTATE",
+                "DISPOSE",
+                "RELOCATE",
+                "TRANSFER_HOLDER",
                 name="transitionkind",
             ),
             type_=sa.Enum(
-                "CHECKOUT_INTERNAL", "CHECKOUT_EXTERNAL", "RETURN",
-                "SEND_TO_MAINTENANCE", "RECOVER_FROM_MAINTENANCE",
-                "RETIRE", "REINSTATE", "DISPOSE",
+                "CHECKOUT_INTERNAL",
+                "CHECKOUT_EXTERNAL",
+                "RETURN",
+                "SEND_TO_MAINTENANCE",
+                "RECOVER_FROM_MAINTENANCE",
+                "RETIRE",
+                "REINSTATE",
+                "DISPOSE",
                 "REASSIGN",
-                "REPORT_BROKEN", "DECLARE_UNREPAIRABLE", "DISMISS",
+                "REPORT_BROKEN",
+                "DECLARE_UNREPAIRABLE",
+                "DISMISS",
                 name="transitionkind",
             ),
             existing_nullable=False,
@@ -68,33 +91,54 @@ def upgrade() -> None:
 def downgrade() -> None:
     # 拒绝 downgrade 如有 BROKEN 状态资产
     conn = op.get_bind()
-    result = conn.execute(sa.text("SELECT COUNT(*) FROM assets WHERE status = 'BROKEN'")).scalar()
+    result = conn.execute(
+        sa.text("SELECT COUNT(*) FROM assets WHERE status = 'BROKEN'")
+    ).scalar()
     if result and result > 0:
-        raise RuntimeError(f"拒绝 downgrade：仍有 {result} 个 BROKEN 状态资产，请先迁移其状态")
+        raise RuntimeError(
+            f"拒绝 downgrade：仍有 {result} 个 BROKEN 状态资产，请先迁移其状态"
+        )
 
-    result = conn.execute(sa.text(
-        "SELECT COUNT(*) FROM state_transition_records "
-        "WHERE kind IN ('REASSIGN', 'REPORT_BROKEN', 'DECLARE_UNREPAIRABLE', 'DISMISS')"
-    )).scalar()
+    result = conn.execute(
+        sa.text(
+            "SELECT COUNT(*) FROM state_transition_records "
+            "WHERE kind IN ('REASSIGN', 'REPORT_BROKEN', 'DECLARE_UNREPAIRABLE', 'DISMISS')"
+        )
+    ).scalar()
     if result and result > 0:
-        raise RuntimeError(f"拒绝 downgrade：仍有 {result} 个 v2.0 新 kind 的 transition records")
+        raise RuntimeError(
+            f"拒绝 downgrade：仍有 {result} 个 v2.0 新 kind 的 transition records"
+        )
 
     with op.batch_alter_table("state_transition_records") as batch_op:
         batch_op.alter_column(
             "kind",
             existing_type=sa.Enum(
-                "CHECKOUT_INTERNAL", "CHECKOUT_EXTERNAL", "RETURN",
-                "SEND_TO_MAINTENANCE", "RECOVER_FROM_MAINTENANCE",
-                "RETIRE", "REINSTATE", "DISPOSE",
+                "CHECKOUT_INTERNAL",
+                "CHECKOUT_EXTERNAL",
+                "RETURN",
+                "SEND_TO_MAINTENANCE",
+                "RECOVER_FROM_MAINTENANCE",
+                "RETIRE",
+                "REINSTATE",
+                "DISPOSE",
                 "REASSIGN",
-                "REPORT_BROKEN", "DECLARE_UNREPAIRABLE", "DISMISS",
+                "REPORT_BROKEN",
+                "DECLARE_UNREPAIRABLE",
+                "DISMISS",
                 name="transitionkind",
             ),
             type_=sa.Enum(
-                "CHECKOUT_INTERNAL", "CHECKOUT_EXTERNAL", "RETURN",
-                "SEND_TO_MAINTENANCE", "RECOVER_FROM_MAINTENANCE",
-                "RETIRE", "REINSTATE", "DISPOSE",
-                "RELOCATE", "TRANSFER_HOLDER",
+                "CHECKOUT_INTERNAL",
+                "CHECKOUT_EXTERNAL",
+                "RETURN",
+                "SEND_TO_MAINTENANCE",
+                "RECOVER_FROM_MAINTENANCE",
+                "RETIRE",
+                "REINSTATE",
+                "DISPOSE",
+                "RELOCATE",
+                "TRANSFER_HOLDER",
                 name="transitionkind",
             ),
             existing_nullable=False,
@@ -104,11 +148,20 @@ def downgrade() -> None:
         batch_op.alter_column(
             "status",
             existing_type=sa.Enum(
-                "IDLE", "IN_USE", "MAINTENANCE", "BROKEN", "RETIRED", "DISPOSED",
+                "IDLE",
+                "IN_USE",
+                "MAINTENANCE",
+                "BROKEN",
+                "RETIRED",
+                "DISPOSED",
                 name="assetstatus",
             ),
             type_=sa.Enum(
-                "IN_USE", "IDLE", "MAINTENANCE", "RETIRED", "DISPOSED",
+                "IN_USE",
+                "IDLE",
+                "MAINTENANCE",
+                "RETIRED",
+                "DISPOSED",
                 name="assetstatus",
             ),
             existing_nullable=False,

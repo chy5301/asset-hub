@@ -4,6 +4,7 @@
 模式的有意例外。聚合查询 CLI 惯例（git stats / npm stats）；如未来需扩展
 （如 stats refresh 缓存触发），届时升为 'stats show' 等子命令。
 """
+
 from typing import Annotated
 
 import typer
@@ -61,7 +62,10 @@ def stats_root(
     if ctx.invoked_subcommand is not None:
         return
 
-    with cli_session() as session, handle_domain_errors(json_output, exit_2_on_validation=True):
+    with (
+        cli_session() as session,
+        handle_domain_errors(json_output, exit_2_on_validation=True),
+    ):
         parsed_fields = parse_stats_fields(fields)
         svc = StatsService(session)
         stats = svc.get_dashboard_stats(
@@ -130,7 +134,9 @@ def _render_human_table(stats: StatsRead) -> None:
         t.add_column("Days", justify="right")
         for it in stats.idle_top:
             days_text = (
-                f"[red]{it.idle_days}d[/red]" if it.idle_days > 90 else f"{it.idle_days}d"
+                f"[red]{it.idle_days}d[/red]"
+                if it.idle_days > 90
+                else f"{it.idle_days}d"
             )
             t.add_row(it.asset_code, it.type_name or "-", days_text)
         right.append(t)

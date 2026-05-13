@@ -1,4 +1,5 @@
 """共享工具：service 层通用 sentinel / helper。"""
+
 from typing import Final
 
 

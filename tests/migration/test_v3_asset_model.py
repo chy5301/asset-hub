@@ -1,4 +1,5 @@
 """v3 migration 测：upgrade 加 model 列 + ix_assets_model 索引；downgrade 回退干净。"""
+
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -39,7 +40,9 @@ def v2_db(tmp_path):
 
     _clear_env_cache()
     with patch("asset_hub.config.Settings", return_value=mock_settings):
-        command.upgrade(cfg, "2b6e5509aeef")  # v2 state machine head（v3 down_revision）
+        command.upgrade(
+            cfg, "2b6e5509aeef"
+        )  # v2 state machine head（v3 down_revision）
 
     return db_path, cfg, db_url, mock_settings
 

@@ -12,7 +12,9 @@ from asset_hub.errors import (
 )
 
 
-def success_envelope(data: Any, count: int | None = None, took_ms: float | None = None) -> str:
+def success_envelope(
+    data: Any, count: int | None = None, took_ms: float | None = None
+) -> str:
     meta: dict[str, Any] = {}
     if count is not None:
         meta["count"] = count
@@ -65,6 +67,7 @@ def print_result(data: Any, json_output: bool, *, count: int | None = None) -> N
         print(success_envelope(data, count=count))
     else:
         from rich import print as rprint
+
         rprint(data)
 
 
@@ -87,12 +90,15 @@ def print_error(
             payload = _cli_error_payload(exc)
         else:
             payload = {"code": code, "message": message}
-        print(json.dumps(
-            {"success": False, "data": None, "metadata": {}, "error": payload},
-            ensure_ascii=False,
-        ))
+        print(
+            json.dumps(
+                {"success": False, "data": None, "metadata": {}, "error": payload},
+                ensure_ascii=False,
+            )
+        )
     else:
         from rich.console import Console
+
         Console(stderr=True).print(f"[red]错误:[/red] {message}")
     raise SystemExit(exit_code)
 
@@ -102,6 +108,7 @@ def print_dry_run(payload: Any, json_output: bool, *, message: str) -> NoReturn:
         print(success_envelope(payload))
     else:
         from rich import print as rprint
+
         rprint(f"[yellow]dry-run:[/yellow] {message}")
     raise SystemExit(10)
 

@@ -24,16 +24,22 @@ class Asset(SQLModel, table=True):
     __tablename__ = "assets"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    asset_code: str = Field(unique=True, index=True)  # 新；{prefix}-{seq:03d}，service 层生成
+    asset_code: str = Field(
+        unique=True, index=True
+    )  # 新；{prefix}-{seq:03d}，service 层生成
     serial_number: str | None = Field(default=None, unique=True, index=True)
     name: str = Field(index=True)
-    model: str | None = Field(default=None, index=True)  # nullable / non-unique; index 与 name 对齐
+    model: str | None = Field(
+        default=None, index=True
+    )  # nullable / non-unique; index 与 name 对齐
     type_id: uuid.UUID = Field(foreign_key="asset_types.id", index=True)
     status: AssetStatus = Field(default=AssetStatus.IDLE)
     holder: str | None = None
     location: str | None = None
     notes: str | None = None
-    custom_data: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    custom_data: dict = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
     acquired_at: date | None = Field(default=None)  # 新；业务入账日期
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

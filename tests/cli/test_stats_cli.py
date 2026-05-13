@@ -31,7 +31,9 @@ def test_stats_fields_idle_top_only(populated_cli_db):
 
 
 def test_stats_fields_multiple(populated_cli_db):
-    result = runner.invoke(app, ["stats", "--fields", "idle_top,status_distribution", "--json"])
+    result = runner.invoke(
+        app, ["stats", "--fields", "idle_top,status_distribution", "--json"]
+    )
     assert result.exit_code == 0
     data = json.loads(result.stdout)["data"]
     assert data.get("idle_top") is not None

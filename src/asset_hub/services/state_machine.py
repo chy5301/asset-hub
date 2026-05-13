@@ -3,6 +3,7 @@
 TRANSITION_RULES 是合法 from/to + holder/location 规则的唯一来源。
 service 层不写 if-block 双层防御。
 """
+
 from typing import Literal, NamedTuple
 
 from asset_hub.errors import IllegalTransitionError
@@ -20,13 +21,15 @@ class TransitionRule(NamedTuple):
     location_rule: LocationRule
 
 
-_ALL_BUT_DISPOSED = frozenset({
-    AssetStatus.IDLE,
-    AssetStatus.IN_USE,
-    AssetStatus.MAINTENANCE,
-    AssetStatus.BROKEN,
-    AssetStatus.RETIRED,
-})
+_ALL_BUT_DISPOSED = frozenset(
+    {
+        AssetStatus.IDLE,
+        AssetStatus.IN_USE,
+        AssetStatus.MAINTENANCE,
+        AssetStatus.BROKEN,
+        AssetStatus.RETIRED,
+    }
+)
 
 
 # 派出延续状态集合（v2.0 新引入）
@@ -66,7 +69,9 @@ TRANSITION_RULES: dict[TransitionKind, TransitionRule] = {
         location_rule="keep",
     ),
     TransitionKind.RETIRE: TransitionRule(
-        valid_from=frozenset({AssetStatus.IDLE, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}),
+        valid_from=frozenset(
+            {AssetStatus.IDLE, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}
+        ),
         to_status=AssetStatus.RETIRED,
         holder_rule="keep",
         location_rule="keep",
@@ -78,7 +83,9 @@ TRANSITION_RULES: dict[TransitionKind, TransitionRule] = {
         location_rule="keep",
     ),
     TransitionKind.DISPOSE: TransitionRule(
-        valid_from=frozenset({AssetStatus.RETIRED, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}),
+        valid_from=frozenset(
+            {AssetStatus.RETIRED, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}
+        ),
         to_status=AssetStatus.DISPOSED,
         holder_rule="forced_null",
         location_rule="forced_null",

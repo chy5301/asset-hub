@@ -5,7 +5,13 @@ from asset_hub.services.validation import validate_custom_data
 
 
 def _spec(t: str, label: str = "网址", required: bool = False, **extra) -> dict:
-    return {"key": "url_field", "label": label, "type": t, "required": required, **extra}
+    return {
+        "key": "url_field",
+        "label": label,
+        "type": t,
+        "required": required,
+        **extra,
+    }
 
 
 def test_url_accepts_https():
@@ -16,9 +22,7 @@ def test_url_accepts_https():
 
 
 def test_url_accepts_http():
-    result = validate_custom_data(
-        [_spec("url")], {"url_field": "http://example.com"}
-    )
+    result = validate_custom_data([_spec("url")], {"url_field": "http://example.com"})
     assert result["url_field"] == "http://example.com"
 
 

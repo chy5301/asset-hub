@@ -10,6 +10,7 @@ class CustomFieldDef(BaseModel):
     M2c-3 D2 决议：字段名沿用 M1/M2 的 `key`（与 services/validation.py:8 + 现有 fixtures 一致），
     不重命名为 name；spec D2 文案随 plan Task 15 同步使用 `key`（前端 FieldDef 也用 key）。
     """
+
     key: str
     label: str | None = None
     type: str
@@ -41,6 +42,7 @@ class TypeCreate(BaseModel):
 
 class TypeUpdate(BaseModel):
     """注意：code_prefix immutable，update DTO 不暴露此字段（D5）。"""
+
     name: str | None = None
     description: str | None = None
     custom_fields: list[CustomFieldDef] | None = None

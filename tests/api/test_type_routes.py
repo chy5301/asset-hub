@@ -3,7 +3,9 @@ from fastapi.testclient import TestClient
 
 class TestCreateType:
     def test_create_minimal(self, client: TestClient):
-        resp = client.post("/api/types", json={"name": "笔记本电脑", "code_prefix": "NB"})
+        resp = client.post(
+            "/api/types", json={"name": "笔记本电脑", "code_prefix": "NB"}
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "笔记本电脑"
@@ -43,15 +45,21 @@ class TestCreateType:
 
     def test_create_invalid_prefix_format_422(self, client: TestClient):
         # 1 字符 / 5+ 字符 → service ValidationError → 422
-        resp_short = client.post("/api/types", json={"name": "笔记本", "code_prefix": "N"})
+        resp_short = client.post(
+            "/api/types", json={"name": "笔记本", "code_prefix": "N"}
+        )
         assert resp_short.status_code == 422
-        resp_long = client.post("/api/types", json={"name": "笔记本", "code_prefix": "LAPTOP"})
+        resp_long = client.post(
+            "/api/types", json={"name": "笔记本", "code_prefix": "LAPTOP"}
+        )
         assert resp_long.status_code == 422
 
     def test_create_duplicate_prefix_409(self, client: TestClient):
         client.post("/api/types", json={"name": "笔记本", "code_prefix": "NB"})
         # 不同 name，相同 prefix
-        resp = client.post("/api/types", json={"name": "笔记本电脑", "code_prefix": "NB"})
+        resp = client.post(
+            "/api/types", json={"name": "笔记本电脑", "code_prefix": "NB"}
+        )
         assert resp.status_code == 409
 
 
@@ -86,5 +94,6 @@ class TestGetType:
 
     def test_get_nonexistent_404(self, client: TestClient):
         from uuid import uuid4
+
         resp = client.get(f"/api/types/{uuid4()}")
         assert resp.status_code == 404

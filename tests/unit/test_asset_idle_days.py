@@ -1,4 +1,5 @@
 """验证 AssetRead.idle_days 与 stats.idle_top.idle_days 同源."""
+
 from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session
@@ -48,7 +49,13 @@ def test_in_use_asset_idle_days_is_none(session: Session):
     at = AssetType(name="LIU", code_prefix="LIU", custom_fields=[])
     session.add(at)
     session.flush()
-    a = Asset(asset_code="LIU-001", name="L2", type_id=at.id, status=AssetStatus.IN_USE, holder="X")
+    a = Asset(
+        asset_code="LIU-001",
+        name="L2",
+        type_id=at.id,
+        status=AssetStatus.IN_USE,
+        holder="X",
+    )
     session.add(a)
     session.flush()
 

@@ -3,6 +3,7 @@
 每检查项 mock subprocess / Path 状态，验证 ok/detail/code/fix_hint。
 M3e §2.6 Phase 1 验收。
 """
+
 from __future__ import annotations
 
 import pytest
@@ -28,7 +29,9 @@ class _FakeRun:
 
 
 def test_check_uv_ok(monkeypatch):
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
         lambda *a, **kw: _FakeRun(stdout="uv 0.5.4\n", returncode=0),
@@ -47,7 +50,9 @@ def test_check_uv_missing(monkeypatch):
 
 
 def test_check_pnpm_ok(monkeypatch):
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
         lambda *a, **kw: _FakeRun(stdout="9.12.3\n", returncode=0),
@@ -85,7 +90,9 @@ def test_check_data_writable_missing(tmp_path, monkeypatch):
 
 
 def test_check_alembic_head_ok(monkeypatch):
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     outputs = iter(["abc123 (head)\n", "abc123\n"])
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
@@ -96,7 +103,9 @@ def test_check_alembic_head_ok(monkeypatch):
 
 
 def test_check_alembic_head_outdated(monkeypatch):
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     outputs = iter(["abc123\n", "def456\n"])
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
@@ -117,7 +126,9 @@ def test_check_alembic_head_uv_missing(monkeypatch):
 
 def test_check_alembic_head_command_not_found(monkeypatch):
     """alembic 未装（uv run alembic current 退出非零 + stderr 含 module not found）→ fix_hint 指向 uv sync。"""
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
         lambda *a, **kw: _FakeRun(returncode=1, stderr="No module named 'alembic'"),
@@ -130,10 +141,14 @@ def test_check_alembic_head_command_not_found(monkeypatch):
 
 def test_check_alembic_head_other_failure_fallback(monkeypatch):
     """alembic current 退出非零且 stderr 不含 module-missing 关键词 → fix_hint 默认 fallback 到 upgrade head。"""
-    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}"
+    )
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
-        lambda *a, **kw: _FakeRun(returncode=1, stderr="Target database is not up to date"),
+        lambda *a, **kw: _FakeRun(
+            returncode=1, stderr="Target database is not up to date"
+        ),
     )
     c = check_alembic_head()
     assert c.ok is False
@@ -230,7 +245,9 @@ def test_run_all_checks_aggregates(mock_all_checks_ok):
     result = run_all_checks(mode="prod")
     assert result.ok is True
     assert result.issue_count == 0
-    assert len(result.checks) == 7  # uv/pnpm/python/data/alembic/dist + 1 port (prod 不查 5173)
+    assert (
+        len(result.checks) == 7
+    )  # uv/pnpm/python/data/alembic/dist + 1 port (prod 不查 5173)
 
 
 def test_run_all_checks_dev_mode_includes_5173(mock_all_checks_ok):

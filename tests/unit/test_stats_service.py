@@ -19,26 +19,58 @@ def populated_session(session: Session):
     session.add(gpu)
     session.flush()
 
-    a1 = Asset(asset_code="L-001", name="L1", type_id=laptop.id, status=AssetStatus.IDLE, holder=None)
-    a2 = Asset(asset_code="L-002", name="L2", type_id=laptop.id, status=AssetStatus.IDLE, holder="张三")
+    a1 = Asset(
+        asset_code="L-001",
+        name="L1",
+        type_id=laptop.id,
+        status=AssetStatus.IDLE,
+        holder=None,
+    )
+    a2 = Asset(
+        asset_code="L-002",
+        name="L2",
+        type_id=laptop.id,
+        status=AssetStatus.IDLE,
+        holder="张三",
+    )
     a3 = Asset(asset_code="G-001", name="G1", type_id=gpu.id, status=AssetStatus.IDLE)
-    a4 = Asset(asset_code="L-003", name="L3", type_id=laptop.id, status=AssetStatus.IN_USE, holder="李四")
-    a5 = Asset(asset_code="G-002", name="G2", type_id=gpu.id, status=AssetStatus.RETIRED, holder="王五")
+    a4 = Asset(
+        asset_code="L-003",
+        name="L3",
+        type_id=laptop.id,
+        status=AssetStatus.IN_USE,
+        holder="李四",
+    )
+    a5 = Asset(
+        asset_code="G-002",
+        name="G2",
+        type_id=gpu.id,
+        status=AssetStatus.RETIRED,
+        holder="王五",
+    )
     for a in [a1, a2, a3, a4, a5]:
         session.add(a)
     session.flush()
 
     # a1 30 天前进 IDLE，a2 5 天前进 IDLE，a3 created_at = 50 天前（fallback）
-    session.add(StateTransitionRecord(
-        asset_id=a1.id, kind=TransitionKind.RETURN,
-        from_status=AssetStatus.IN_USE, to_status=AssetStatus.IDLE,
-        created_at=datetime.now(UTC) - timedelta(days=30),
-    ))
-    session.add(StateTransitionRecord(
-        asset_id=a2.id, kind=TransitionKind.RETURN,
-        from_status=AssetStatus.IN_USE, to_status=AssetStatus.IDLE,
-        created_at=datetime.now(UTC) - timedelta(days=5),
-    ))
+    session.add(
+        StateTransitionRecord(
+            asset_id=a1.id,
+            kind=TransitionKind.RETURN,
+            from_status=AssetStatus.IN_USE,
+            to_status=AssetStatus.IDLE,
+            created_at=datetime.now(UTC) - timedelta(days=30),
+        )
+    )
+    session.add(
+        StateTransitionRecord(
+            asset_id=a2.id,
+            kind=TransitionKind.RETURN,
+            from_status=AssetStatus.IN_USE,
+            to_status=AssetStatus.IDLE,
+            created_at=datetime.now(UTC) - timedelta(days=5),
+        )
+    )
     a3.created_at = datetime.now(UTC) - timedelta(days=50)
     session.flush()
 
@@ -117,7 +149,12 @@ def test_get_dashboard_stats_idle_top_max_10(session: Session):
     session.add(at)
     session.flush()
     for i in range(15):
-        a = Asset(asset_code=f"B-{i:03d}", name=f"B{i}", type_id=at.id, status=AssetStatus.IDLE)
+        a = Asset(
+            asset_code=f"B-{i:03d}",
+            name=f"B{i}",
+            type_id=at.id,
+            status=AssetStatus.IDLE,
+        )
         a.created_at = datetime.now(UTC) - timedelta(days=15 - i)
         session.add(a)
     session.flush()
@@ -131,7 +168,14 @@ def test_get_dashboard_stats_idle_top_under_10_no_padding(session: Session):
     session.add(at)
     session.flush()
     for i in range(3):
-        session.add(Asset(asset_code=f"F-{i:03d}", name=f"F{i}", type_id=at.id, status=AssetStatus.IDLE))
+        session.add(
+            Asset(
+                asset_code=f"F-{i:03d}",
+                name=f"F{i}",
+                type_id=at.id,
+                status=AssetStatus.IDLE,
+            )
+        )
     session.flush()
     stats = StatsService(session).get_dashboard_stats()
     assert len(stats.idle_top) == 3
