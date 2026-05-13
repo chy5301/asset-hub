@@ -88,6 +88,7 @@ class TestBuildRows:
         assert keys == [
             "资产编号",
             "名称",
+            "型号",  # v2.0 PR-3
             "类型",
             "状态",
             "保管人",
@@ -247,7 +248,7 @@ class TestRenderCsv:
         data = svc._render_csv(rows)
         text = data.decode("utf-8-sig")
         first_line = text.splitlines()[0]
-        assert first_line.startswith("资产编号,名称,类型,状态,")
+        assert first_line.startswith("资产编号,名称,型号,类型,状态,")
 
     def test_empty_rows_writes_header_only(self, session: Session):
         type_svc = TypeService(session)
@@ -255,7 +256,7 @@ class TestRenderCsv:
         svc = ExportService(session, asset_svc, type_svc)
 
         column_names = [
-            "资产编号", "名称", "类型", "状态", "保管人", "位置",
+            "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
             "闲置天数", "入账日期", "铭牌编号", "备注",
         ]
         data = svc._render_csv([], column_names=column_names)
@@ -339,8 +340,8 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # 10 列 (固定) + 1 row header + 1 row data = "A1:J2"
-        assert ws.auto_filter.ref == "A1:J2"
+        # 11 列 (固定，v2.0 PR-3 加 "型号") + 1 row header + 1 row data = "A1:K2"
+        assert ws.auto_filter.ref == "A1:K2"
 
     def test_status_cell_filled_with_status_hex(self, session: Session):
         type_svc = TypeService(session)
@@ -353,8 +354,8 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # 状态列固定第 4 列 (D), data row=2
-        status_cell = ws.cell(row=2, column=4)
+        # v2.0 PR-3 后状态列第 5 列 (E)——"型号" 插入到 "名称" 与 "类型" 之间
+        status_cell = ws.cell(row=2, column=5)
         assert status_cell.value == "闲置"
         # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致
         assert status_cell.fill.fgColor.rgb == STATUS_HEX[AssetStatus.IDLE]
@@ -365,7 +366,7 @@ class TestRenderXlsx:
         svc = ExportService(session, asset_svc, type_svc)
 
         column_names = [
-            "资产编号", "名称", "类型", "状态", "保管人", "位置",
+            "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
             "闲置天数", "入账日期", "铭牌编号", "备注",
         ]
         data = svc._render_xlsx([], column_names=column_names)

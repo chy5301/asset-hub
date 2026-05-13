@@ -454,7 +454,7 @@ def asset_list(
     ] = False,
     sort: Annotated[
         str | None,
-        typer.Option("--sort", help="排序字段：name/asset_code/created_at/updated_at/acquired_at/idle_days"),
+        typer.Option("--sort", help="排序字段：name/model/asset_code/serial_number/created_at/updated_at/acquired_at/idle_days"),
     ] = None,
     order: Annotated[
         str,

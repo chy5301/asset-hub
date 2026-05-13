@@ -59,9 +59,10 @@ class ExportService:
     _COL_WIDTH_DEFAULT_CAP = 50
     _COL_WIDTH_NOTES_CAP = 60
 
-    # spec §B.3: 10 固定列, 顺序严格 (custom fields 平铺接在尾)
+    # spec §B.3: 11 固定列, 顺序严格 (custom fields 平铺接在尾)
+    # v2.0 PR-3：新增 "型号" 列，紧邻 "名称" 之后
     _FIXED_COLUMN_NAMES: list[str] = [
-        "资产编号", "名称", "类型", "状态", "保管人", "位置",
+        "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
         "闲置天数", "入账日期", "铭牌编号", "备注",
     ]
 
@@ -98,6 +99,7 @@ class ExportService:
             row: dict[str, str] = {
                 "资产编号": a.asset_code,
                 "名称": a.name,
+                "型号": a.model or "",  # v2.0 PR-3
                 "类型": a.type_name or "",
                 "状态": STATUS_LABELS[a.status],
                 "保管人": a.holder or "",
