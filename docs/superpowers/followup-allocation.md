@@ -124,9 +124,9 @@ M2d 实施 + final code review + simplify review 过程中又产生了一批新 
 
 ---
 
-## v2.0 PR-1 · 状态机焕新 + 文案 + CLI flag 标准化 ⏳
+## v2.0 PR-1 · 状态机焕新 + 文案 + CLI flag 标准化 ✅ **已合并（2026-05-13）**
 
-合并 commit：<等 PR-1 merge 后回填>
+合并 commit：`b689148` (PR #3, Merge pull request from feat/v2-pr1-state-machine)
 PR：https://github.com/chy5301/asset-hub/pull/3
 
 落地范围：
@@ -151,3 +151,48 @@ PR：https://github.com/chy5301/asset-hub/pull/3
 - 2026-05-13 /simplify pass 衍生 minor 项（reviewer 标 Minor，未修）：dialog test wrapper 重复（reassign/declare-unrepairable test 各自创建 QueryClient + provider，可抽 `createWrapper()`）；checkout 的 `to_holder` 不走 `parse_unset_or_value` 缺解释注释；test docstring `v2.0:` 前缀属变更日志噪音；`find_open_checkout_id` 2 次查询可合并为单次 LEFT JOIN；migration UPDATE / downgrade 全表扫描（无 `status`/`kind` 索引；对小团队工具可接受）；`useTransitionsQuery` 无分页（v2 后单资产 transition 数量上限可能↑）。
 - `asset-header.test.tsx:225` "逾期 3 天" 测时间敏感 flaky（commit `3dcdf56` M3d 引入，main 也 fail，与 PR-1 无关）：测试构造 `due_at = Date.now() - 3*86400000` 解析时无时区导致按 local 时间偏移得到 3+ 天而非 3 天。修复方向：用 `vi.useFakeTimers()` 冻结时间，或断言 `/逾期 \d 天/` 正则（不强 3）。
 - PR-1 visual smoke 手动 QA：已于 2026-05-13 用 Playwright MCP 完成，6 态 / 4 新 dialog / dispose phrase "注销" / BROKEN 资产 5 按钮路径全部对齐 v2 spec，详见 controller 烟测报告。
+
+---
+
+## v2.0 PR-2 · Agent-native 收口 ⏳
+
+合并 commit：<等 PR-2 merge 后回填>
+PR：https://github.com/chy5301/asset-hub/pull/4
+
+落地范围（spec §4，共 8 commits 跨 6 phase）：
+
+- **Phase 1** M3e Phase 1 三 followup：
+  - `cancelled` error code exit_code 1 → 10 正式化（与 dry-run 同档信号化）
+  - doctor `check_alembic_head` returncode + stderr 关键词分类（alembic 缺失 vs DB 落后于 head 分类 fix_hint）
+  - doctor `check_frontend_dist` `Path(__file__).parents[4]` 解耦 CWD（agent 任意目录可调）
+- **Phase 2** envelope error 深度结构化：
+  - `errors.py` 6 子类加 `hint / fields_missing / fields_invalid / affected_resource_id` 可选 kwargs + class-level `code` 类属性
+  - `api/app.py` exception handler 平铺新字段（保留 `detail` backward compat，前端 / 4 个现有 API 测零回归）
+  - `cli/envelope.py` 删 `_DOMAIN_ERROR_CODES` dict 改用 `type(exc).code`；error 嵌套字典加新字段 exclude None
+  - `services/transition.py` REASSIGN / RETURN raise 补 hint；`state_machine.py` validate_transition 3 raise 补 hint
+- **Phase 3** `--help-json` 双模 agent 元数据导出：
+  - 任意 CLI 命令传 `--help-json` 输出 `{command, help, params, examples}` JSON
+  - Option D 实现：单点 monkeypatch `typer.main.get_command` + `typer.testing._get_command` 递归注入 hidden eager Click flag。typer pin 加 `<0.30` 上限缓解 private API 风险
+- **Phase 4** `--fields` 字段掩码（API + CLI），节省 agent token 5-9×：
+  - API `?fields=a,b,c` 4 endpoint（asset get/list + transition POST/GET）；Option B 保留 `response_model` + JSONResponse filter 分支（OpenAPI / 前端 gen:api 不受影响）
+  - CLI `--fields` 14 asset 命令（list / show / history + 11 transition 写）；register/update/delete/type/attachment/stats/serve 不在 scope
+  - unknown 字段 → ValidationError + fields_invalid + hint 列合法字段
+  - dry-run + --fields：dry-run preview 不被 filter（contract test 锁）
+- **Phase 5** SKILL.md description trigger eval：
+  - 1-pass 分析式优化（正式 5-iter run_loop.py 需 host Claude Code 环境，本 background subagent 受限）
+  - baseline 弱点：abstract 术语 / web image asset 歧义；优化版加"实物资产 + 硬件类型清单"、口语化触发词（坏了/修不好/换工位）、显式 pushy 句对抗 under-trigger、"不适用于" 黑名单
+- **Phase 6** 收尾：references/envelope.md v2.0 章节补全（深度结构化 4 字段表 + 3 示例 + API/CLI shape 差异说明）
+
+搭车闭环 followup：
+- M3e Phase 1 三 followup（cancelled formalize / alembic_head 分类 / frontend_dist CWD）—— 完全闭环
+- envelope error 深度结构化（K1 envelope 统一升级版）—— 完全闭环
+- `--help-json` / `--fields` agent 友好层 —— v2.0 新基建
+- doc-debt `_DOMAIN_ERROR_CODES` 残留清理 —— 闭环
+
+未解决 followup（PR-2 范围外，留 v2.1 或 polish 期）：
+- formal 5-iter description eval（需 host Claude Code 环境跑 `skill-creator/scripts/run_loop.py`，本 1-pass 分析估 hit rate 改善 ~4/15）
+- typer private API 依赖（`typer.main.get_command` + `typer.testing._get_command`）—— 加了 `<0.30` 上限触发主动 revisit，但应在某次 typer 升级前考察更稳健的 Click 注入方案
+- Phase 1 PR-1 衍生 minor 项（dialog test wrapper / find_open_checkout_id 2 查询合并 / migration UPDATE 全表扫描）—— 未在 PR-2 scope，留前端 polish 或独立 PR
+- Dashboard vs 列表 filter toggle 文案不统一（PR-1 visual smoke 发现）—— 前端 cosmetic，未在 PR-2 scope（PR-2 零 frontend diff）
+- `asset-hub serve stop` 不清外部端口占用（PR-1 visual smoke 发现）—— 未在 PR-2 scope（M3e Phase 1 三 followup 之外）
+- asset-header.test.tsx 时间敏感 flaky（前端，PR-1 main 也 fail）—— 未在 PR-2 scope
