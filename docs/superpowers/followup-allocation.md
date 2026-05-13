@@ -226,3 +226,28 @@ PR：https://github.com/chy5301/asset-hub/pull/5
 - 已存在 GPU AssetType（按 v1 example 创建过）custom_fields 仍含 model —— 用户手动迁移（release-notes-v2.0.md §升级注意 已写明）
 - 未来重构 update CLI 为分立 flag（含 `--name` / `--model` / `--sn` 等，与 register 对称）—— v2.x / M4 followup（plan 显式不在 PR-3 scope）
 - ~~PR-3 待维护者本地视觉烟测确认~~ —— 已合并；烟测过程暴露 serve port bug 第二次复现（见上一条），未发现 PR-3 自身视觉问题
+
+---
+
+## v2.x polish · CI 后端+前端覆盖 PR-A · ⏳ **等 review/merge（2026-05-13）**
+
+PR：https://github.com/chy5301/asset-hub/pull/6
+分支：`feat/v2.x-ci-coverage`
+spec / plan：`docs/superpowers/specs/2026-05-13-v2.x-ci-coverage-design.md` + `docs/superpowers/plans/2026-05-13-v2.x-ci-coverage.md`
+
+落地内容：
+
+- 新建 `.github/workflows/ci.yml`，2 个并行 job：`backend`（ruff check + pytest 609 测）+ `frontend`（ESLint + tsc -b + vitest 179 测）；ubuntu-latest，timeout 10 min
+- fix(test) `tests/unit/test_doctor.py::test_check_{uv,pnpm}_ok` 显式 mock `_resolve` —— 原测试隐式依赖 runner 装机 `shutil.which` 命中真 path 才能走到 subprocess.run mock；backend job 只装 uv + python 不装 pnpm → `_resolve("pnpm")` 返 None → short-circuit 'not found' → fail（commit `7b9b8aa`）。test_check_uv_ok 同步显式化（防御性，runner 当前装 uv 凑巧过）
+
+**CI 实战结果**（PR #6 push 后实测）：
+
+| Check | 第一次（commit 1359c81）| 第二次（fix 后 7b9b8aa）| rerun |
+|---|---|---|---|
+| backend | fail (1 测) | **pass** 49s | — |
+| frontend | pass | **pass** 56s | — |
+| e2e | pass 1m52s | CANCELLED 15m17s | CANCELLED 14m48s |
+
+未解决 followup（PR-A 范围外）：
+
+- **e2e workflow flaky · playwright browser install 无 cache**：`.github/workflows/e2e.yml` step 9 `pnpm exec playwright install --with-deps chromium` 每次冷下载 ~250MB chromium binary，撞 CDN 慢就被自身 `timeout-minutes: 15` 卡停 cancel。第一次同分支 1m52s 全绿、第二次/第三次（rerun）连卡 14m48s/14m48s。**与 PR-A 0 相关**（PR-A 没动 e2e.yml / playwright specs / 前端代码 / backend service）。修复方向（独立 PR）：（a）加 `actions/cache@v4` 缓存 `~/.cache/ms-playwright`，key 用 playwright 版本；或（b）改用 `microsoft/playwright-github-action`；或（c）把 timeout 从 15 min 抬到 20-25 min 给冷启动留余量
