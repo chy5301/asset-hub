@@ -28,6 +28,7 @@ class _FakeRun:
 
 
 def test_check_uv_ok(monkeypatch):
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
         lambda *a, **kw: _FakeRun(stdout="uv 0.5.4\n", returncode=0),
@@ -46,6 +47,7 @@ def test_check_uv_missing(monkeypatch):
 
 
 def test_check_pnpm_ok(monkeypatch):
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.subprocess.run",
         lambda *a, **kw: _FakeRun(stdout="9.12.3\n", returncode=0),
