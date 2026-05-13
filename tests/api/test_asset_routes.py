@@ -251,3 +251,83 @@ class TestListAssetsFilterRetiredDisposed:
         assert r.status_code == 200
         statuses = {a["status"] for a in r.json()}
         assert statuses == {"RETIRED"}
+
+
+# ---------------------------------------------------------------------------
+# PR-3: AssetCreate / AssetUpdate / AssetRead 加 model 字段集成测
+# ---------------------------------------------------------------------------
+
+
+def test_create_asset_with_model(client, sample_type_nb_via_api):
+    """POST /api/assets body 含 model 字段。"""
+    r = client.post("/api/assets", json={
+        "name": "X",
+        "type_id": str(sample_type_nb_via_api),
+        "model": "ThinkPad X1 Carbon",
+        "custom_data": {},
+    })
+    assert r.status_code == 201
+    body = r.json()
+    assert body["model"] == "ThinkPad X1 Carbon"
+
+
+def test_get_asset_includes_model(client, asset_factory):
+    """GET /api/assets/{id} response 含 model 字段。"""
+    a = asset_factory(model="MacBook Pro")
+    r = client.get(f"/api/assets/{a['id']}")
+    assert r.status_code == 200
+    assert r.json()["model"] == "MacBook Pro"
+
+
+def test_patch_asset_set_model(client, asset_factory):
+    """PATCH 设值。"""
+    a = asset_factory(model="原型号")
+    r = client.patch(f"/api/assets/{a['id']}", json={"model": "新型号"})
+    assert r.status_code == 200
+    assert r.json()["model"] == "新型号"
+
+
+def test_patch_asset_clear_model_via_null(client, asset_factory):
+    """PATCH body model=null 显式清空。"""
+    a = asset_factory(model="原型号")
+    r = client.patch(f"/api/assets/{a['id']}", json={"model": None})
+    assert r.status_code == 200
+    assert r.json()["model"] is None
+
+
+def test_patch_asset_omit_model_keeps_current(client, asset_factory):
+    """PATCH body 不含 model 键，保持原值（exclude_unset）。"""
+    a = asset_factory(model="原型号")
+    r = client.patch(f"/api/assets/{a['id']}", json={"name": "新名"})
+    assert r.status_code == 200
+    assert r.json()["model"] == "原型号"
+
+
+# ---------------------------------------------------------------------------
+# PR-3: list 搜索 / 排序集成测
+# ---------------------------------------------------------------------------
+
+
+def test_list_search_matches_model(client, asset_factory):
+    asset_factory(name="A", model="ThinkPad X1 Carbon")
+    asset_factory(name="B", model="MacBook Pro")
+    r = client.get("/api/assets?q=ThinkPad")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 1
+    assert body[0]["model"] == "ThinkPad X1 Carbon"
+
+
+def test_list_sort_by_model(client, asset_factory):
+    asset_factory(name="A", model="ZZZ")
+    asset_factory(name="B", model="AAA")
+    r = client.get("/api/assets?sort_by=model&sort_order=asc")
+    assert r.status_code == 200
+
+
+def test_list_sort_by_serial_number(client, asset_factory):
+    """v1 顺修：sort_by=serial_number 不再报 422。"""
+    asset_factory(name="A", serial_number="SN-002")
+    asset_factory(name="B", serial_number="SN-001")
+    r = client.get("/api/assets?sort_by=serial_number&sort_order=asc")
+    assert r.status_code == 200

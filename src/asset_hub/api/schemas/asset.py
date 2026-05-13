@@ -10,11 +10,12 @@ class AssetCreate(BaseModel):
     name: str
     type_id: UUID
     serial_number: str | None = None
+    model: str | None = None  # 新
     holder: str | None = None
     location: str | None = None
     notes: str | None = None
     custom_data: dict = Field(default_factory=dict)
-    acquired_at: date | None = None  # 新
+    acquired_at: date | None = None
 
     # 注意：asset_code 不在 Create body 中——系统自动生成
 
@@ -28,26 +29,28 @@ class AssetUpdate(BaseModel):
 
     name: str | None = None
     serial_number: str | None = None
+    model: str | None = None  # 新；exclude_unset 模式区分"未传 vs null 清空"
     notes: str | None = None
     custom_data: dict | None = None
-    acquired_at: date | None = None  # 新
+    acquired_at: date | None = None
 
 
 class AssetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    asset_code: str  # 新
+    asset_code: str
     name: str
     serial_number: str | None
+    model: str | None  # 新；紧邻 sn / name
     type_id: UUID
-    type_name: str | None  # 新；从 Asset.type_name @property 自动读取
+    type_name: str | None  # 从 Asset.type_name @property 自动读取
     status: AssetStatus
     holder: str | None
     location: str | None
     notes: str | None
     custom_data: dict
-    acquired_at: date | None  # 新
-    idle_days: int | None = None  # 新；非 IDLE 状态为 None
+    acquired_at: date | None
+    idle_days: int | None = None  # 非 IDLE 状态为 None
     created_at: datetime
     updated_at: datetime

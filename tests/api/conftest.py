@@ -47,6 +47,28 @@ def sample_type_nb_via_api(client):
 
 
 @pytest.fixture
+def asset_factory(client, sample_type_nb_via_api):
+    """工厂 fixture：返回 callable，调用时 POST /api/assets 创建并返回 asset dict。
+
+    支持 kwargs：name / model / serial_number / holder / notes / custom_data 等
+    （透传 AssetCreate body 字段）。
+    """
+
+    def _create(**kwargs):
+        body = {
+            "name": kwargs.pop("name", "测试资产"),
+            "type_id": kwargs.pop("type_id", sample_type_nb_via_api),
+            "custom_data": kwargs.pop("custom_data", {}),
+        }
+        body.update(kwargs)
+        resp = client.post("/api/assets", json=body)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    return _create
+
+
+@pytest.fixture
 def idle_asset(client, sample_type_nb_via_api):
     """创建一个 IDLE 状态资产，返回 dict 含 id（其他字段也可能用到）。"""
     resp = client.post(
