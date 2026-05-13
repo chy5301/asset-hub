@@ -22,6 +22,8 @@ jobs:
       - run: uv sync
       - name: ruff check
         run: uv run ruff check .
+      - name: ruff format check
+        run: uv run ruff format --check .
       - name: pytest
         run: uv run pytest
 
