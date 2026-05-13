@@ -74,6 +74,37 @@ class TestAssetRegisterAcquiredAt:
         assert body["data"]["asset_code"].startswith("NB-")
 
 
+class TestAssetRegisterModel:
+    def test_register_with_model_flag(self):
+        """asset register --model 'X' 持久化 model。"""
+        type_id = _define_type()
+        result = runner.invoke(app, [
+            "asset", "register",
+            "--name", "开发本-01",
+            "--type-id", type_id,
+            "--model", "ThinkPad X1 Carbon Gen 9",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["model"] == "ThinkPad X1 Carbon Gen 9"
+
+    def test_register_without_model_flag(self):
+        """asset register 不传 --model 时 model 是 None。"""
+        type_id = _define_type()
+        result = runner.invoke(app, [
+            "asset", "register",
+            "--name", "X",
+            "--type-id", type_id,
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["model"] is None
+
+
 class TestAssetList:
     def test_list_empty(self):
         result = runner.invoke(app, ["asset", "list", "--json"])
@@ -247,6 +278,95 @@ class TestAssetIdleDays:
         assert payload["success"] is True
         assert isinstance(payload["data"]["idle_days"], int)
         assert payload["data"]["idle_days"] >= 0
+
+
+class TestAssetUpdateModel:
+    def _register_with_model(self, type_id: str, model_value: str = "原型号") -> str:
+        r = runner.invoke(app, [
+            "asset", "register",
+            "--name", "X",
+            "--type-id", type_id,
+            "--model", model_value,
+            "--json",
+        ])
+        assert r.exit_code == 0
+        return json.loads(r.stdout)["data"]["id"]
+
+    def test_update_via_set_json_model(self):
+        """asset update <id> --set '{"model": "新值"}' 设置 model。"""
+        type_id = _define_type()
+        asset_id = self._register_with_model(type_id)
+        result = runner.invoke(app, [
+            "asset", "update", asset_id,
+            "--set", json.dumps({"model": "新型号"}),
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["model"] == "新型号"
+
+    def test_update_via_set_json_null_clears_model(self):
+        """asset update <id> --set '{"model": null}' 显式清空 model。"""
+        type_id = _define_type()
+        asset_id = self._register_with_model(type_id)
+        result = runner.invoke(app, [
+            "asset", "update", asset_id,
+            "--set", json.dumps({"model": None}),
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["model"] is None
+
+
+class TestAssetListModelSearch:
+    def test_list_search_q_matches_model(self):
+        """asset list -q 关键词命中 model。"""
+        type_id = _define_type()
+        runner.invoke(app, [
+            "asset", "register", "--name", "A", "--type-id", type_id,
+            "--model", "ThinkPad X1", "--json",
+        ])
+        runner.invoke(app, [
+            "asset", "register", "--name", "B", "--type-id", type_id,
+            "--model", "MacBook Pro", "--json",
+        ])
+
+        result = runner.invoke(app, [
+            "asset", "list", "--q", "ThinkPad", "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        items = body["data"]
+        assert len(items) == 1
+        assert items[0]["model"] == "ThinkPad X1"
+
+    def test_list_sort_by_model(self):
+        """asset list --sort model --order asc 透传 service，OK 返回。"""
+        result = runner.invoke(app, [
+            "asset", "list",
+            "--sort", "model",
+            "--order", "asc",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+
+    def test_list_sort_by_serial_number(self):
+        """v1 顺修：asset list --sort serial_number --order asc 透传 service，OK 返回。"""
+        result = runner.invoke(app, [
+            "asset", "list",
+            "--sort", "serial_number",
+            "--order", "asc",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
 
 
 class TestAssetDelete:
