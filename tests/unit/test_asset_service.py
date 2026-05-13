@@ -199,6 +199,90 @@ def test_list_assets_each_has_type_name(session, sample_type_nb, sample_type_pj)
     assert type_names == {"笔记本电脑", "投影仪"}
 
 
+def test_register_with_model(session, sample_type_nb):
+    """register 时传 model，DB 应持久化。"""
+    svc = AssetService(session)
+    a = svc.register(
+        name="开发本-01",
+        type_id=sample_type_nb.id,
+        custom_data={},
+        model="ThinkPad X1 Carbon Gen 9",
+    )
+    session.refresh(a)
+    assert a.model == "ThinkPad X1 Carbon Gen 9"
+
+
+def test_register_without_model(session, sample_type_nb):
+    """register 时不传 model，DB 应存 None。"""
+    svc = AssetService(session)
+    a = svc.register(name="X", type_id=sample_type_nb.id, custom_data={})
+    session.refresh(a)
+    assert a.model is None
+
+
+def test_update_model_to_value(session, sample_asset):
+    """update_asset 传 model='X' 设值。"""
+    svc = AssetService(session)
+    a = svc.update_asset(sample_asset.id, model="MacBook Pro 14")
+    session.refresh(a)
+    assert a.model == "MacBook Pro 14"
+
+
+def test_update_model_to_null_explicit(session, sample_asset_with_model):
+    """update_asset 传 model=None 显式清空。"""
+    svc = AssetService(session)
+    a = svc.update_asset(sample_asset_with_model.id, model=None)
+    session.refresh(a)
+    assert a.model is None
+
+
+def test_update_model_unset_keeps_current(session, sample_asset_with_model):
+    """update_asset 不传 model 参数，保持原值（UNSET 哨兵）。"""
+    svc = AssetService(session)
+    original_model = sample_asset_with_model.model
+    a = svc.update_asset(sample_asset_with_model.id, name="新名")  # 不传 model
+    session.refresh(a)
+    assert a.model == original_model
+
+
+def test_sort_by_model_accepted(session):
+    """list_assets 接受 sort_by='model'，不报 ValidationError。"""
+    svc = AssetService(session)
+    result = svc.list_assets(sort_by="model", sort_order="asc")
+    assert isinstance(result, list)
+
+
+def test_sort_by_serial_number_accepted(session):
+    """list_assets 接受 sort_by='serial_number'（v1 顺修）。"""
+    svc = AssetService(session)
+    result = svc.list_assets(sort_by="serial_number", sort_order="asc")
+    assert isinstance(result, list)
+
+
+def test_sort_by_unknown_rejected(session):
+    """sort_by 用未知字段仍报 ValidationError（防回归）。"""
+    svc = AssetService(session)
+    with pytest.raises(ValidationError):
+        svc.list_assets(sort_by="not_a_field")
+
+
+def test_list_q_matches_model(session, sample_type_nb):
+    """list_assets q 参数命中 model 字段。"""
+    svc = AssetService(session)
+    svc.register(
+        name="A", type_id=sample_type_nb.id, custom_data={},
+        model="ThinkPad X1 Carbon",
+    )
+    svc.register(
+        name="B", type_id=sample_type_nb.id, custom_data={},
+        model="MacBook Pro",
+    )
+
+    result = svc.list_assets(q="ThinkPad")
+    assert len(result) == 1
+    assert result[0].name == "A"
+
+
 def test_register_duplicate_serial_number_message(session, sample_type_nb):
     """SN 重复时错误消息应该是'序列号重复'，不该被误读为'asset_code 撞车'"""
     svc = AssetService(session)

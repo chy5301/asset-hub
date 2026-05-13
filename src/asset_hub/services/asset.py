@@ -15,9 +15,13 @@ from asset_hub.services._idle_days import ensure_aware, idle_since_expr, last_id
 from asset_hub.services.validation import validate_custom_data
 
 SortOrder = Literal["asc", "desc"]
-SortByField = Literal["name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days"]
+SortByField = Literal[
+    "name", "model", "asset_code", "serial_number",
+    "created_at", "updated_at", "acquired_at", "idle_days",
+]
 SORT_FIELD_WHITELIST = frozenset({
-    "name", "asset_code", "created_at", "updated_at", "acquired_at", "idle_days",
+    "name", "model", "asset_code", "serial_number",
+    "created_at", "updated_at", "acquired_at", "idle_days",
 })
 LIMIT_MAX = 1000
 
@@ -34,6 +38,7 @@ class AssetService:
         type_id: uuid.UUID,
         custom_data: dict,
         serial_number: str | None = None,
+        model: str | None = None,
         holder: str | None = None,
         location: str | None = None,
         notes: str | None = None,
@@ -51,6 +56,7 @@ class AssetService:
             name=name,
             type_id=type_id,
             serial_number=serial_number,
+            model=model,
             holder=holder,
             location=location,
             notes=notes,
@@ -171,6 +177,7 @@ class AssetService:
         asset_id: uuid.UUID,
         name: str | None = None,
         serial_number: str | UnsetType = UNSET,
+        model: str | None | UnsetType = UNSET,
         notes: str | UnsetType = UNSET,
         custom_data: dict | UnsetType = UNSET,
         acquired_at: date | None | UnsetType = UNSET,
@@ -185,6 +192,8 @@ class AssetService:
             a.name = name
         if not isinstance(serial_number, UnsetType):
             a.serial_number = serial_number
+        if not isinstance(model, UnsetType):
+            a.model = model
         if not isinstance(notes, UnsetType):
             a.notes = notes
         if not isinstance(custom_data, UnsetType):

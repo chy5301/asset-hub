@@ -196,3 +196,34 @@ PR：https://github.com/chy5301/asset-hub/pull/4
 - Dashboard vs 列表 filter toggle 文案不统一（PR-1 visual smoke 发现）—— 前端 cosmetic，未在 PR-2 scope（PR-2 零 frontend diff）
 - `asset-hub serve stop` 不清外部端口占用（PR-1 visual smoke 发现）—— 未在 PR-2 scope（M3e Phase 1 三 followup 之外）
 - asset-header.test.tsx 时间敏感 flaky（前端，PR-1 main 也 fail）—— 未在 PR-2 scope
+
+---
+
+## v2.0 PR-3 · Asset.model 字段拆列 ⏳ **待合并（2026-05-13）**
+
+PR：https://github.com/chy5301/asset-hub/pull/5
+分支：`feat/v2-pr3-asset-model-column`（worktree head `c268b39`，含 simplify pass）
+本地 worktree：`.claude/worktrees/feat+v2-pr3-asset-model-column`
+
+落地范围（spec + plan 27 task / 6 phase，共 11 commits）：
+
+- **Phase 1** 数据模型：`Asset.model: str | None = Field(default=None, index=True)`（紧贴 name 之后）+ alembic v3 migration（`add_column` + `ix_assets_model` index + 反向 drop，用 batch_alter_table）+ 2 migration 测
+- **Phase 2** Service：`register` / `update_asset` 加 model 参数（后者用 `UNSET` 哨兵区分"未传 vs null 清空"）；`SortByField` Literal + `SORT_FIELD_WHITELIST` frozenset + repository `_SORT_COLUMN_MAP` 三处都加 `model` + `serial_number`（顺修 v1 sn sortable 不一致——前端可点 header 但后端 422）；`list_filtered` q OR-chain 加 `Asset.model.contains(q)`（紧邻 sn 之后）
+- **Phase 3** API DTO：`AssetCreate` / `AssetUpdate` / `AssetRead` 三件套加 model 字段（位置紧贴 sn）；`AssetUpdate` 沿用 v1 exclude_unset 风格不引入 `extra="forbid"`；router `create_asset` 加 `model=body.model` 透传到 service.register（隐含必要，DTO 接受 model 但 service 不收到会沉默丢失）；`pnpm --dir frontend gen:api` 重拉 schema.d.ts（顺带还了 PR-2 `--fields` 后未拉的 schema 债）
+- **Phase 4** CLI：`asset register` 加 `--model <txt>` flag（位置紧邻 `--sn`，help="型号"）；`asset update` 复用 v1 `--set <JSON>` 模式自然支持 model 设值/null 清空/不传保持（不重构成分立 flag）；`asset list --sort` help text 补 `model` / `serial_number`
+- **Phase 5** 前端：`types` `AssetRow` 加 model；表单 `general-fields-form` 在 name FormField 之后插入 model FormField（FormLabel "型号"、无 `*`、无 helper、placeholder "如 ThinkPad X1 Carbon Gen 9（可空）"）；详情 `asset-header` 副行加 `· model` 条件渲染（model 为 null 时整段不输出）；`general-fields` 在 "类型" 行之后插 "型号" 行（不用 CopyableText、空 "—"）；`assets-table` 在 name 列之后插入 model 列（不用 font-code、可 sort、空 "—"）；`column-visibility` ColumnKey + COLUMN_LABELS + ALL_KEYS 三处加 model（DEFAULT_HIDDEN 不变，默认显示）；`asset-create-form` / `asset-edit-form` 各加 defaultValues + reset + submit payload（隐含必要，否则 RHF input 不受控）；`build-asset-schema` zod baseShape 加 model nullable optional；3 个前端单测文件覆盖 model 列渲染 / column-visibility 默认 / zod schema 接受
+- **Phase 6** 收尾：`services/export.py` `_FIXED_COLUMN_NAMES` 加 "型号"（11 列，紧邻 "名称" 之后）+ `_build_rows` 注入 `a.model or ""` + 4 处既有测试 column 索引 / autofilter 范围 `A1:K{n}` / header startswith 更新；`examples/types/gpu.json` 删冗余 model custom_field；SKILL.md asset register flag 段补 `[--model <txt>]`；`release-notes-v2.0.md` 顶部状态从"等 PR-2"改"等 PR-3" + 概览表加 PR-3 行 + Breaking changes 加 PR-3 4 子段 + 验证 checklist 加 PR-3 6 项 + 路线图摘要更新；`test_v2_state_machine.py` downgrade `-1` → `-2` 适配 v3 head（v3 加 head 后 `-1` 跑 v3.downgrade 而非 v2.downgrade，DID NOT RAISE）；/simplify pass 清理 8 处任务标记型注释（`# 新` / `# v2.0 PR-3`），无逻辑改动
+
+搭车闭环（plan 没列但 implementer 自检发现的 hidden requirements，已修）：
+- v1 遗留 SortByField + `_SORT_COLUMN_MAP` 不含 sn 顺修 —— service / WHITELIST / repo map 三处对齐
+- v2 migration downgrade test 适配 v3 head（command.downgrade -2）—— 顺修
+- CLI `--sort` help text 漏列字段补全 —— 顺修
+- `examples/types/gpu.json` 冗余 model custom_field —— 闭环（与新顶层字段统一）
+- router `create_asset` 加 `model=body.model` 显式透传 —— 必要 hidden requirement
+- form `asset-create-form` / `asset-edit-form` defaultValues + reset + submit payload —— 必要 hidden requirement（RHF 不受控）
+
+未解决 followup（PR-3 范围外）：
+- `asset-hub serve start` 不识别外部端口占用 —— **2026-05-13 PR-3 烟测第二次撞到同一 bug**（PR-1 visual smoke 首次报告）：5173 被外部进程（如另一台 worktree 的 stale frontend dev server）占住时，`asset-hub serve start --mode dev` 让 Vite 自动切换到 5174，但 `asset-hub serve status` JSON 仍报 `frontend.port: 5173`（log 文件能看到实际是 5174）。访问 5173 看旧 bundle、访问 5174 才是新代码 —— 这次烟测前 10 分钟一直困惑 "型号" 列不见，最后看 `data/logs/frontend.log` "Port 5173 is in use, trying another one..." 才识别。修复方向不变：（a）`serve start` 启动前 probe 期望端口被外部占用 → fail 而不 fallback；或（b）`serve doctor` 增加"端口占用者 PID 不在 serve PID 文件管理范围"检测项；或（c）serve start 把 Vite 实际监听端口从 stderr/stdout 解析后更新 PID 文件（避免 status 撒谎）
+- 已存在 GPU AssetType（按 v1 example 创建过）custom_fields 仍含 model —— 用户手动迁移（release-notes-v2.0.md §升级注意 已写明）
+- 未来重构 update CLI 为分立 flag（含 `--name` / `--model` / `--sn` 等，与 register 对称）—— v2.x / M4 followup（plan 显式不在 PR-3 scope）
+- PR-3 待维护者本地视觉烟测确认（10 项列表/详情/编辑/导出对齐，已用 Playwright MCP 自动跑过一遍并归档 4 张截图于 worktree 根目录 `pr3-*.png`）

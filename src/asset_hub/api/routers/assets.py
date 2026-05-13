@@ -34,6 +34,7 @@ def create_asset(
         name=body.name,
         type_id=body.type_id,
         serial_number=body.serial_number,
+        model=body.model,
         holder=body.holder,
         location=body.location,
         notes=body.notes,

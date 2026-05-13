@@ -30,6 +30,7 @@ export function AssetCreateForm() {
     defaultValues: {
       name: '',
       type_id: '',
+      model: '',
       serial_number: '',
       acquired_at: '',
       holder: '',
@@ -91,6 +92,7 @@ export function AssetCreateForm() {
       const created = await mutation.mutateAsync({
         name: data.name,
         type_id: data.type_id,
+        model: data.model || null,
         serial_number: data.serial_number || null,
         acquired_at: data.acquired_at || null,
         holder: data.holder || null,

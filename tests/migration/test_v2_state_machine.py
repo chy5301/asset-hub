@@ -120,7 +120,7 @@ def test_downgrade_rejects_v2_data(v1_db):
 
     with pytest.raises(RuntimeError, match="BROKEN 状态资产"):
         with patch("asset_hub.config.Settings", return_value=mock_settings):
-            command.downgrade(cfg, "-1")
+            command.downgrade(cfg, "-2")  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）
 
 
 def test_downgrade_rejects_v2_kind_transitions(v1_db):
@@ -159,4 +159,4 @@ def test_downgrade_rejects_v2_kind_transitions(v1_db):
 
     with pytest.raises(RuntimeError, match="v2.0 新 kind 的 transition records"):
         with patch("asset_hub.config.Settings", return_value=mock_settings):
-            command.downgrade(cfg, "-1")
+            command.downgrade(cfg, "-2")  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）

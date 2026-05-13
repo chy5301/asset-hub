@@ -46,4 +46,37 @@ describe('buildAssetSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it('model 字段在 create / edit 两个 mode 下都是可选', () => {
+    const createSchema = buildAssetSchema([], { mode: 'create' });
+    const createResult = createSchema.safeParse({
+      name: 'x',
+      type_id: '00000000-0000-0000-0000-000000000000',
+      // 不传 model
+      custom_data: {},
+    });
+    expect(createResult.success).toBe(true);
+
+    const editSchema = buildAssetSchema([], { mode: 'edit' });
+    const editResult = editSchema.safeParse({
+      name: 'x',
+      // 不传 model
+      custom_data: {},
+    });
+    expect(editResult.success).toBe(true);
+  });
+
+  it('model 字段值被保留', () => {
+    const schema = buildAssetSchema([], { mode: 'create' });
+    const result = schema.safeParse({
+      name: 'x',
+      type_id: '00000000-0000-0000-0000-000000000000',
+      model: 'ThinkPad X1 Carbon Gen 9',
+      custom_data: {},
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.model).toBe('ThinkPad X1 Carbon Gen 9');
+    }
+  });
 });

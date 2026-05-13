@@ -85,6 +85,12 @@ export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
           <span className="text-sm text-muted-foreground">
             {asset.type_name ?? "未知类型"}
           </span>
+          {asset.model && (
+            <>
+              <span className="text-sm text-muted-foreground">·</span>
+              <span className="text-sm text-muted-foreground">{asset.model}</span>
+            </>
+          )}
           <StatusBadge status={asset.status} />
         </div>
         {asset.holder && (

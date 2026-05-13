@@ -224,6 +224,8 @@ export interface components {
             type_id: string;
             /** Serial Number */
             serial_number?: string | null;
+            /** Model */
+            model?: string | null;
             /** Holder */
             holder?: string | null;
             /** Location */
@@ -250,6 +252,8 @@ export interface components {
             name: string;
             /** Serial Number */
             serial_number: string | null;
+            /** Model */
+            model: string | null;
             /**
              * Type Id
              * Format: uuid
@@ -300,6 +304,8 @@ export interface components {
             name?: string | null;
             /** Serial Number */
             serial_number?: string | null;
+            /** Model */
+            model?: string | null;
             /** Notes */
             notes?: string | null;
             /** Custom Data */
@@ -755,10 +761,11 @@ export interface operations {
                 q?: string | null;
                 include_retired?: boolean;
                 include_disposed?: boolean;
-                sort_by?: ("name" | "asset_code" | "created_at" | "updated_at" | "acquired_at" | "idle_days") | null;
+                sort_by?: ("name" | "model" | "asset_code" | "serial_number" | "created_at" | "updated_at" | "acquired_at" | "idle_days") | null;
                 sort_order?: "asc" | "desc";
                 limit?: number | null;
                 offset?: number | null;
+                fields?: string | null;
             };
             header?: never;
             path?: never;
@@ -821,7 +828,9 @@ export interface operations {
     };
     get_asset_api_assets__asset_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                fields?: string | null;
+            };
             header?: never;
             path: {
                 asset_id: string;
@@ -916,7 +925,9 @@ export interface operations {
     };
     list_transitions_api_assets__asset_id__transitions_get: {
         parameters: {
-            query?: never;
+            query?: {
+                fields?: string | null;
+            };
             header?: never;
             path: {
                 asset_id: string;
@@ -947,7 +958,9 @@ export interface operations {
     };
     create_transition_api_assets__asset_id__transitions_post: {
         parameters: {
-            query?: never;
+            query?: {
+                fields?: string | null;
+            };
             header?: never;
             path: {
                 asset_id: string;

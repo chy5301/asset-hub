@@ -4,6 +4,7 @@ import type { FieldDef } from './types';
 
 const baseShape = {
   name: z.string().min(1, '资产名必填'),
+  model: z.string().optional(),
   serial_number: z.string().optional(),
   acquired_at: z
     .string()
