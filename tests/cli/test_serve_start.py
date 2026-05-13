@@ -52,11 +52,13 @@ def _patch_dist_exists(exists: bool):
 
 def test_start_prod_success_skip_build(isolated_db):
     """prod 模式 + --skip-build + dist 存在 → 启动成功"""
-    with _patch_pid_dead(), \
-         _patch_port_free(), \
-         _patch_popen_returns_pid(99999), \
-         _patch_probe_ok(), \
-         _patch_dist_exists(True):
+    with (
+        _patch_pid_dead(),
+        _patch_port_free(),
+        _patch_popen_returns_pid(99999),
+        _patch_probe_ok(),
+        _patch_dist_exists(True),
+    ):
         res = runner.invoke(
             app, ["serve", "start", "--skip-build", "--mode", "prod", "--json"]
         )
@@ -78,8 +80,10 @@ def test_start_already_running_returns_exit_1(isolated_db):
     mp.cmdline.return_value = ["python", "-m", "uvicorn", "asset_hub.api.app"]
     mp.status.return_value = "running"
 
-    with patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True), \
-         patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp):
+    with (
+        patch("asset_hub.cli.serve.pid.psutil.pid_exists", return_value=True),
+        patch("asset_hub.cli.serve.pid.psutil.Process", return_value=mp),
+    ):
         res = runner.invoke(
             app, ["serve", "start", "--mode", "prod", "--skip-build", "--json"]
         )
@@ -90,8 +94,10 @@ def test_start_already_running_returns_exit_1(isolated_db):
 
 def test_start_port_occupied(isolated_db):
     """端口被外部进程占用 → exit 1 serve.port_occupied"""
-    with _patch_pid_dead(), \
-         patch("asset_hub.cli.serve.proc.is_port_in_use", return_value=True):
+    with (
+        _patch_pid_dead(),
+        patch("asset_hub.cli.serve.proc.is_port_in_use", return_value=True),
+    ):
         res = runner.invoke(
             app, ["serve", "start", "--mode", "prod", "--skip-build", "--json"]
         )

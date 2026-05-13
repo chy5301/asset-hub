@@ -18,7 +18,9 @@ runner = CliRunner()
 
 def _define_type(name: str = "笔记本电脑", prefix: str = "NB") -> str:
     """复用 test_asset_cli.py 风格 helper：返 type_id。"""
-    r = runner.invoke(app, ["type", "define", "--name", name, "--prefix", prefix, "--json"])
+    r = runner.invoke(
+        app, ["type", "define", "--name", name, "--prefix", prefix, "--json"]
+    )
     assert r.exit_code == 0, r.stdout
     return json.loads(r.stdout)["data"]["id"]
 
@@ -27,12 +29,18 @@ def _define_type(name: str = "笔记本电脑", prefix: str = "NB") -> str:
 def sample_asset(isolated_db):
     """注册一个测试 asset，返回 dict (含 id)。"""
     type_id = _define_type()
-    r = runner.invoke(app, [
-        "asset", "register",
-        "--name", "Sample",
-        "--type-id", type_id,
-        "--json",
-    ])
+    r = runner.invoke(
+        app,
+        [
+            "asset",
+            "register",
+            "--name",
+            "Sample",
+            "--type-id",
+            type_id,
+            "--json",
+        ],
+    )
     assert r.exit_code == 0, r.stdout
     return json.loads(r.stdout)["data"]
 
@@ -49,7 +57,9 @@ def test_asset_list_fields_mask(sample_asset):
 
 def test_asset_show_fields_mask(sample_asset):
     aid = sample_asset["id"]
-    r = runner.invoke(app, ["asset", "show", aid, "--fields", "id,status,holder", "--json"])
+    r = runner.invoke(
+        app, ["asset", "show", aid, "--fields", "id,status,holder", "--json"]
+    )
     assert r.exit_code == 0, r.stdout
     body = json.loads(r.stdout)
     assert set(body["data"].keys()) == {"id", "status", "holder"}
@@ -72,12 +82,19 @@ def test_asset_show_unknown_field_validation_error(sample_asset):
 def test_asset_checkout_fields_mask(sample_asset):
     """transition 写命令的返回也支持 --fields。"""
     aid = sample_asset["id"]
-    r = runner.invoke(app, [
-        "asset", "checkout", aid,
-        "--to-holder", "张三",
-        "--fields", "id,kind,to_holder",
-        "--json",
-    ])
+    r = runner.invoke(
+        app,
+        [
+            "asset",
+            "checkout",
+            aid,
+            "--to-holder",
+            "张三",
+            "--fields",
+            "id,kind,to_holder",
+            "--json",
+        ],
+    )
     assert r.exit_code == 0, r.stdout
     body = json.loads(r.stdout)
     assert set(body["data"].keys()) == {"id", "kind", "to_holder"}
@@ -87,16 +104,31 @@ def test_asset_reassign_fields_mask(sample_asset):
     """reassign 也支持 --fields。"""
     aid = sample_asset["id"]
     # 先 checkout 让 asset IN_USE 才能 reassign
-    co = runner.invoke(app, [
-        "asset", "checkout", aid, "--to-holder", "A", "--json",
-    ])
+    co = runner.invoke(
+        app,
+        [
+            "asset",
+            "checkout",
+            aid,
+            "--to-holder",
+            "A",
+            "--json",
+        ],
+    )
     assert co.exit_code == 0, co.stdout
-    r = runner.invoke(app, [
-        "asset", "reassign", aid,
-        "--to-holder", "B",
-        "--fields", "id,kind,to_holder",
-        "--json",
-    ])
+    r = runner.invoke(
+        app,
+        [
+            "asset",
+            "reassign",
+            aid,
+            "--to-holder",
+            "B",
+            "--fields",
+            "id,kind,to_holder",
+            "--json",
+        ],
+    )
     assert r.exit_code == 0, r.stdout
     body = json.loads(r.stdout)
     assert set(body["data"].keys()) == {"id", "kind", "to_holder"}
@@ -106,11 +138,17 @@ def test_asset_history_fields_mask(sample_asset):
     aid = sample_asset["id"]
     co = runner.invoke(app, ["asset", "checkout", aid, "--to-holder", "X", "--json"])
     assert co.exit_code == 0, co.stdout
-    r = runner.invoke(app, [
-        "asset", "history", aid,
-        "--fields", "id,kind",
-        "--json",
-    ])
+    r = runner.invoke(
+        app,
+        [
+            "asset",
+            "history",
+            aid,
+            "--fields",
+            "id,kind",
+            "--json",
+        ],
+    )
     assert r.exit_code == 0, r.stdout
     body = json.loads(r.stdout)
     assert len(body["data"]) >= 1
@@ -135,12 +173,19 @@ def test_dry_run_ignores_fields_mask(sample_asset):
     防止未来 refactor 把 filter 误移到 dry-run 之前——dry-run 优先短路。
     """
     aid = sample_asset["id"]
-    r = runner.invoke(app, [
-        "asset", "retire", aid,
-        "--dry-run", "--yes",
-        "--fields", "id",
-        "--json",
-    ])
+    r = runner.invoke(
+        app,
+        [
+            "asset",
+            "retire",
+            aid,
+            "--dry-run",
+            "--yes",
+            "--fields",
+            "id",
+            "--json",
+        ],
+    )
     assert r.exit_code == 10, r.stdout  # dry-run 退出码
     body = json.loads(r.stdout)
     assert body["success"] is True

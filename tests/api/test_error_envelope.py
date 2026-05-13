@@ -4,6 +4,7 @@ backward compat：response 保留 `detail` 字段，**追加** code / hint / fie
 / fields_invalid / affected_resource_id 顶层字段（exclude None）。
 前端 `frontend/src/lib/error.ts` 仍读 `detail`，零变更。
 """
+
 from __future__ import annotations
 
 import uuid
@@ -59,7 +60,9 @@ def test_illegal_from_status_envelope_has_hint(client, idle_asset):
 def test_required_field_missing_envelope_has_fields_missing(client, idle_asset):
     """CHECKOUT_INTERNAL 不传 to_holder → 409 + fields_missing=['to_holder']。"""
     aid = idle_asset["id"]
-    r = client.post(f"/api/assets/{aid}/transitions", json={"kind": "CHECKOUT_INTERNAL"})
+    r = client.post(
+        f"/api/assets/{aid}/transitions", json={"kind": "CHECKOUT_INTERNAL"}
+    )
     assert r.status_code == 409
     body = r.json()
     assert body["code"] == "illegal_transition"

@@ -23,7 +23,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Upgrade schema."""
     with op.batch_alter_table("assets", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("model", sqlmodel.sql.sqltypes.AutoString(), nullable=True))
+        batch_op.add_column(
+            sa.Column("model", sqlmodel.sql.sqltypes.AutoString(), nullable=True)
+        )
         batch_op.create_index(batch_op.f("ix_assets_model"), ["model"], unique=False)
 
 

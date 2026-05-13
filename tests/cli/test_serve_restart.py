@@ -37,11 +37,17 @@ def test_restart_with_explicit_mode(isolated_db):
     """显式 --mode prod + skip-build → 走 stop+start 全流程"""
     fake_popen_proc = MagicMock()
     fake_popen_proc.pid = 99999
-    with patch("asset_hub.cli.serve.proc.is_port_in_use", return_value=False), \
-         patch("asset_hub.cli.serve.proc.subprocess.Popen", return_value=fake_popen_proc), \
-         patch("asset_hub.cli.serve.lifecycle.probe_mod.probe_until_ready",
-               return_value=MagicMock(ok=True)), \
-         _patch_dist_exists(True):
+    with (
+        patch("asset_hub.cli.serve.proc.is_port_in_use", return_value=False),
+        patch(
+            "asset_hub.cli.serve.proc.subprocess.Popen", return_value=fake_popen_proc
+        ),
+        patch(
+            "asset_hub.cli.serve.lifecycle.probe_mod.probe_until_ready",
+            return_value=MagicMock(ok=True),
+        ),
+        _patch_dist_exists(True),
+    ):
         res = runner.invoke(
             app, ["serve", "restart", "--mode", "prod", "--skip-build", "--json"]
         )

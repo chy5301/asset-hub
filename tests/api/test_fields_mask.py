@@ -8,6 +8,7 @@
 
 未知字段 → 422 + fields_invalid + hint（envelope handler 已自动序列化）。
 """
+
 from __future__ import annotations
 
 

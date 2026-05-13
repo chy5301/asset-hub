@@ -9,7 +9,9 @@ from asset_hub.models.asset_type import AssetType
 from asset_hub.models.attachment import Attachment, AttachmentKind
 
 
-def _make_asset(session: Session, *, name: str = "A", code_prefix: str = "TST") -> Asset:
+def _make_asset(
+    session: Session, *, name: str = "A", code_prefix: str = "TST"
+) -> Asset:
     t = AssetType(name=f"T-{name}", code_prefix=code_prefix, custom_fields=[])
     session.add(t)
     session.flush()

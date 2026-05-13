@@ -13,7 +13,11 @@ from asset_hub.services.state_machine import TRANSITION_RULES, validate_transiti
         (TransitionKind.CHECKOUT_EXTERNAL, AssetStatus.IDLE, AssetStatus.IN_USE),
         (TransitionKind.RETURN, AssetStatus.IN_USE, AssetStatus.IDLE),
         (TransitionKind.SEND_TO_MAINTENANCE, AssetStatus.IDLE, AssetStatus.MAINTENANCE),
-        (TransitionKind.RECOVER_FROM_MAINTENANCE, AssetStatus.MAINTENANCE, AssetStatus.IDLE),
+        (
+            TransitionKind.RECOVER_FROM_MAINTENANCE,
+            AssetStatus.MAINTENANCE,
+            AssetStatus.IDLE,
+        ),
         (TransitionKind.RETIRE, AssetStatus.IDLE, AssetStatus.RETIRED),
         (TransitionKind.RETIRE, AssetStatus.MAINTENANCE, AssetStatus.RETIRED),
         (TransitionKind.REINSTATE, AssetStatus.RETIRED, AssetStatus.IDLE),
@@ -26,10 +30,14 @@ def test_legal_transitions(kind, from_status, expected_to):
     assert to == expected_to
 
 
-
 @pytest.mark.parametrize(
     "kind,bad_from",
-    [(k, s) for k, r in TRANSITION_RULES.items() for s in AssetStatus if s not in r.valid_from],
+    [
+        (k, s)
+        for k, r in TRANSITION_RULES.items()
+        for s in AssetStatus
+        if s not in r.valid_from
+    ],
 )
 def test_all_illegal_from_combinations_raise(kind, bad_from):
     with pytest.raises(IllegalTransitionError):
@@ -38,15 +46,15 @@ def test_all_illegal_from_combinations_raise(kind, bad_from):
 
 def test_required_holder_missing_raises():
     with pytest.raises(IllegalTransitionError, match="to_holder"):
-        validate_transition(AssetStatus.IDLE, TransitionKind.CHECKOUT_INTERNAL, None, None)
-
+        validate_transition(
+            AssetStatus.IDLE, TransitionKind.CHECKOUT_INTERNAL, None, None
+        )
 
 
 def test_dispose_forced_null_rules():
     rule = TRANSITION_RULES[TransitionKind.DISPOSE]
     assert rule.holder_rule == "forced_null"
     assert rule.location_rule == "forced_null"
-
 
 
 def test_disposed_is_terminal_for_every_kind():
@@ -73,22 +81,86 @@ def test_holder_rule_includes_keep():
 
 # v2.0 完整 rule 表（参考 spec §2.4）
 _EXPECTED_RULES = {
-    TransitionKind.CHECKOUT_INTERNAL: (frozenset({AssetStatus.IDLE}), AssetStatus.IN_USE, "required", "keep"),
-    TransitionKind.CHECKOUT_EXTERNAL: (frozenset({AssetStatus.IDLE}), AssetStatus.IN_USE, "required", "keep"),
-    TransitionKind.RETURN: (frozenset({AssetStatus.IN_USE}), AssetStatus.IDLE, "optional", "keep"),
-    TransitionKind.SEND_TO_MAINTENANCE: (frozenset({AssetStatus.IDLE, AssetStatus.BROKEN}), AssetStatus.MAINTENANCE, "keep", "keep"),
-    TransitionKind.RECOVER_FROM_MAINTENANCE: (frozenset({AssetStatus.MAINTENANCE}), AssetStatus.IDLE, "keep", "keep"),
-    TransitionKind.RETIRE: (frozenset({AssetStatus.IDLE, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}), AssetStatus.RETIRED, "keep", "keep"),
-    TransitionKind.REINSTATE: (frozenset({AssetStatus.RETIRED}), AssetStatus.IDLE, "keep", "keep"),
-    TransitionKind.DISPOSE: (frozenset({AssetStatus.RETIRED, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}), AssetStatus.DISPOSED, "forced_null", "forced_null"),
-    TransitionKind.REASSIGN: (
-        frozenset({AssetStatus.IDLE, AssetStatus.IN_USE, AssetStatus.MAINTENANCE, AssetStatus.BROKEN, AssetStatus.RETIRED}),
-        None,
-        "keep", "keep",
+    TransitionKind.CHECKOUT_INTERNAL: (
+        frozenset({AssetStatus.IDLE}),
+        AssetStatus.IN_USE,
+        "required",
+        "keep",
     ),
-    TransitionKind.REPORT_BROKEN: (frozenset({AssetStatus.IDLE, AssetStatus.IN_USE}), AssetStatus.BROKEN, "keep", "keep"),
-    TransitionKind.DECLARE_UNREPAIRABLE: (frozenset({AssetStatus.MAINTENANCE}), AssetStatus.BROKEN, "keep", "keep"),
-    TransitionKind.DISMISS: (frozenset({AssetStatus.BROKEN}), AssetStatus.IDLE, "keep", "keep"),
+    TransitionKind.CHECKOUT_EXTERNAL: (
+        frozenset({AssetStatus.IDLE}),
+        AssetStatus.IN_USE,
+        "required",
+        "keep",
+    ),
+    TransitionKind.RETURN: (
+        frozenset({AssetStatus.IN_USE}),
+        AssetStatus.IDLE,
+        "optional",
+        "keep",
+    ),
+    TransitionKind.SEND_TO_MAINTENANCE: (
+        frozenset({AssetStatus.IDLE, AssetStatus.BROKEN}),
+        AssetStatus.MAINTENANCE,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.RECOVER_FROM_MAINTENANCE: (
+        frozenset({AssetStatus.MAINTENANCE}),
+        AssetStatus.IDLE,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.RETIRE: (
+        frozenset({AssetStatus.IDLE, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}),
+        AssetStatus.RETIRED,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.REINSTATE: (
+        frozenset({AssetStatus.RETIRED}),
+        AssetStatus.IDLE,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.DISPOSE: (
+        frozenset({AssetStatus.RETIRED, AssetStatus.MAINTENANCE, AssetStatus.BROKEN}),
+        AssetStatus.DISPOSED,
+        "forced_null",
+        "forced_null",
+    ),
+    TransitionKind.REASSIGN: (
+        frozenset(
+            {
+                AssetStatus.IDLE,
+                AssetStatus.IN_USE,
+                AssetStatus.MAINTENANCE,
+                AssetStatus.BROKEN,
+                AssetStatus.RETIRED,
+            }
+        ),
+        None,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.REPORT_BROKEN: (
+        frozenset({AssetStatus.IDLE, AssetStatus.IN_USE}),
+        AssetStatus.BROKEN,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.DECLARE_UNREPAIRABLE: (
+        frozenset({AssetStatus.MAINTENANCE}),
+        AssetStatus.BROKEN,
+        "keep",
+        "keep",
+    ),
+    TransitionKind.DISMISS: (
+        frozenset({AssetStatus.BROKEN}),
+        AssetStatus.IDLE,
+        "keep",
+        "keep",
+    ),
 }
 
 
@@ -115,4 +187,6 @@ def test_persisted_checkout_states():
     """v2.0 派出延续集合 = {IN_USE, BROKEN}。"""
     from asset_hub.services.state_machine import PERSISTED_CHECKOUT_STATES
 
-    assert PERSISTED_CHECKOUT_STATES == frozenset({AssetStatus.IN_USE, AssetStatus.BROKEN})
+    assert PERSISTED_CHECKOUT_STATES == frozenset(
+        {AssetStatus.IN_USE, AssetStatus.BROKEN}
+    )

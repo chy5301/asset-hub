@@ -15,8 +15,10 @@ def test_kill_tree_sigterm_succeeds():
     proc = _mock_proc(pid=1)
     children = [_mock_proc(pid=2), _mock_proc(pid=3)]
 
-    with patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls, \
-         patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait:
+    with (
+        patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls,
+        patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait,
+    ):
         mock_proc_cls.return_value = proc
         proc.children.return_value = children
         mock_wait.side_effect = [(children + [proc], [])]  # all dead after SIGTERM
@@ -33,8 +35,10 @@ def test_kill_tree_falls_back_to_sigkill():
     proc = _mock_proc(pid=1)
     proc.children.return_value = []
 
-    with patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls, \
-         patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait:
+    with (
+        patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls,
+        patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait,
+    ):
         mock_proc_cls.return_value = proc
         # SIGTERM 后 proc 仍存活；SIGKILL 后死
         mock_wait.side_effect = [
@@ -53,8 +57,10 @@ def test_kill_tree_raises_when_sigkill_fails():
     proc = _mock_proc(pid=1)
     proc.children.return_value = []
 
-    with patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls, \
-         patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait:
+    with (
+        patch("asset_hub.cli.serve.proc.psutil.Process") as mock_proc_cls,
+        patch("asset_hub.cli.serve.proc.psutil.wait_procs") as mock_wait,
+    ):
         mock_proc_cls.return_value = proc
         mock_wait.side_effect = [
             ([], [proc]),  # SIGTERM 后 alive

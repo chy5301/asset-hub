@@ -86,7 +86,11 @@ def create_app() -> FastAPI:
     # 路径冲突：vite assetsDir="assets" 与前端 SPA 路由 /assets/{id} 同前缀；hash 资产
     # 永远带扩展名（index-B7-2Mqlb.js），SPA 路由不带扩展名（UUID/"new"），靠 suffix 区分。
     _is_dev_mode = os.environ.get("ASSET_HUB_MODE") == "dev"
-    if not _is_dev_mode and _FRONTEND_DIST.is_dir() and (_FRONTEND_DIST / "index.html").exists():
+    if (
+        not _is_dev_mode
+        and _FRONTEND_DIST.is_dir()
+        and (_FRONTEND_DIST / "index.html").exists()
+    ):
         index_html = _FRONTEND_DIST / "index.html"
 
         @app.exception_handler(404)

@@ -3,6 +3,7 @@
 验证 6 个域异常 → handle_domain_errors → envelope error shape {code, message} + exit_code。
 M3e §2.6 Phase 1 验收点之一。
 """
+
 from __future__ import annotations
 
 import json
@@ -52,7 +53,9 @@ def test_error_envelope_shape():
         (IllegalTransitionError("非法转换"), "illegal_transition", 1),
     ],
 )
-def test_handle_domain_errors_maps_code_and_exit(capsys, exc, expected_code, expected_exit):
+def test_handle_domain_errors_maps_code_and_exit(
+    capsys, exc, expected_code, expected_exit
+):
     with pytest.raises(SystemExit) as ei:
         with handle_domain_errors(json_output=True):
             raise exc

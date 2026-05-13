@@ -1,4 +1,5 @@
 """serve doctor CLI 测试 (plain / json / fail exit 1)。"""
+
 from __future__ import annotations
 
 import json
@@ -13,8 +14,14 @@ runner = CliRunner()
 
 def _mock_all_ok(monkeypatch):
     """所有 check 都返回 ok=True。"""
-    for fn in ("check_uv", "check_pnpm", "check_python_version",
-               "check_data_writable", "check_alembic_head", "check_frontend_dist"):
+    for fn in (
+        "check_uv",
+        "check_pnpm",
+        "check_python_version",
+        "check_data_writable",
+        "check_alembic_head",
+        "check_frontend_dist",
+    ):
         monkeypatch.setattr(
             f"asset_hub.cli.serve.doctor.{fn}",
             lambda _fn=fn: DoctorCheck(name=_fn, ok=True, detail="ok"),
@@ -27,8 +34,13 @@ def _mock_all_ok(monkeypatch):
 
 def _mock_dist_missing(monkeypatch):
     """only frontend_dist fails。"""
-    for fn in ("check_uv", "check_pnpm", "check_python_version",
-               "check_data_writable", "check_alembic_head"):
+    for fn in (
+        "check_uv",
+        "check_pnpm",
+        "check_python_version",
+        "check_data_writable",
+        "check_alembic_head",
+    ):
         monkeypatch.setattr(
             f"asset_hub.cli.serve.doctor.{fn}",
             lambda _fn=fn: DoctorCheck(name=_fn, ok=True, detail="ok"),
@@ -36,7 +48,9 @@ def _mock_dist_missing(monkeypatch):
     monkeypatch.setattr(
         "asset_hub.cli.serve.doctor.check_frontend_dist",
         lambda: DoctorCheck(
-            name="frontend/dist", ok=False, detail="missing",
+            name="frontend/dist",
+            ok=False,
+            detail="missing",
             code="serve.dist_missing",
             fix_hint="run `pnpm --dir frontend build`",
         ),
@@ -71,7 +85,9 @@ def test_doctor_json_one_fail_exits_1(monkeypatch):
     result = runner.invoke(app, ["serve", "doctor", "--json"])
     assert result.exit_code == 1
     payload = json.loads(result.stdout)
-    assert payload["success"] is True  # success=true 因为 doctor 不抛域异常；但 data.ok=false
+    assert (
+        payload["success"] is True
+    )  # success=true 因为 doctor 不抛域异常；但 data.ok=false
     assert payload["data"]["ok"] is False
     assert payload["data"]["issue_count"] == 1
     bad = [c for c in payload["data"]["checks"] if not c["ok"]][0]

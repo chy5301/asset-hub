@@ -1,4 +1,5 @@
 """GET /api/export router. spec §2.1."""
+
 from __future__ import annotations
 
 import uuid
@@ -17,9 +18,7 @@ router = APIRouter()
 
 _CONTENT_TYPES = {
     "csv": "text/csv; charset=utf-8",
-    "xlsx": (
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    ),
+    "xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
 }
 
 

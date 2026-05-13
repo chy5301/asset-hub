@@ -6,13 +6,20 @@ def test_send_to_maintenance_no_holder_keeps_current(client, sample_type_nb_via_
     # 直接创建 IDLE 资产并设置 holder="张三"
     resp = client.post(
         "/api/assets",
-        json={"name": "待送修笔记本", "type_id": sample_type_nb_via_api, "holder": "张三", "custom_data": {}},
+        json={
+            "name": "待送修笔记本",
+            "type_id": sample_type_nb_via_api,
+            "holder": "张三",
+            "custom_data": {},
+        },
     )
     assert resp.status_code == 201
     aid = resp.json()["id"]
 
     # SEND_TO_MAINTENANCE，不传 to_holder 字段
-    r = client.post(f"/api/assets/{aid}/transitions", json={"kind": "SEND_TO_MAINTENANCE"})
+    r = client.post(
+        f"/api/assets/{aid}/transitions", json={"kind": "SEND_TO_MAINTENANCE"}
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["to_holder"] == "张三"  # keep rule 保留
@@ -23,7 +30,12 @@ def test_send_to_maintenance_explicit_null_clears(client, sample_type_nb_via_api
     """v2.0：传 to_holder=null（字段在 JSON 中显式为 null）→ 清空。"""
     resp = client.post(
         "/api/assets",
-        json={"name": "待送修笔记本2", "type_id": sample_type_nb_via_api, "holder": "张三", "custom_data": {}},
+        json={
+            "name": "待送修笔记本2",
+            "type_id": sample_type_nb_via_api,
+            "holder": "张三",
+            "custom_data": {},
+        },
     )
     assert resp.status_code == 201
     aid = resp.json()["id"]
@@ -96,8 +108,14 @@ def test_post_transition_404_when_asset_missing(client):
 
 
 def test_get_transitions_returns_desc_order(client, idle_asset):
-    client.post(f"/api/assets/{idle_asset['id']}/transitions", json={"kind": "CHECKOUT_INTERNAL", "to_holder": "X"})
-    client.post(f"/api/assets/{idle_asset['id']}/transitions", json={"kind": "RETURN", "to_holder": "Y"})
+    client.post(
+        f"/api/assets/{idle_asset['id']}/transitions",
+        json={"kind": "CHECKOUT_INTERNAL", "to_holder": "X"},
+    )
+    client.post(
+        f"/api/assets/{idle_asset['id']}/transitions",
+        json={"kind": "RETURN", "to_holder": "Y"},
+    )
 
     resp = client.get(f"/api/assets/{idle_asset['id']}/transitions")
     assert resp.status_code == 200
@@ -112,7 +130,9 @@ def test_get_transitions_404_when_asset_missing(client):
     assert resp.status_code == 404
 
 
-def test_list_assets_default_excludes_retired_and_disposed(client, idle_asset, retired_asset, disposed_asset):
+def test_list_assets_default_excludes_retired_and_disposed(
+    client, idle_asset, retired_asset, disposed_asset
+):
     resp = client.get("/api/assets")
     assert resp.status_code == 200
     statuses = [a["status"] for a in resp.json()]

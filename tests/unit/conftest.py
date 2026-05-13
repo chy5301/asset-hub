@@ -21,17 +21,23 @@ def sample_type_pj(session: Session):
 @pytest.fixture()
 def sample_asset(session: Session, sample_type_nb):
     from asset_hub.services.asset import AssetService
+
     svc = AssetService(session)
     return svc.register(
-        name="X", type_id=sample_type_nb.id, custom_data={},
+        name="X",
+        type_id=sample_type_nb.id,
+        custom_data={},
     )
 
 
 @pytest.fixture()
 def sample_asset_with_model(session: Session, sample_type_nb):
     from asset_hub.services.asset import AssetService
+
     svc = AssetService(session)
     return svc.register(
-        name="X", type_id=sample_type_nb.id, custom_data={},
+        name="X",
+        type_id=sample_type_nb.id,
+        custom_data={},
         model="原始型号-001",
     )

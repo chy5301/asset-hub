@@ -84,7 +84,9 @@ def parse_cli_fields(fields: str | None) -> set[str] | None:
     return parsed or None
 
 
-def _raise_unknown_fields(unknown: set[str], allowed: set[str], json_output: bool) -> None:
+def _raise_unknown_fields(
+    unknown: set[str], allowed: set[str], json_output: bool
+) -> None:
     """统一 unknown-field 报错路径（list / single record 共用）。"""
     msg = f"未知字段: {', '.join(sorted(unknown))}"
     print_error(

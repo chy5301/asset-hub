@@ -36,7 +36,5 @@ def test_logs_tail_lines(isolated_db):
 
 def test_logs_invalid_service_returns_exit_2(isolated_db):
     """非法 --service → exit 2"""
-    res = runner.invoke(
-        app, ["serve", "logs", "--service", "weird", "--json"]
-    )
+    res = runner.invoke(app, ["serve", "logs", "--service", "weird", "--json"])
     assert res.exit_code == 2, res.stdout

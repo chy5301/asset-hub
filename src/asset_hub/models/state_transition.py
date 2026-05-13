@@ -17,17 +17,15 @@ class TransitionKind(StrEnum):
     RETIRE = "RETIRE"
     REINSTATE = "REINSTATE"
     DISPOSE = "DISPOSE"
-    REASSIGN = "REASSIGN"                              # v2.0 新（合并 RELOCATE + TRANSFER_HOLDER）
-    REPORT_BROKEN = "REPORT_BROKEN"                    # v2.0 新
-    DECLARE_UNREPAIRABLE = "DECLARE_UNREPAIRABLE"      # v2.0 新
-    DISMISS = "DISMISS"                                # v2.0 新
+    REASSIGN = "REASSIGN"  # v2.0 新（合并 RELOCATE + TRANSFER_HOLDER）
+    REPORT_BROKEN = "REPORT_BROKEN"  # v2.0 新
+    DECLARE_UNREPAIRABLE = "DECLARE_UNREPAIRABLE"  # v2.0 新
+    DISMISS = "DISMISS"  # v2.0 新
 
 
 class StateTransitionRecord(SQLModel, table=True):
     __tablename__ = "state_transition_records"
-    __table_args__ = (
-        Index("ix_transition_asset_created", "asset_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_transition_asset_created", "asset_id", "created_at"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     asset_id: uuid.UUID = Field(foreign_key="assets.id", index=True)

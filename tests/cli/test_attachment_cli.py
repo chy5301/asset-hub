@@ -10,7 +10,9 @@ runner = CliRunner()
 
 
 def _define_type_and_asset() -> str:
-    r = runner.invoke(app, ["type", "define", "--name", "笔记本", "--prefix", "NB", "--json"])
+    r = runner.invoke(
+        app, ["type", "define", "--name", "笔记本", "--prefix", "NB", "--json"]
+    )
     type_id = json.loads(r.stdout)["data"]["id"]
     r = runner.invoke(
         app,
@@ -74,8 +76,14 @@ class TestAttachmentAdd:
         first = runner.invoke(
             app,
             [
-                "attachment", "add", asset_id,
-                "--file", str(photo), "--kind", "photo", "--json",
+                "attachment",
+                "add",
+                asset_id,
+                "--file",
+                str(photo),
+                "--kind",
+                "photo",
+                "--json",
             ],
         )
         assert first.exit_code == 0
@@ -83,8 +91,14 @@ class TestAttachmentAdd:
         second = runner.invoke(
             app,
             [
-                "attachment", "add", asset_id,
-                "--file", str(photo), "--kind", "photo", "--json",
+                "attachment",
+                "add",
+                asset_id,
+                "--file",
+                str(photo),
+                "--kind",
+                "photo",
+                "--json",
             ],
         )
         assert second.exit_code == 1
@@ -99,8 +113,14 @@ class TestAttachmentAdd:
         result = runner.invoke(
             app,
             [
-                "attachment", "add", "not-a-uuid",
-                "--file", str(photo), "--kind", "photo", "--json",
+                "attachment",
+                "add",
+                "not-a-uuid",
+                "--file",
+                str(photo),
+                "--kind",
+                "photo",
+                "--json",
             ],
         )
         assert result.exit_code == 2
@@ -110,8 +130,14 @@ class TestAttachmentAdd:
         result = runner.invoke(
             app,
             [
-                "attachment", "add", asset_id,
-                "--file", "/no/such/file.jpg", "--kind", "photo", "--json",
+                "attachment",
+                "add",
+                asset_id,
+                "--file",
+                "/no/such/file.jpg",
+                "--kind",
+                "photo",
+                "--json",
             ],
         )
         # typer 的 exists=True 校验会以 usage error（exit 2）退出
@@ -121,9 +147,7 @@ class TestAttachmentAdd:
 class TestAttachmentList:
     def test_list_empty(self):
         asset_id = _define_type_and_asset()
-        result = runner.invoke(
-            app, ["attachment", "list", asset_id, "--json"]
-        )
+        result = runner.invoke(app, ["attachment", "list", asset_id, "--json"])
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["data"] == []
@@ -136,25 +160,47 @@ class TestAttachmentList:
         b = tmp_path / "b.jpg"
         b.write_bytes(b"b-bytes")
 
-        runner.invoke(app, [
-            "attachment", "add", asset_id, "--file", str(a),
-            "--kind", "photo", "--json",
-        ])
-        runner.invoke(app, [
-            "attachment", "add", asset_id, "--file", str(b),
-            "--kind", "photo", "--json",
-        ])
+        runner.invoke(
+            app,
+            [
+                "attachment",
+                "add",
+                asset_id,
+                "--file",
+                str(a),
+                "--kind",
+                "photo",
+                "--json",
+            ],
+        )
+        runner.invoke(
+            app,
+            [
+                "attachment",
+                "add",
+                asset_id,
+                "--file",
+                str(b),
+                "--kind",
+                "photo",
+                "--json",
+            ],
+        )
 
-        result = runner.invoke(app, [
-            "attachment", "list", asset_id, "--json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "attachment",
+                "list",
+                asset_id,
+                "--json",
+            ],
+        )
         data = json.loads(result.stdout)
         assert data["metadata"]["count"] == 2
         assert data["data"][0]["original_name"] == "b.jpg"
         assert data["data"][1]["original_name"] == "a.jpg"
 
     def test_list_nonexistent_exits_3(self):
-        result = runner.invoke(
-            app, ["attachment", "list", str(uuid4()), "--json"]
-        )
+        result = runner.invoke(app, ["attachment", "list", str(uuid4()), "--json"])
         assert result.exit_code == 3

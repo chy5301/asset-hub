@@ -7,6 +7,7 @@
 - idle_since_expr(): 可拼到 select(Asset).join(...).order_by() 的子查询表达式
   （stats 闲置 Top 10 / list_assets sort_by=idle_days 用）
 """
+
 import uuid
 from datetime import UTC, datetime
 
@@ -48,9 +49,16 @@ def compute_idle_days_for_asset(session: Session, asset_id: uuid.UUID) -> int | 
         return None
 
     sq = last_idle_subq()
-    stmt = select(idle_since_expr(Asset, sq)).select_from(Asset).join(
-        sq, sq.c.asset_id == Asset.id, isouter=True,
-    ).where(Asset.id == asset_id)
+    stmt = (
+        select(idle_since_expr(Asset, sq))
+        .select_from(Asset)
+        .join(
+            sq,
+            sq.c.asset_id == Asset.id,
+            isouter=True,
+        )
+        .where(Asset.id == asset_id)
+    )
     idle_since: datetime | None = session.exec(stmt).scalar_one_or_none()
     if idle_since is None:
         return None

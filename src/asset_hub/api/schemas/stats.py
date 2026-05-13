@@ -47,6 +47,7 @@ class IdleTopItem(BaseModel):
 
 class StatsSummary(BaseModel):
     """业务摘要——命名 summary 而非 metadata，避免与 CLI envelope 顶层 metadata 冲突."""
+
     total_assets: int
     registered_assets: int
     idle_count: int
@@ -64,6 +65,7 @@ class StatsSummary(BaseModel):
 
 class StatsRead(BaseModel):
     """4 段聚合响应 + summary。各段在响应里通过 fields 子集控制；summary 始终返回."""
+
     model_config = ConfigDict(from_attributes=True)
 
     type_distribution: list[TypeDistributionItem] | None = None

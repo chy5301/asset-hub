@@ -1,4 +1,5 @@
 """v2 state machine migration 测：upgrade 改写 RELOCATE/TRANSFER_HOLDER → REASSIGN；downgrade 拒绝有 v2 数据。"""
+
 import sys
 import uuid
 from datetime import UTC, datetime
@@ -55,23 +56,35 @@ def test_upgrade_relocate_to_reassign(v1_db):
     # 插一条 v1.0 asset 和 RELOCATE/TRANSFER_HOLDER 记录
     with engine.begin() as conn:
         # asset_types 先建（FK 依赖）
-        conn.execute(text(
-            "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
-            "VALUES (:id, 'T', 'T', '[]', :now, :now)"
-        ), {"id": type_id, "now": now})
+        conn.execute(
+            text(
+                "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
+                "VALUES (:id, 'T', 'T', '[]', :now, :now)"
+            ),
+            {"id": type_id, "now": now},
+        )
         # asset 必填字段
-        conn.execute(text(
-            "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
-            "VALUES (:id, 'T-001', 'X', :tid, 'IDLE', '{}', :now, :now)"
-        ), {"id": asset_id, "tid": type_id, "now": now})
-        conn.execute(text(
-            "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
-            "VALUES (:tid, :aid, 'RELOCATE', 'IDLE', 'IDLE', :now)"
-        ), {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now})
-        conn.execute(text(
-            "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
-            "VALUES (:tid, :aid, 'TRANSFER_HOLDER', 'IN_USE', 'IN_USE', :now)"
-        ), {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now})
+        conn.execute(
+            text(
+                "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
+                "VALUES (:id, 'T-001', 'X', :tid, 'IDLE', '{}', :now, :now)"
+            ),
+            {"id": asset_id, "tid": type_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
+                "VALUES (:tid, :aid, 'RELOCATE', 'IDLE', 'IDLE', :now)"
+            ),
+            {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
+                "VALUES (:tid, :aid, 'TRANSFER_HOLDER', 'IN_USE', 'IN_USE', :now)"
+            ),
+            {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now},
+        )
 
     # upgrade 到 head
     for key in list(sys.modules.keys()):
@@ -105,14 +118,20 @@ def test_downgrade_rejects_v2_data(v1_db):
     type_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
     with engine.begin() as conn:
-        conn.execute(text(
-            "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
-            "VALUES (:id, 'T', 'T', '[]', :now, :now)"
-        ), {"id": type_id, "now": now})
-        conn.execute(text(
-            "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
-            "VALUES (:id, 'T-002', 'Y', :tid, 'BROKEN', '{}', :now, :now)"
-        ), {"id": asset_id, "tid": type_id, "now": now})
+        conn.execute(
+            text(
+                "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
+                "VALUES (:id, 'T', 'T', '[]', :now, :now)"
+            ),
+            {"id": type_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
+                "VALUES (:id, 'T-002', 'Y', :tid, 'BROKEN', '{}', :now, :now)"
+            ),
+            {"id": asset_id, "tid": type_id, "now": now},
+        )
 
     for key in list(sys.modules.keys()):
         if "asset_hub.alembic" in key or key.endswith(".env"):
@@ -120,7 +139,9 @@ def test_downgrade_rejects_v2_data(v1_db):
 
     with pytest.raises(RuntimeError, match="BROKEN 状态资产"):
         with patch("asset_hub.config.Settings", return_value=mock_settings):
-            command.downgrade(cfg, "-2")  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）
+            command.downgrade(
+                cfg, "-2"
+            )  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）
 
 
 def test_downgrade_rejects_v2_kind_transitions(v1_db):
@@ -140,18 +161,27 @@ def test_downgrade_rejects_v2_kind_transitions(v1_db):
     type_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
     with engine.begin() as conn:
-        conn.execute(text(
-            "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
-            "VALUES (:id, 'T', 'T', '[]', :now, :now)"
-        ), {"id": type_id, "now": now})
-        conn.execute(text(
-            "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
-            "VALUES (:id, 'T-003', 'Z', :tid, 'IDLE', '{}', :now, :now)"
-        ), {"id": asset_id, "tid": type_id, "now": now})
-        conn.execute(text(
-            "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
-            "VALUES (:tid, :aid, 'REASSIGN', 'IDLE', 'IDLE', :now)"
-        ), {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now})
+        conn.execute(
+            text(
+                "INSERT INTO asset_types (id, name, code_prefix, custom_fields, created_at, updated_at) "
+                "VALUES (:id, 'T', 'T', '[]', :now, :now)"
+            ),
+            {"id": type_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO assets (id, asset_code, name, type_id, status, custom_data, created_at, updated_at) "
+                "VALUES (:id, 'T-003', 'Z', :tid, 'IDLE', '{}', :now, :now)"
+            ),
+            {"id": asset_id, "tid": type_id, "now": now},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO state_transition_records (id, asset_id, kind, from_status, to_status, created_at) "
+                "VALUES (:tid, :aid, 'REASSIGN', 'IDLE', 'IDLE', :now)"
+            ),
+            {"tid": str(uuid.uuid4()), "aid": asset_id, "now": now},
+        )
 
     for key in list(sys.modules.keys()):
         if "asset_hub.alembic" in key or key.endswith(".env"):
@@ -159,4 +189,6 @@ def test_downgrade_rejects_v2_kind_transitions(v1_db):
 
     with pytest.raises(RuntimeError, match="v2.0 新 kind 的 transition records"):
         with patch("asset_hub.config.Settings", return_value=mock_settings):
-            command.downgrade(cfg, "-2")  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）
+            command.downgrade(
+                cfg, "-2"
+            )  # v3 → v2 → v1：触发 v2 downgrade guard（PR-3 加 v3 后 head 移到 v3）

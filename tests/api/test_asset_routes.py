@@ -17,11 +17,14 @@ def _create_type(
 class TestCreateAsset:
     def test_create_minimal(self, client: TestClient):
         type_id = _create_type(client)
-        resp = client.post("/api/assets", json={
-            "name": "ThinkPad X1",
-            "type_id": type_id,
-            "custom_data": {},
-        })
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": "ThinkPad X1",
+                "type_id": type_id,
+                "custom_data": {},
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "ThinkPad X1"
@@ -30,35 +33,49 @@ class TestCreateAsset:
     def test_create_with_custom_data(self, client: TestClient):
         type_id = _create_type(
             client,
-            fields=[{"key": "brand", "label": "品牌", "type": "string", "required": True}],
+            fields=[
+                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+            ],
         )
-        resp = client.post("/api/assets", json={
-            "name": "ThinkPad X1",
-            "type_id": type_id,
-            "custom_data": {"brand": "Lenovo"},
-        })
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": "ThinkPad X1",
+                "type_id": type_id,
+                "custom_data": {"brand": "Lenovo"},
+            },
+        )
         assert resp.status_code == 201
         assert resp.json()["custom_data"]["brand"] == "Lenovo"
 
     def test_create_bad_type_404(self, client: TestClient):
         from uuid import uuid4
-        resp = client.post("/api/assets", json={
-            "name": "X",
-            "type_id": str(uuid4()),
-            "custom_data": {},
-        })
+
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": "X",
+                "type_id": str(uuid4()),
+                "custom_data": {},
+            },
+        )
         assert resp.status_code == 404
 
     def test_create_validation_error_422(self, client: TestClient):
         type_id = _create_type(
             client,
-            fields=[{"key": "brand", "label": "品牌", "type": "string", "required": True}],
+            fields=[
+                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+            ],
         )
-        resp = client.post("/api/assets", json={
-            "name": "X",
-            "type_id": type_id,
-            "custom_data": {},
-        })
+        resp = client.post(
+            "/api/assets",
+            json={
+                "name": "X",
+                "type_id": type_id,
+                "custom_data": {},
+            },
+        )
         assert resp.status_code == 422
 
 
@@ -70,8 +87,12 @@ class TestListAssets:
 
     def test_list_with_query_params(self, client: TestClient):
         type_id = _create_type(client)
-        client.post("/api/assets", json={"name": "A", "type_id": type_id, "custom_data": {}})
-        client.post("/api/assets", json={"name": "B", "type_id": type_id, "custom_data": {}})
+        client.post(
+            "/api/assets", json={"name": "A", "type_id": type_id, "custom_data": {}}
+        )
+        client.post(
+            "/api/assets", json={"name": "B", "type_id": type_id, "custom_data": {}}
+        )
         resp = client.get("/api/assets")
         assert len(resp.json()) == 2
 
@@ -82,7 +103,9 @@ class TestListAssets:
 class TestGetAsset:
     def test_get_existing(self, client: TestClient):
         type_id = _create_type(client)
-        r = client.post("/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}})
+        r = client.post(
+            "/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}}
+        )
         asset_id = r.json()["id"]
         resp = client.get(f"/api/assets/{asset_id}")
         assert resp.status_code == 200
@@ -90,6 +113,7 @@ class TestGetAsset:
 
     def test_get_nonexistent_404(self, client: TestClient):
         from uuid import uuid4
+
         resp = client.get(f"/api/assets/{uuid4()}")
         assert resp.status_code == 404
 
@@ -97,14 +121,19 @@ class TestGetAsset:
 class TestUpdateAsset:
     def test_update_fields(self, client: TestClient):
         type_id = _create_type(client)
-        r = client.post("/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}})
+        r = client.post(
+            "/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}}
+        )
         asset_id = r.json()["id"]
-        resp = client.patch(f"/api/assets/{asset_id}", json={
-            "name": "X2",
-            "serial_number": "SN-001",
-            "notes": "新备注",
-            "acquired_at": "2025-02-01",
-        })
+        resp = client.patch(
+            f"/api/assets/{asset_id}",
+            json={
+                "name": "X2",
+                "serial_number": "SN-001",
+                "notes": "新备注",
+                "acquired_at": "2025-02-01",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["name"] == "X2"
@@ -116,7 +145,9 @@ class TestUpdateAsset:
 class TestDeleteAsset:
     def test_delete_existing(self, client: TestClient):
         type_id = _create_type(client)
-        r = client.post("/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}})
+        r = client.post(
+            "/api/assets", json={"name": "X1", "type_id": type_id, "custom_data": {}}
+        )
         asset_id = r.json()["id"]
         resp = client.delete(f"/api/assets/{asset_id}")
         assert resp.status_code == 204
@@ -126,15 +157,21 @@ class TestDeleteAsset:
 
     def test_delete_nonexistent_404(self, client: TestClient):
         from uuid import uuid4
+
         resp = client.delete(f"/api/assets/{uuid4()}")
         assert resp.status_code == 404
 
 
 def test_get_asset_returns_type_name(client, sample_type_nb_via_api):
     """通过 API POST 创建 asset，GET 详情 → 响应里 type_name 已填"""
-    create_resp = client.post("/api/assets", json={
-        "name": "X1", "type_id": str(sample_type_nb_via_api), "custom_data": {},
-    })
+    create_resp = client.post(
+        "/api/assets",
+        json={
+            "name": "X1",
+            "type_id": str(sample_type_nb_via_api),
+            "custom_data": {},
+        },
+    )
     assert create_resp.status_code == 201
     asset_id = create_resp.json()["id"]
 
@@ -145,9 +182,14 @@ def test_get_asset_returns_type_name(client, sample_type_nb_via_api):
 
 
 def test_delete_asset_cascade(client, sample_type_nb_via_api):
-    create = client.post("/api/assets", json={
-        "name": "X1", "type_id": sample_type_nb_via_api, "custom_data": {},
-    })
+    create = client.post(
+        "/api/assets",
+        json={
+            "name": "X1",
+            "type_id": sample_type_nb_via_api,
+            "custom_data": {},
+        },
+    )
     asset_id = create.json()["id"]
     client.post(f"/api/assets/{asset_id}/checkout", json={"holder": "张三"})
     client.post(f"/api/assets/{asset_id}/return", json={})
@@ -161,10 +203,15 @@ def test_delete_asset_cascade(client, sample_type_nb_via_api):
 
 
 def test_post_asset_with_acquired_at(client, sample_type_nb_via_api):
-    resp = client.post("/api/assets", json={
-        "name": "X1", "type_id": sample_type_nb_via_api,
-        "custom_data": {}, "acquired_at": "2025-01-15",
-    })
+    resp = client.post(
+        "/api/assets",
+        json={
+            "name": "X1",
+            "type_id": sample_type_nb_via_api,
+            "custom_data": {},
+            "acquired_at": "2025-01-15",
+        },
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert body["acquired_at"] == "2025-01-15"
@@ -193,7 +240,9 @@ def test_in_use_asset_idle_days_is_null(client, in_use_asset):
 def test_list_assets_with_idle_filter_and_limit(client, idle_assets_5):
     """验 sort_by/limit/include_retired 等参数透传到 service（不断 sort 顺序——
     单测 fixture 不支持精确断顺序，sort 顺序由 service 层 unit 测试覆盖）."""
-    res = client.get("/api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=3")
+    res = client.get(
+        "/api/assets?status=IDLE&sort_by=idle_days&sort_order=desc&limit=3"
+    )
     assert res.status_code == 200
     body = res.json()
     assert len(body) == 3
@@ -245,7 +294,9 @@ class TestListAssetsFilterRetiredDisposed:
         statuses_full = {a["status"] for a in r2.json()}
         assert statuses_full == {"IDLE", "IN_USE", "MAINTENANCE", "RETIRED", "DISPOSED"}
 
-    def test_explicit_status_overrides_include_flags(self, client: TestClient, seed_5_states):
+    def test_explicit_status_overrides_include_flags(
+        self, client: TestClient, seed_5_states
+    ):
         """status=RETIRED 不需要 include_retired 即返回 RETIRED 资产。"""
         r = client.get("/api/assets?status=RETIRED")
         assert r.status_code == 200
@@ -260,12 +311,15 @@ class TestListAssetsFilterRetiredDisposed:
 
 def test_create_asset_with_model(client, sample_type_nb_via_api):
     """POST /api/assets body 含 model 字段。"""
-    r = client.post("/api/assets", json={
-        "name": "X",
-        "type_id": str(sample_type_nb_via_api),
-        "model": "ThinkPad X1 Carbon",
-        "custom_data": {},
-    })
+    r = client.post(
+        "/api/assets",
+        json={
+            "name": "X",
+            "type_id": str(sample_type_nb_via_api),
+            "model": "ThinkPad X1 Carbon",
+            "custom_data": {},
+        },
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["model"] == "ThinkPad X1 Carbon"

@@ -5,6 +5,7 @@
 - 可选 kwargs: hint / fields_missing / fields_invalid / affected_resource_id
 - 类属性 code（envelope 序列化时取代 _DOMAIN_ERROR_CODES dict 查询）
 """
+
 from __future__ import annotations
 
 from asset_hub.errors import (
@@ -71,4 +72,8 @@ def test_all_subclasses_have_code_attr():
 
 def test_base_class_no_code():
     """AssetHubError base class 不应自带 code（仅子类有）。"""
-    assert not hasattr(AssetHubError, "code") or AssetHubError.code is None or AssetHubError.code == ""
+    assert (
+        not hasattr(AssetHubError, "code")
+        or AssetHubError.code is None
+        or AssetHubError.code == ""
+    )

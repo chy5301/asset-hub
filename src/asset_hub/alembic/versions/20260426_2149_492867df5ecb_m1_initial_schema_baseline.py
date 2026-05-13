@@ -35,9 +35,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("asset_types", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_asset_types_name"), ["name"], unique=True
-        )
+        batch_op.create_index(batch_op.f("ix_asset_types_name"), ["name"], unique=True)
 
     op.create_table(
         "assets",
@@ -63,9 +61,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     with op.batch_alter_table("assets", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_assets_name"), ["name"], unique=False
-        )
+        batch_op.create_index(batch_op.f("ix_assets_name"), ["name"], unique=False)
         batch_op.create_index(
             batch_op.f("ix_assets_serial_number"), ["serial_number"], unique=True
         )

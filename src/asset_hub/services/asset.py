@@ -16,13 +16,27 @@ from asset_hub.services.validation import validate_custom_data
 
 SortOrder = Literal["asc", "desc"]
 SortByField = Literal[
-    "name", "model", "asset_code", "serial_number",
-    "created_at", "updated_at", "acquired_at", "idle_days",
+    "name",
+    "model",
+    "asset_code",
+    "serial_number",
+    "created_at",
+    "updated_at",
+    "acquired_at",
+    "idle_days",
 ]
-SORT_FIELD_WHITELIST = frozenset({
-    "name", "model", "asset_code", "serial_number",
-    "created_at", "updated_at", "acquired_at", "idle_days",
-})
+SORT_FIELD_WHITELIST = frozenset(
+    {
+        "name",
+        "model",
+        "asset_code",
+        "serial_number",
+        "created_at",
+        "updated_at",
+        "acquired_at",
+        "idle_days",
+    }
+)
 LIMIT_MAX = 1000
 
 
@@ -75,7 +89,9 @@ class AssetService:
             )
             if "asset_code" in orig_msg:
                 # 极小概率：同 type 极高并发，两个 register 各自 max+1 算到同一值
-                raise DuplicateError(f"asset_code 撞车（请重试）: {asset_code}") from None
+                raise DuplicateError(
+                    f"asset_code 撞车（请重试）: {asset_code}"
+                ) from None
             raise DuplicateError(f"序列号重复: {serial_number}") from None
         self.session.refresh(asset)
         return asset
@@ -122,7 +138,9 @@ class AssetService:
             )
         # Router 用 Literal 已自动 422；此 guard 兜底 CLI / 直接调用 service 的 caller
         if sort_order not in ("asc", "desc"):
-            raise ValidationError(f"sort_order 必须是 'asc' 或 'desc'，收到：{sort_order!r}")
+            raise ValidationError(
+                f"sort_order 必须是 'asc' 或 'desc'，收到：{sort_order!r}"
+            )
         if offset is not None and offset < 0:
             raise ValidationError(f"offset 不能为负，收到：{offset}")
         if limit is not None and (limit < 1 or limit > LIMIT_MAX):
@@ -163,7 +181,9 @@ class AssetService:
                 if idle_since is None:
                     days_by_id[asset_id] = None
                     continue
-                days_by_id[asset_id] = int((now - ensure_aware(idle_since)).total_seconds() // 86400)
+                days_by_id[asset_id] = int(
+                    (now - ensure_aware(idle_since)).total_seconds() // 86400
+                )
 
         for a in assets:
             if a.status == AssetStatus.IDLE:
@@ -225,7 +245,9 @@ class AssetService:
             att_svc.delete(att.id)
 
         self.session.exec(
-            sa_delete(StateTransitionRecord).where(StateTransitionRecord.asset_id == asset_id)
+            sa_delete(StateTransitionRecord).where(
+                StateTransitionRecord.asset_id == asset_id
+            )
         )
 
         self.repo.delete(a)

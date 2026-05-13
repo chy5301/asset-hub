@@ -81,9 +81,7 @@ def download_attachment(
     return StreamingResponse(_iter_file(fh), media_type=att.mime_type, headers=headers)
 
 
-@router.delete(
-    "/attachments/{attachment_id}", status_code=204, tags=["attachments"]
-)
+@router.delete("/attachments/{attachment_id}", status_code=204, tags=["attachments"])
 def delete_attachment(
     attachment_id: uuid.UUID,
     svc: Annotated[AttachmentService, Depends(get_attachment_service)],

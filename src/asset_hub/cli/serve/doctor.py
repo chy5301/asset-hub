@@ -3,6 +3,7 @@
 read-only 诊断；不抛域异常；所有 check 收集后聚合渲染。
 M3e §2.4。
 """
+
 from __future__ import annotations
 
 import shutil
@@ -68,7 +69,9 @@ def check_uv() -> DoctorCheck:
     path = _resolve("uv")
     if path is None:
         return DoctorCheck(
-            name="uv (>= 0.4)", ok=False, detail="not found",
+            name="uv (>= 0.4)",
+            ok=False,
+            detail="not found",
             code="serve.uv_missing",
             fix_hint="install uv: https://docs.astral.sh/uv/getting-started/installation/",
         )
@@ -80,7 +83,9 @@ def check_pnpm() -> DoctorCheck:
     path = _resolve("pnpm")
     if path is None:
         return DoctorCheck(
-            name="pnpm (>= 9)", ok=False, detail="not found",
+            name="pnpm (>= 9)",
+            ok=False,
+            detail="not found",
             code="serve.pnpm_missing",
             fix_hint="install pnpm: npm install -g pnpm@9",
         )
@@ -94,7 +99,9 @@ def check_python_version() -> DoctorCheck:
     if v >= (3, 12):
         return DoctorCheck(name="Python (>= 3.12)", ok=True, detail=s)
     return DoctorCheck(
-        name="Python (>= 3.12)", ok=False, detail=s,
+        name="Python (>= 3.12)",
+        ok=False,
+        detail=s,
         code="serve.python_version_low",
         fix_hint="upgrade to Python 3.12+",
     )
@@ -105,7 +112,9 @@ def check_data_writable() -> DoctorCheck:
     p = Path(settings.data_dir)
     if not p.exists():
         return DoctorCheck(
-            name="data dir writable", ok=False, detail=f"{p} not exists",
+            name="data dir writable",
+            ok=False,
+            detail=f"{p} not exists",
             code="serve.data_unwritable",
             fix_hint=f"mkdir -p {p}",
         )
@@ -116,7 +125,9 @@ def check_data_writable() -> DoctorCheck:
         return DoctorCheck(name="data dir writable", ok=True, detail=str(p))
     except OSError as e:
         return DoctorCheck(
-            name="data dir writable", ok=False, detail=f"{p} ({e})",
+            name="data dir writable",
+            ok=False,
+            detail=f"{p} ({e})",
             code="serve.data_unwritable",
             fix_hint=f"check filesystem permissions on {p}",
         )
@@ -126,13 +137,17 @@ def check_alembic_head() -> DoctorCheck:
     uv_path = _resolve("uv")
     if uv_path is None:
         return DoctorCheck(
-            name="alembic head", ok=False, detail="uv not available",
+            name="alembic head",
+            ok=False,
+            detail="uv not available",
             code="serve.alembic_outdated",
             fix_hint="install uv then run `uv sync` and `uv run alembic upgrade head`",
         )
     cur_result = subprocess.run(
         [uv_path, "run", "alembic", "current"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if cur_result.returncode != 0:
         stderr_lc = (cur_result.stderr or "").lower()
@@ -145,14 +160,17 @@ def check_alembic_head() -> DoctorCheck:
         else:
             fix_hint = "run `uv run alembic upgrade head`"
         return DoctorCheck(
-            name="alembic head", ok=False,
+            name="alembic head",
+            ok=False,
             detail=(cur_result.stderr or cur_result.stdout or "").strip()[:200],
             code="serve.alembic_outdated",
             fix_hint=fix_hint,
         )
     head_result = subprocess.run(
         [uv_path, "run", "alembic", "heads"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if head_result.returncode != 0:
         stderr_lc = (head_result.stderr or "").lower()
@@ -165,7 +183,8 @@ def check_alembic_head() -> DoctorCheck:
         else:
             fix_hint = "run `uv run alembic upgrade head`"
         return DoctorCheck(
-            name="alembic head", ok=False,
+            name="alembic head",
+            ok=False,
             detail=(head_result.stderr or head_result.stdout or "").strip()[:200],
             code="serve.alembic_outdated",
             fix_hint=fix_hint,
@@ -176,11 +195,13 @@ def check_alembic_head() -> DoctorCheck:
     head_rev = head.split()[0] if head else ""
     if cur_rev and cur_rev == head_rev:
         return DoctorCheck(
-            name="alembic head", ok=True,
+            name="alembic head",
+            ok=True,
             detail=f"{cur_rev[:8]} (current = head)",
         )
     return DoctorCheck(
-        name="alembic head", ok=False,
+        name="alembic head",
+        ok=False,
         detail=f"current={cur_rev[:8] or '<none>'} head={head_rev[:8] or '<none>'}",
         code="serve.alembic_outdated",
         fix_hint="run `uv run alembic upgrade head`",
@@ -201,7 +222,9 @@ def check_frontend_dist() -> DoctorCheck:
     if p.exists():
         return DoctorCheck(name="frontend/dist", ok=True, detail="present")
     return DoctorCheck(
-        name="frontend/dist", ok=False, detail="missing",
+        name="frontend/dist",
+        ok=False,
+        detail="missing",
         code="serve.dist_missing",
         fix_hint="run `pnpm --dir frontend build`",
     )
@@ -213,7 +236,9 @@ def check_port_free(port: int) -> DoctorCheck:
     if not in_use:
         return DoctorCheck(name=name, ok=True, detail="free")
     return DoctorCheck(
-        name=name, ok=False, detail="in use",
+        name=name,
+        ok=False,
+        detail="in use",
         code="serve.port_occupied",
         fix_hint=f"stop existing service on :{port} or override with --port",
     )

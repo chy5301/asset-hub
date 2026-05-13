@@ -9,7 +9,9 @@ runner = CliRunner()
 
 class TestTypeDefine:
     def test_define_with_name(self):
-        result = runner.invoke(app, ["type", "define", "--name", "笔记本电脑", "--prefix", "NB", "--json"])
+        result = runner.invoke(
+            app, ["type", "define", "--name", "笔记本电脑", "--prefix", "NB", "--json"]
+        )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["success"] is True
@@ -29,7 +31,9 @@ class TestTypeDefine:
         schema_path = isolated_db / "gpu.json"
         schema_path.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
 
-        result = runner.invoke(app, ["type", "define", "--from", str(schema_path), "--json"])
+        result = runner.invoke(
+            app, ["type", "define", "--from", str(schema_path), "--json"]
+        )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
         assert data["data"]["name"] == "显卡"
@@ -39,18 +43,25 @@ class TestTypeDefine:
     def test_define_duplicate_exits_1(self):
         runner.invoke(app, ["type", "define", "--name", "硬盘", "--prefix", "HD"])
         # 不同 prefix 但同 name → DuplicateError
-        result = runner.invoke(app, ["type", "define", "--name", "硬盘", "--prefix", "HDX", "--json"])
+        result = runner.invoke(
+            app, ["type", "define", "--name", "硬盘", "--prefix", "HDX", "--json"]
+        )
         assert result.exit_code == 1
         data = json.loads(result.stdout)
         assert data["success"] is False
 
     def test_define_requires_prefix(self):
         """缺 --prefix → exit_code=2（用法错）"""
-        result = runner.invoke(app, [
-            "type", "define",
-            "--name", "笔记本电脑",
-            "--json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "type",
+                "define",
+                "--name",
+                "笔记本电脑",
+                "--json",
+            ],
+        )
         assert result.exit_code == 2
 
 
@@ -72,7 +83,9 @@ class TestTypeList:
 
 class TestTypeShow:
     def test_show_existing(self):
-        r = runner.invoke(app, ["type", "define", "--name", "硬盘", "--prefix", "HD", "--json"])
+        r = runner.invoke(
+            app, ["type", "define", "--name", "硬盘", "--prefix", "HD", "--json"]
+        )
         type_id = json.loads(r.stdout)["data"]["id"]
         result = runner.invoke(app, ["type", "show", type_id, "--json"])
         assert result.exit_code == 0
@@ -81,5 +94,6 @@ class TestTypeShow:
 
     def test_show_nonexistent_exits_3(self):
         from uuid import uuid4
+
         result = runner.invoke(app, ["type", "show", str(uuid4()), "--json"])
         assert result.exit_code == 3

@@ -15,9 +15,7 @@ def _spec(options: list[str], required: bool = False) -> dict:
 
 
 def test_multi_enum_accepts_subset():
-    result = validate_custom_data(
-        [_spec(["a", "b", "c"])], {"tags": ["a", "c"]}
-    )
+    result = validate_custom_data([_spec(["a", "b", "c"])], {"tags": ["a", "c"]})
     assert result["tags"] == ["a", "c"]
 
 
@@ -38,6 +36,4 @@ def test_multi_enum_rejects_unknown_option():
 
 def test_multi_enum_required_missing_raises():
     with pytest.raises(ValidationError, match="缺少必填"):
-        validate_custom_data(
-            [_spec(["a", "b"], required=True)], {}
-        )
+        validate_custom_data([_spec(["a", "b"], required=True)], {})

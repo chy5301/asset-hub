@@ -61,8 +61,17 @@ class ExportService:
 
     # spec §B.3: 11 固定列, 顺序严格 (custom fields 平铺接在尾)
     _FIXED_COLUMN_NAMES: list[str] = [
-        "资产编号", "名称", "型号", "类型", "状态", "保管人", "位置",
-        "闲置天数", "入账日期", "铭牌编号", "备注",
+        "资产编号",
+        "名称",
+        "型号",
+        "类型",
+        "状态",
+        "保管人",
+        "位置",
+        "闲置天数",
+        "入账日期",
+        "铭牌编号",
+        "备注",
     ]
 
     def __init__(
@@ -75,9 +84,7 @@ class ExportService:
         self.asset_service = asset_service
         self.type_service = type_service
 
-    def _resolve_custom_fields(
-        self, type_id: uuid.UUID | None
-    ) -> list[CustomFieldDef]:
+    def _resolve_custom_fields(self, type_id: uuid.UUID | None) -> list[CustomFieldDef]:
         """spec §B.2: type_id 显式锁定时返 type.custom_fields, 否则 []."""
         if type_id is None:
             return []
