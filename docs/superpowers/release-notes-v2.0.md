@@ -5,7 +5,7 @@
 v2.0 GA 收口两大主线，由两个独立 PR 顺序合入 main 后发 `v2.0.0`：
 
 1. **状态机扩展**（PR-1 BC，merge commit `b689148`）：5 态 → 6 态（加 `BROKEN` 故障态）；10 → 12 transition kind；引入 `keep` rule（解决 v1.0 "调用方不传字段就被无声清空"）；合并 `RELOCATE` + `TRANSFER_HOLDER` 为 `REASSIGN`；全 6 态两字文案对齐
-2. **Agent-native 收口**（PR-2 A，merge commit `<待回填>`）：M3e Phase 1 三 followup 补丁；envelope error 深度结构化；`--help-json` agent 元数据导出；`--fields` 字段掩码；SKILL.md description trigger eval
+2. **Agent-native 收口**（PR-2 A，merge commit `05345d2`）：M3e Phase 1 三 followup 补丁；envelope error 深度结构化；`--help-json` agent 元数据导出；`--fields` 字段掩码；SKILL.md description trigger eval
 
 本指南面向已运行 v1.0.0 的主干用户，逐步说明升级路径、breaking changes 全列表、回滚方式与已知 gap。
 
@@ -16,7 +16,7 @@ v2.0 GA 收口两大主线，由两个独立 PR 顺序合入 main 后发 `v2.0.0
 | PR | 主题 | 合并 commit |
 |---|---|---|
 | PR-1 BC | 状态机焕新 + 文案重定 + CLI flag 标准化 | `b689148` (#3) |
-| PR-2 A | Agent-native 收口（envelope / --help-json / --fields / description eval）| `<待回填>` (#4) |
+| PR-2 A | Agent-native 收口（envelope / --help-json / --fields / description eval）| `05345d2` (#4) |
 
 ---
 

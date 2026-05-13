@@ -154,9 +154,9 @@ PR：https://github.com/chy5301/asset-hub/pull/3
 
 ---
 
-## v2.0 PR-2 · Agent-native 收口 ⏳
+## v2.0 PR-2 · Agent-native 收口 ✅ **已合并（2026-05-13）**
 
-合并 commit：<等 PR-2 merge 后回填>
+合并 commit：`05345d2` (PR #4, Merge pull request from feat/v2-pr2-agent-native)
 PR：https://github.com/chy5301/asset-hub/pull/4
 
 落地范围（spec §4，共 8 commits 跨 6 phase）：
