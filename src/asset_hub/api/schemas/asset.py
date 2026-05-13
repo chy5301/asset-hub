@@ -10,7 +10,7 @@ class AssetCreate(BaseModel):
     name: str
     type_id: UUID
     serial_number: str | None = None
-    model: str | None = None  # 新
+    model: str | None = None
     holder: str | None = None
     location: str | None = None
     notes: str | None = None
@@ -29,7 +29,7 @@ class AssetUpdate(BaseModel):
 
     name: str | None = None
     serial_number: str | None = None
-    model: str | None = None  # 新；exclude_unset 模式区分"未传 vs null 清空"
+    model: str | None = None  # exclude_unset 模式区分"未传 vs null 清空"
     notes: str | None = None
     custom_data: dict | None = None
     acquired_at: date | None = None
@@ -42,7 +42,7 @@ class AssetRead(BaseModel):
     asset_code: str
     name: str
     serial_number: str | None
-    model: str | None  # 新；紧邻 sn / name
+    model: str | None
     type_id: UUID
     type_name: str | None  # 从 Asset.type_name @property 自动读取
     status: AssetStatus

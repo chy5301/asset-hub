@@ -88,7 +88,7 @@ class TestBuildRows:
         assert keys == [
             "资产编号",
             "名称",
-            "型号",  # v2.0 PR-3
+            "型号",
             "类型",
             "状态",
             "保管人",
@@ -354,7 +354,7 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # v2.0 PR-3 后状态列第 5 列 (E)——"型号" 插入到 "名称" 与 "类型" 之间
+        # 状态列因 "型号" 列插入而后移到第 5 列 (E)
         status_cell = ws.cell(row=2, column=5)
         assert status_cell.value == "闲置"
         # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致

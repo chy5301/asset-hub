@@ -27,7 +27,7 @@ class Asset(SQLModel, table=True):
     asset_code: str = Field(unique=True, index=True)  # 新；{prefix}-{seq:03d}，service 层生成
     serial_number: str | None = Field(default=None, unique=True, index=True)
     name: str = Field(index=True)
-    model: str | None = Field(default=None, index=True)  # v2.0 PR-3：型号字段，nullable / non-unique / index 与 name 对齐
+    model: str | None = Field(default=None, index=True)  # nullable / non-unique; index 与 name 对齐
     type_id: uuid.UUID = Field(foreign_key="asset_types.id", index=True)
     status: AssetStatus = Field(default=AssetStatus.IDLE)
     holder: str | None = None
