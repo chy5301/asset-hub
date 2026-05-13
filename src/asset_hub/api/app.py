@@ -38,9 +38,30 @@ _EXC_STATUS: dict[type[AssetHubError], int] = {
 }
 
 
+def _api_error_payload(exc: AssetHubError) -> dict:
+    """API JSON 响应体 — v2.0 §4.2 backward compat：
+    保留 `detail` 字段（前端 lib/error.ts 仍读）+ 追加 `code` 与可选结构化字段。
+    可选字段（hint / fields_missing / fields_invalid / affected_resource_id）
+    仅在异常实例携带值（非 None）时出现，避免空 key 噪音。
+    """
+    payload: dict = {
+        "detail": exc.message,
+        "code": type(exc).code,
+    }
+    if exc.hint is not None:
+        payload["hint"] = exc.hint
+    if exc.fields_missing is not None:
+        payload["fields_missing"] = exc.fields_missing
+    if exc.fields_invalid is not None:
+        payload["fields_invalid"] = exc.fields_invalid
+    if exc.affected_resource_id is not None:
+        payload["affected_resource_id"] = exc.affected_resource_id
+    return payload
+
+
 def _make_handler(status: int):
-    async def handler(request: Request, exc: Exception):
-        return JSONResponse(status_code=status, content={"detail": str(exc)})
+    async def handler(request: Request, exc: AssetHubError):
+        return JSONResponse(status_code=status, content=_api_error_payload(exc))
 
     return handler
 

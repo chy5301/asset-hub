@@ -124,11 +124,21 @@ def validate_transition(
     """
     rule = TRANSITION_RULES[kind]
     if current_status not in rule.valid_from:
+        valid_from_labels = sorted(s.value for s in rule.valid_from)
         raise IllegalTransitionError(
-            f"{kind.value} 不能从 {current_status.value} 出发"
+            f"{kind.value} 不能从 {current_status.value} 出发",
+            hint=f"{kind.value} 仅允许从 {valid_from_labels} 出发；当前状态 {current_status.value}。",
         )
     if rule.holder_rule == "required" and not to_holder:
-        raise IllegalTransitionError(f"{kind.value} 必须提供 to_holder")
+        raise IllegalTransitionError(
+            f"{kind.value} 必须提供 to_holder",
+            hint=f"调用 {kind.value} 时必须传 to_holder（CLI: --to-holder <name>）。",
+            fields_missing=["to_holder"],
+        )
     if rule.location_rule == "required" and not to_location:
-        raise IllegalTransitionError(f"{kind.value} 必须提供 to_location")
+        raise IllegalTransitionError(
+            f"{kind.value} 必须提供 to_location",
+            hint=f"调用 {kind.value} 时必须传 to_location（CLI: --to-location <where>）。",
+            fields_missing=["to_location"],
+        )
     return rule.to_status  # 注意：REASSIGN self-loop 时返回 None，由 service 层处理
