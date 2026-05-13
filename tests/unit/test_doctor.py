@@ -21,9 +21,10 @@ from asset_hub.cli.serve.doctor import (
 
 
 class _FakeRun:
-    def __init__(self, stdout: str = "", returncode: int = 0):
+    def __init__(self, stdout: str = "", returncode: int = 0, stderr: str = ""):
         self.stdout = stdout
         self.returncode = returncode
+        self.stderr = stderr
 
 
 def test_check_uv_ok(monkeypatch):
@@ -112,21 +113,76 @@ def test_check_alembic_head_uv_missing(monkeypatch):
     assert "install uv" in c.fix_hint.lower()
 
 
+def test_check_alembic_head_command_not_found(monkeypatch):
+    """alembic 未装（uv run alembic current 退出非零 + stderr 含 module not found）→ fix_hint 指向 uv sync。"""
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.subprocess.run",
+        lambda *a, **kw: _FakeRun(returncode=1, stderr="No module named 'alembic'"),
+    )
+    c = check_alembic_head()
+    assert c.ok is False
+    assert c.code == "serve.alembic_outdated"
+    assert "uv sync" in c.fix_hint
+
+
+def test_check_alembic_head_other_failure_fallback(monkeypatch):
+    """alembic current 退出非零且 stderr 不含 module-missing 关键词 → fix_hint 默认 fallback 到 upgrade head。"""
+    monkeypatch.setattr("asset_hub.cli.serve.doctor._resolve", lambda cmd: f"/fake/{cmd}")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.subprocess.run",
+        lambda *a, **kw: _FakeRun(returncode=1, stderr="Target database is not up to date"),
+    )
+    c = check_alembic_head()
+    assert c.ok is False
+    assert c.code == "serve.alembic_outdated"
+    assert "alembic upgrade head" in c.fix_hint
+
+
 def test_check_frontend_dist_ok(tmp_path, monkeypatch):
+    """check_frontend_dist 通过 _resolve_repo_root 定位 dist，不依赖 cwd。"""
     dist = tmp_path / "frontend" / "dist"
     dist.mkdir(parents=True)
     (dist / "index.html").write_text("<html/>")
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve_repo_root",
+        lambda: tmp_path,
+    )
     c = check_frontend_dist()
     assert c.ok is True
 
 
 def test_check_frontend_dist_missing(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+    """fake repo root 下无 frontend/dist → 报 dist_missing。"""
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve_repo_root",
+        lambda: tmp_path,
+    )
     c = check_frontend_dist()
     assert c.ok is False
     assert c.code == "serve.dist_missing"
     assert "build" in c.fix_hint.lower()
+
+
+def test_check_frontend_dist_independent_of_cwd(tmp_path, monkeypatch):
+    """check_frontend_dist 用 _resolve_repo_root 找 dist，与 cwd 完全无关。"""
+    # 准备 fake repo with valid frontend/dist
+    fake_repo = tmp_path / "fake-repo"
+    (fake_repo / "frontend" / "dist").mkdir(parents=True)
+    (fake_repo / "frontend" / "dist" / "index.html").write_text("<html/>")
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor._resolve_repo_root",
+        lambda: fake_repo,
+    )
+
+    # CWD 指到一个没 frontend/dist 的随机目录
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    # 结果应基于 fake_repo（有 dist），而不是 cwd（没 dist）
+    c = check_frontend_dist()
+    assert c.ok is True
 
 
 def test_check_port_free_ok(monkeypatch):

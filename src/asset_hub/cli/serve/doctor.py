@@ -130,15 +130,48 @@ def check_alembic_head() -> DoctorCheck:
             code="serve.alembic_outdated",
             fix_hint="install uv then run `uv sync` and `uv run alembic upgrade head`",
         )
-    cur = subprocess.run(
+    cur_result = subprocess.run(
         [uv_path, "run", "alembic", "current"],
         capture_output=True, text=True, check=False,
-    ).stdout.strip()
-    head = subprocess.run(
+    )
+    if cur_result.returncode != 0:
+        stderr_lc = (cur_result.stderr or "").lower()
+        if (
+            "no module named" in stderr_lc
+            or "modulenotfounderror" in stderr_lc
+            or "command not found" in stderr_lc
+        ):
+            fix_hint = "run `uv sync` to install alembic"
+        else:
+            fix_hint = "run `uv run alembic upgrade head`"
+        return DoctorCheck(
+            name="alembic head", ok=False,
+            detail=(cur_result.stderr or cur_result.stdout or "").strip()[:200],
+            code="serve.alembic_outdated",
+            fix_hint=fix_hint,
+        )
+    head_result = subprocess.run(
         [uv_path, "run", "alembic", "heads"],
         capture_output=True, text=True, check=False,
-    ).stdout.strip()
-
+    )
+    if head_result.returncode != 0:
+        stderr_lc = (head_result.stderr or "").lower()
+        if (
+            "no module named" in stderr_lc
+            or "modulenotfounderror" in stderr_lc
+            or "command not found" in stderr_lc
+        ):
+            fix_hint = "run `uv sync` to install alembic"
+        else:
+            fix_hint = "run `uv run alembic upgrade head`"
+        return DoctorCheck(
+            name="alembic head", ok=False,
+            detail=(head_result.stderr or head_result.stdout or "").strip()[:200],
+            code="serve.alembic_outdated",
+            fix_hint=fix_hint,
+        )
+    cur = cur_result.stdout.strip()
+    head = head_result.stdout.strip()
     cur_rev = cur.split()[0] if cur else ""
     head_rev = head.split()[0] if head else ""
     if cur_rev and cur_rev == head_rev:
@@ -154,8 +187,17 @@ def check_alembic_head() -> DoctorCheck:
     )
 
 
+def _resolve_repo_root() -> Path:
+    """从 doctor.py 路径反推 repo root，与 CWD 无关。
+
+    项目结构：<repo>/src/asset_hub/cli/serve/doctor.py
+    parents[0]=serve / [1]=cli / [2]=asset_hub / [3]=src / [4]=repo
+    """
+    return Path(__file__).resolve().parents[4]
+
+
 def check_frontend_dist() -> DoctorCheck:
-    p = Path("frontend/dist/index.html")
+    p = _resolve_repo_root() / "frontend" / "dist" / "index.html"
     if p.exists():
         return DoctorCheck(name="frontend/dist", ok=True, detail="present")
     return DoctorCheck(
