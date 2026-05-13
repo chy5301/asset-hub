@@ -1,12 +1,12 @@
-# v2.0.0 发版升级指南（草稿）
+# v2.0.0 发版升级指南
 
-> ⏳ **状态**：草稿。v2.0.0 GA 待 PR-3（名称/型号拆列）merge 后由维护者打 tag。本 doc 内容稳定，merge commit / tag 日期合并后回填。
+> ✅ **状态**：v2.0.0 已发布（2026-05-13）。
 
 v2.0 GA 收口三条主线，由三个独立 PR 顺序合入 main 后发 `v2.0.0`：
 
 1. **状态机扩展**（PR-1 BC，merge commit `b689148`）：5 态 → 6 态（加 `BROKEN` 故障态）；10 → 12 transition kind；引入 `keep` rule（解决 v1.0 "调用方不传字段就被无声清空"）；合并 `RELOCATE` + `TRANSFER_HOLDER` 为 `REASSIGN`；全 6 态两字文案对齐
 2. **Agent-native 收口**（PR-2 A，merge commit `05345d2`）：M3e Phase 1 三 followup 补丁；envelope error 深度结构化；`--help-json` agent 元数据导出；`--fields` 字段掩码；SKILL.md description trigger eval
-3. **Asset.model 字段拆列**（PR-3，merge commit 待回填）：Asset 新增 `model: str \| None` 顶层字段（nullable / index / 非 unique），打通后端 schema/service/DTO/CLI/前端表单+详情+列表/导出/SKILL.md 全栈；顺修 v1 `SortByField` 不含 `serial_number` 的不一致；删 `examples/types/gpu.json` 冗余 `model` custom_field
+3. **Asset.model 字段拆列**（PR-3，merge commit `b1e7176`）：Asset 新增 `model: str \| None` 顶层字段（nullable / index / 非 unique），打通后端 schema/service/DTO/CLI/前端表单+详情+列表/导出/SKILL.md 全栈；顺修 v1 `SortByField` 不含 `serial_number` 的不一致；删 `examples/types/gpu.json` 冗余 `model` custom_field
 
 本指南面向已运行 v1.0.0 的主干用户，逐步说明升级路径、breaking changes 全列表、回滚方式与已知 gap。
 
@@ -18,7 +18,7 @@ v2.0 GA 收口三条主线，由三个独立 PR 顺序合入 main 后发 `v2.0.0
 |---|---|---|
 | PR-1 BC | 状态机焕新 + 文案重定 + CLI flag 标准化 | `b689148` (#3) |
 | PR-2 A | Agent-native 收口（envelope / --help-json / --fields / description eval）| `05345d2` (#4) |
-| PR-3 | Asset.model 字段拆列 + sn sortable 顺修 | `<待填>` (#<待填>) |
+| PR-3 | Asset.model 字段拆列 + sn sortable 顺修 | `b1e7176` (#5) |
 
 ---
 
@@ -196,7 +196,7 @@ dialog test wrapper 重复 / `find_open_checkout_id` 2 查询合并 / migration 
 | 里程碑 | 主线 | 状态 |
 |---|---|---|
 | ✅ v1.0.0 | M1-M3e 全部 | 已完成 2026-05-09 |
-| ✅ v2.0.0 | 状态机扩展 + agent-native + Asset.model 字段拆列 | 本 release（草稿，等 PR-3 merge）|
+| ✅ v2.0.0 | 状态机扩展 + agent-native + Asset.model 字段拆列 | 已完成 2026-05-13 |
 | ⏳ v2.x | CLI / SKILL.md 持续打磨、formal description eval、typer 注入方案重审 | 规划中 |
 | ⏳ M4 | UI 视觉打磨 + A3 dialog 合并 + 配色重设计 | 规划中 |
 | ⏳ M5 | People 实体化（spec §14.4）| 规划中 |

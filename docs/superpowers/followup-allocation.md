@@ -199,11 +199,10 @@ PR：https://github.com/chy5301/asset-hub/pull/4
 
 ---
 
-## v2.0 PR-3 · Asset.model 字段拆列 ⏳ **待合并（2026-05-13）**
+## v2.0 PR-3 · Asset.model 字段拆列 ✅ **已合并（2026-05-13）**
 
+合并 commit：`b1e7176` (PR #5, Merge pull request from feat/v2-pr3-asset-model-column)
 PR：https://github.com/chy5301/asset-hub/pull/5
-分支：`feat/v2-pr3-asset-model-column`（worktree head `c268b39`，含 simplify pass）
-本地 worktree：`.claude/worktrees/feat+v2-pr3-asset-model-column`
 
 落地范围（spec + plan 27 task / 6 phase，共 11 commits）：
 
@@ -226,4 +225,4 @@ PR：https://github.com/chy5301/asset-hub/pull/5
 - `asset-hub serve start` 不识别外部端口占用 —— **2026-05-13 PR-3 烟测第二次撞到同一 bug**（PR-1 visual smoke 首次报告）：5173 被外部进程（如另一台 worktree 的 stale frontend dev server）占住时，`asset-hub serve start --mode dev` 让 Vite 自动切换到 5174，但 `asset-hub serve status` JSON 仍报 `frontend.port: 5173`（log 文件能看到实际是 5174）。访问 5173 看旧 bundle、访问 5174 才是新代码 —— 这次烟测前 10 分钟一直困惑 "型号" 列不见，最后看 `data/logs/frontend.log` "Port 5173 is in use, trying another one..." 才识别。修复方向不变：（a）`serve start` 启动前 probe 期望端口被外部占用 → fail 而不 fallback；或（b）`serve doctor` 增加"端口占用者 PID 不在 serve PID 文件管理范围"检测项；或（c）serve start 把 Vite 实际监听端口从 stderr/stdout 解析后更新 PID 文件（避免 status 撒谎）
 - 已存在 GPU AssetType（按 v1 example 创建过）custom_fields 仍含 model —— 用户手动迁移（release-notes-v2.0.md §升级注意 已写明）
 - 未来重构 update CLI 为分立 flag（含 `--name` / `--model` / `--sn` 等，与 register 对称）—— v2.x / M4 followup（plan 显式不在 PR-3 scope）
-- PR-3 待维护者本地视觉烟测确认（10 项列表/详情/编辑/导出对齐，已用 Playwright MCP 自动跑过一遍并归档 4 张截图于 worktree 根目录 `pr3-*.png`）
+- ~~PR-3 待维护者本地视觉烟测确认~~ —— 已合并；烟测过程暴露 serve port bug 第二次复现（见上一条），未发现 PR-3 自身视觉问题
