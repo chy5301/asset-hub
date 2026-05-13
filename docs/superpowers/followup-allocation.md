@@ -222,15 +222,16 @@ PR：https://github.com/chy5301/asset-hub/pull/5
 - form `asset-create-form` / `asset-edit-form` defaultValues + reset + submit payload —— 必要 hidden requirement（RHF 不受控）
 
 未解决 followup（PR-3 范围外）：
-- `asset-hub serve start` 不识别外部端口占用 —— **2026-05-13 PR-3 烟测第二次撞到同一 bug**（PR-1 visual smoke 首次报告）：5173 被外部进程（如另一台 worktree 的 stale frontend dev server）占住时，`asset-hub serve start --mode dev` 让 Vite 自动切换到 5174，但 `asset-hub serve status` JSON 仍报 `frontend.port: 5173`（log 文件能看到实际是 5174）。访问 5173 看旧 bundle、访问 5174 才是新代码 —— 这次烟测前 10 分钟一直困惑 "型号" 列不见，最后看 `data/logs/frontend.log` "Port 5173 is in use, trying another one..." 才识别。修复方向不变：（a）`serve start` 启动前 probe 期望端口被外部占用 → fail 而不 fallback；或（b）`serve doctor` 增加"端口占用者 PID 不在 serve PID 文件管理范围"检测项；或（c）serve start 把 Vite 实际监听端口从 stderr/stdout 解析后更新 PID 文件（避免 status 撒谎）
+- ~~`asset-hub serve start` 不识别外部端口占用~~ —— ✅ **v2.x PR-C 已修**（2026-05-13）：根因是 `proc.is_port_in_use` 仅探 IPv4 127.0.0.1，但 Vite 8.x dev 默认监听 IPv6 ::1。修复用 (a)+(a') 组合——双栈 bind 探测 + `vite.config.ts strictPort: true` 兜底。原 bug 描述保留备忘：5173 被外部进程占用时 Vite 偷偷 fallback 5174 但 PID 文件/status 撒谎，PR-1 visual smoke 首次撞、PR-3 烟测第二次撞
 - 已存在 GPU AssetType（按 v1 example 创建过）custom_fields 仍含 model —— 用户手动迁移（release-notes-v2.0.md §升级注意 已写明）
 - 未来重构 update CLI 为分立 flag（含 `--name` / `--model` / `--sn` 等，与 register 对称）—— v2.x / M4 followup（plan 显式不在 PR-3 scope）
 - ~~PR-3 待维护者本地视觉烟测确认~~ —— 已合并；烟测过程暴露 serve port bug 第二次复现（见上一条），未发现 PR-3 自身视觉问题
 
 ---
 
-## v2.x polish · CI 后端+前端覆盖 PR-A · ⏳ **等 review/merge（2026-05-13）**
+## v2.x polish · CI 后端+前端覆盖 PR-A · ✅ **已合并（2026-05-13）**
 
+合并 commit：`cb16d17`（squash merge）
 PR：https://github.com/chy5301/asset-hub/pull/6
 分支：`feat/v2.x-ci-coverage`
 spec / plan：`docs/superpowers/specs/2026-05-13-v2.x-ci-coverage-design.md` + `docs/superpowers/plans/2026-05-13-v2.x-ci-coverage.md`
@@ -251,3 +252,54 @@ spec / plan：`docs/superpowers/specs/2026-05-13-v2.x-ci-coverage-design.md` + `
 未解决 followup（PR-A 范围外）：
 
 - **e2e workflow flaky · playwright browser install 无 cache**：`.github/workflows/e2e.yml` step 9 `pnpm exec playwright install --with-deps chromium` 每次冷下载 ~250MB chromium binary，撞 CDN 慢就被自身 `timeout-minutes: 15` 卡停 cancel。第一次同分支 1m52s 全绿、第二次/第三次（rerun）连卡 14m48s/14m48s。**与 PR-A 0 相关**（PR-A 没动 e2e.yml / playwright specs / 前端代码 / backend service）。修复方向（独立 PR）：（a）加 `actions/cache@v4` 缓存 `~/.cache/ms-playwright`，key 用 playwright 版本；或（b）改用 `microsoft/playwright-github-action`；或（c）把 timeout 从 15 min 抬到 20-25 min 给冷启动留余量
+
+---
+
+## v2.x polish · ruff format baseline PR-B · ✅ **已合并（2026-05-13）**
+
+合并 commit：`07fc0fc`（squash merge）
+PR：https://github.com/chy5301/asset-hub/pull/7
+分支：`style/v2.x-ruff-format-baseline`
+spec / plan：`docs/superpowers/specs/2026-05-13-v2.x-ruff-format-baseline-design.md` + `docs/superpowers/plans/2026-05-13-v2.x-ruff-format-baseline.md`
+
+落地内容：
+
+- 跑 `uv run ruff format .` 对 80 个未格式化 .py 文件按现有 `pyproject.toml` ruff 配置一次性 reformat 到 baseline（+2288/-892，commit `fc27bb8`，机械 AST 重排，0 逻辑改动）
+- `.github/workflows/ci.yml` `backend` job 在 `ruff check` 之后插入 `ruff format check` 步骤（commit `0fd5ed2`）；位置选定在 ruff check 之后、pytest 之前——lint 失败诊断价值高优先看，format 检查 <1s fail-fast 比 pytest 快
+
+CI 实战：一次推送 3 check 全绿（backend 45s / frontend 1m9s / e2e 1m49s）。
+
+不做（已 doc 到 spec）：
+- pre-commit hook（YAGNI；CI --check + IDE 集成已双层）
+- `.editorconfig`（与 ruff format 无 overlap）
+- 锁 ruff 版本（dev group `ruff>=0.8` 范围保留；未来 format 行为变化由 CI 自动抓）
+- `.git-blame-ignore-revs`（单维护者仓库 squash blame 简单跳前一版即可）
+
+---
+
+## v2.x polish · serve start IPv6 端口探测 PR-C · ⏳ **等 review/merge（2026-05-13）**
+
+PR：https://github.com/chy5301/asset-hub/pull/<TBD>
+分支：`fix/v2.x-serve-port-detection`
+spec / plan：`docs/superpowers/specs/2026-05-13-v2.x-serve-port-detection-design.md` + `docs/superpowers/plans/2026-05-13-v2.x-serve-port-detection.md`
+
+落地内容：
+
+- (a) `src/asset_hub/cli/serve/proc.py::is_port_in_use` IPv4 127.0.0.1 + IPv6 ::1 双栈探测；IPv6 系统级不可用时 graceful 退化为 IPv4 单栈；删除 `host` 参数（仅两处调用均默认 host，零 caller 改动；commit `698c9ce`）
+- (a') `frontend/vite.config.ts` 加 `server.strictPort: true` 兜底——Vite 端口占用时直接 exit 非零而非 fallback 撒谎；与 (a) 配合双层防御（commit `d80da2f`）
+- 不做 (b) doctor 加"占用者 PID 检测"：(a) 修复后 `doctor.check_port_free` 复用 `is_port_in_use` 自动获得双栈
+- 不做 (c) PID 文件加 port 字段：(a)+(a') 让 fallback 路径不存在，PID 设定 port 即真实监听 port，YAGNI
+
+根因（spec 首次明确记录）：Vite 8.x dev 默认监听 IPv6 ::1（lifecycle.py:144-146 已有注释），原 is_port_in_use 仅探 IPv4 127.0.0.1 → 漏检 → start_service 不 fail-fast → Vite 内部检测 ::1:5173 占用偷偷 fallback 5174 → PID 文件 / status 撒谎。
+
+TDD 完成：先加 IPv6 占用测试看 fail（旧 IPv4-only 实现 `assert False is True`）→ 改实现 → 4 个 proc 测试全 PASS → 全量 611 pytest PASS（原 609 + 新 2）。
+
+闭环：v2.0 PR-3 段第一条 followup（serve port detection）由本 PR 终结。
+
+---
+
+## v2.0.1 发版规划（PR-A + PR-B + PR-C）
+
+PR-A / PR-B 是开发者侧 infrastructure（CI / format baseline）无 runtime 影响；PR-C 是用户可见 bug fix 向下兼容。三者合并按 SemVer 严格语义 → PATCH → **v2.0.1**。
+
+PR-C merge 后维护者按 v2.0.0 release-notes 流程发版：changelog 聚焦 PR-C 这一 fix，PR-A/PR-B 在 "Developer Experience" 段一行简略提及（不影响用户语义）。
