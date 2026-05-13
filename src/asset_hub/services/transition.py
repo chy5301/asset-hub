@@ -88,7 +88,9 @@ class TransitionService:
             location_changed = not isinstance(to_location, UnsetType) and to_location != asset.location
             if not holder_changed and not location_changed:
                 raise IllegalTransitionError(
-                    "REASSIGN 必须改 holder 或 location 至少一项"
+                    "REASSIGN 必须改 holder 或 location 至少一项",
+                    hint="传入 to_holder 或 to_location 至少一项（CLI: --to-holder / --to-location）",
+                    fields_missing=["to_holder", "to_location"],
                 )
 
         # to_status 可能为 None（REASSIGN self-loop），fallback 到 asset.status
@@ -106,7 +108,11 @@ class TransitionService:
             closes_id = self.repo.find_open_checkout_id(asset_id)
             # RETURN 强约束：必须有 OPEN CHECKOUT（v1.0 行为保留）
             if kind == TransitionKind.RETURN and closes_id is None:
-                raise IllegalTransitionError(f"资产无未归还的派发记录: {asset_id}")
+                raise IllegalTransitionError(
+                    f"资产无未归还的派发记录: {asset_id}",
+                    hint="此资产当前不在 IN_USE 状态，无 OPEN CHECKOUT 可关闭。先用 asset show 检查当前 status。",
+                    affected_resource_id=str(asset_id),
+                )
             # 其他从派出集走出的 transition：closes_id 为 None 也合法
 
         record = StateTransitionRecord(

@@ -77,3 +77,66 @@ def test_print_error_requires_keyword_code(capsys):
     """code 是 keyword-only，禁止裸 print_error('失败') 漏 code。"""
     with pytest.raises(TypeError):
         print_error("oops", True)  # 未传 code，应报 TypeError
+
+
+# ---- v2.0 §4.2: envelope.error 深度结构化（hint / fields_missing / ...） ----
+
+from asset_hub.cli.envelope import _cli_error_payload  # noqa: E402
+
+
+def test_cli_envelope_error_with_hint_and_fields_missing():
+    exc = IllegalTransitionError(
+        "REASSIGN 必须改 holder 或 location 至少一项",
+        hint="传入 to_holder 或 to_location 至少一项",
+        fields_missing=["to_holder", "to_location"],
+    )
+    payload = _cli_error_payload(exc)
+    assert payload == {
+        "code": "illegal_transition",
+        "message": "REASSIGN 必须改 holder 或 location 至少一项",
+        "hint": "传入 to_holder 或 to_location 至少一项",
+        "fields_missing": ["to_holder", "to_location"],
+    }
+
+
+def test_cli_envelope_error_excludes_none_fields():
+    """无 hint 等可选字段时，envelope.error 不含相应 key（exclude None）。"""
+    exc = NotFoundError("asset not found")
+    payload = _cli_error_payload(exc)
+    assert payload == {"code": "not_found", "message": "asset not found"}
+    assert "hint" not in payload
+    assert "fields_missing" not in payload
+    assert "fields_invalid" not in payload
+    assert "affected_resource_id" not in payload
+
+
+def test_cli_envelope_error_with_fields_invalid():
+    exc = ValidationError(
+        "validation failed",
+        fields_invalid={"sn": "格式错误"},
+    )
+    payload = _cli_error_payload(exc)
+    assert payload["fields_invalid"] == {"sn": "格式错误"}
+
+
+def test_cli_envelope_error_with_affected_resource_id():
+    exc = NotFoundError("asset not found", affected_resource_id="abc-123")
+    payload = _cli_error_payload(exc)
+    assert payload["affected_resource_id"] == "abc-123"
+
+
+def test_handle_domain_errors_threads_hint_into_envelope(capsys):
+    """handle_domain_errors 把 exc 透传给 print_error，最终 envelope.error 含 hint。"""
+    exc = IllegalTransitionError(
+        "boom",
+        hint="do X",
+        fields_missing=["foo"],
+    )
+    with pytest.raises(SystemExit) as ei:
+        with handle_domain_errors(json_output=True):
+            raise exc
+    assert ei.value.code == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["error"]["code"] == "illegal_transition"
+    assert out["error"]["hint"] == "do X"
+    assert out["error"]["fields_missing"] == ["foo"]

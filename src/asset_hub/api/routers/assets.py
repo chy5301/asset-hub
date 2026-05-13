@@ -2,14 +2,23 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
-from asset_hub.api.deps import get_session
+from asset_hub.api.deps import (
+    filter_list_with_fields,
+    get_session,
+    parse_fields,
+    serialize_with_fields,
+)
 from asset_hub.api.schemas.asset import AssetCreate, AssetRead, AssetUpdate
 from asset_hub.models.asset import AssetStatus
 from asset_hub.services.asset import AssetService, SortByField
 
 router = APIRouter()
+
+# v2.0 §4.4：AssetRead 合法字段集（fields= 掩码校验用）
+_ASSET_READ_FIELDS = set(AssetRead.model_fields.keys())
 
 
 def _get_svc(session: Annotated[Session, Depends(get_session)]) -> AssetService:
@@ -37,6 +46,7 @@ def create_asset(
 @router.get("", response_model=list[AssetRead])
 def list_assets(
     svc: Annotated[AssetService, Depends(_get_svc)],
+    fields: Annotated[set[str] | None, Depends(parse_fields)] = None,
     type_id: uuid.UUID | None = None,
     status: AssetStatus | None = None,
     holder: str | None = None,
@@ -60,16 +70,30 @@ def list_assets(
         limit=limit,
         offset=offset,
     )
-    return svc.annotate_idle_days(assets)
+    annotated = svc.annotate_idle_days(assets)
+    if fields is None:
+        return annotated
+    # 显式 fields：bypass response_model，JSONResponse 返裁剪 dict 列表
+    reads = [AssetRead.model_validate(a) for a in annotated]
+    return JSONResponse(
+        content=filter_list_with_fields(reads, fields, _ASSET_READ_FIELDS)
+    )
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
 def get_asset(
     asset_id: uuid.UUID,
     svc: Annotated[AssetService, Depends(_get_svc)],
+    fields: Annotated[set[str] | None, Depends(parse_fields)] = None,
 ):
     asset = svc.get_asset(asset_id)
-    return svc.annotate_idle_days([asset])[0]
+    annotated = svc.annotate_idle_days([asset])[0]
+    if fields is None:
+        return annotated
+    read = AssetRead.model_validate(annotated)
+    return JSONResponse(
+        content=serialize_with_fields(read, fields, _ASSET_READ_FIELDS)
+    )
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)

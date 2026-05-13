@@ -12,11 +12,25 @@ CLI envelope error code 完整 inventory + JSON 示例 + edge case。
 { "success": true, "data": <任意>, "metadata": { "took_ms": 12, "count": 5 }, "error": null }
 ```
 
-错误：
+错误（CLI envelope；v2.0 加结构化可选字段，exclude None）：
 
 ```json
-{ "success": false, "data": null, "metadata": {}, "error": { "code": "<error_code>", "message": "<中文 detail>" } }
+{
+  "success": false,
+  "data": null,
+  "metadata": {},
+  "error": {
+    "code": "<error_code>",
+    "message": "<中文 detail>",
+    "hint": "<下一步建议，可选>",
+    "fields_missing": ["<可选>"],
+    "fields_invalid": {"<field>": "<reason>"},
+    "affected_resource_id": "<可选 uuid>"
+  }
+}
 ```
+
+> ⚠️ **API vs CLI shape 差异**（v2.0 backward compat）：HTTP API 响应保留 `{ "detail": <message>, "code": ..., "hint?", "fields_missing?", "fields_invalid?", "affected_resource_id?" }` **平铺**形态（前端 `lib/error.ts` 兼容）；CLI envelope 是上述嵌套 `error: {...}` 形态。两端字段集相同、exclude None 行为一致，仅 top-level shape 不同。详见 §v2.0 envelope error 深度结构化 章节。
 
 dry-run（破坏性命令的预览）：
 
@@ -30,7 +44,7 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 
 ### 域异常（主 CLI）
 
-来源：`src/asset_hub/cli/envelope.py` `_DOMAIN_ERROR_CODES` 映射。
+来源：`src/asset_hub/errors.py` 6 子类的 `code` 类属性（v2.0 从 cli/envelope.py 的旧 `_DOMAIN_ERROR_CODES` dict 改造，子类 `type(exc).code` 取代字典查询）。
 
 | code | 来源异常 | HTTP map | exit_code |
 |---|---|---|---|
@@ -40,9 +54,9 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 | `state_conflict` | `StateError`（业务规则冲突） | 409 | 1 |
 | `conflict` | `ConflictError`（跨对象引用冲突，如 type 被资产引用时删除） | 409 | 1 |
 | `illegal_transition` | `IllegalTransitionError` | 409 | 1 |
-| `cancelled` | 用户在 dry-run 后取消操作（见 `type_cmd.py:123`） | — | 1 |
+| `cancelled` | 用户在 dry-run 后取消操作（见 `type_cmd.py:123`） | — | 10 |
 
-> **注**：`cancelled` 是 v1.0 现有行为（`type delete` dry-run 后用户拒绝确认），规范化为 v1.1 正式 formalize candidate（与 release-notes-v1.0.md 已知 gap 关联）。
+> **注**：`cancelled` 是 v1.0 现有行为（`type delete` dry-run 后用户拒绝确认），v2.0 正式化为 exit_code=10，与 dry-run 预览同档（用户主动取消非错误）。
 
 ### serve 子命令（dot prefix namespace）
 
@@ -82,10 +96,10 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 | exit_code | 含义 |
 |---|---|
 | 0 | 成功执行 |
-| 1 | 一般错误（duplicate / validation / conflict / state_conflict / illegal_transition / cancelled / serve.*） |
+| 1 | 一般错误（duplicate / validation / conflict / state_conflict / illegal_transition / serve.*） |
 | 2 | 用法错误（UUID 格式非法、参数缺失）|
 | 3 | 资源不存在（not_found） |
-| 10 | dry-run 预览（非错误；`success=true`） |
+| 10 | 用户主动取消或 dry-run 预览（非错误；`success=true`） |
 
 ## edge case
 
@@ -122,8 +136,61 @@ uv run asset-hub asset show "00000000-0000-0000-0000-000000000000" --json
 - `count` 仅在集合返回时出现（如 `asset list`、`type list`）；单体返回（`asset show`）无此字段
 - `took_ms` 在有明确计时的命令中出现（如 `serve status`、`serve doctor`）；快速命令的 `metadata` 可能是 `{}`
 
-### 恢复建议（v1.0 状态 / v1.1 计划）
+### v2.0 envelope error 深度结构化
 
-当前 `error.message` 自带恢复建议（如 `"CHECKOUT_INTERNAL 必须提供 to_holder"`）。v1.1 计划升级为 `{code, message, hint, fields_missing?, ...}` 结构化，届时 message 与 hint 分离。
+v2.0 起 error 字段从 `{code, message}` 升级为 `{code, message, hint?, fields_missing?, fields_invalid?, affected_resource_id?}` 结构化，agent 优先读 hint 与 fields_* 字段做下一步行动。**向后兼容**：可选字段 exclude None，旧消费者只读 code/message 不破。
 
-`serve doctor` 的 `data.checks[].fix_hint` 是局部 hint 实现样本——不在 `error.hint` 而在 `data.checks[]`，因为 doctor 在 success 路径下多 issue 聚合渲染。
+| 字段 | 类型 | 用途 |
+|---|---|---|
+| `code` | str | 必填，错误分类码（见上 inventory） |
+| `message` | str | 必填，人类可读中文 detail |
+| `hint` | str? | Agent 可执行的下一步建议（如"传入 to_holder 或 to_location 至少一项"） |
+| `fields_missing` | list[str]? | 缺哪些字段（field name list） |
+| `fields_invalid` | dict[str,str]? | 字段名 → 失败原因 |
+| `affected_resource_id` | str? | 涉及资源 id（如失败 transition 的 asset_id） |
+
+实施层：
+- `src/asset_hub/errors.py`：`AssetHubError` base 加 4 个 keyword-only optional kwargs；6 子类各 `code = "..."` 类属性
+- `src/asset_hub/api/app.py::_api_error_payload`：API 响应平铺新字段 + 保留 `detail`（前端兼容）
+- `src/asset_hub/cli/envelope.py::_cli_error_payload`：CLI envelope `error` 字典内嵌新字段
+- 两端均 exclude None：未设值字段不出现在响应
+
+示例（agent 收到完整 hint 后可结构化下一步）：
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "illegal_transition",
+    "message": "REASSIGN 必须改 holder 或 location 至少一项",
+    "hint": "传入 to_holder 或 to_location 至少一项（CLI: --to-holder / --to-location）",
+    "fields_missing": ["to_holder", "to_location"]
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "validation",
+    "message": "未知字段: foobar",
+    "hint": "合法字段：id, name, status, holder, ...",
+    "fields_invalid": {"foobar": "未知字段"}
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "illegal_transition",
+    "message": "资产无未归还的派发记录: abc-123",
+    "hint": "此资产当前不在 IN_USE 状态，无 OPEN CHECKOUT 可关闭。先检查 asset show 看当前 status。",
+    "affected_resource_id": "abc-123"
+  }
+}
+```
+
+`serve doctor` 的 `data.checks[].fix_hint` 是另一类 hint——不在 `error.hint` 而在 `data.checks[]`，因为 doctor 多 issue 聚合渲染（success 路径）；语义与 `error.hint` 互补。

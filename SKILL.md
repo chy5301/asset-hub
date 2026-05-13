@@ -1,8 +1,9 @@
 ---
 name: asset-hub
 description: |-
-  小组资产管理工具（命令 asset-hub）的 Agent 入口。
-  使用此 skill 当用户在 asset-hub 项目里提到资产登记 / 状态流转（派发、归还、送修、退役、注销、出现故障、故障报废、故障解除、重新分配）/ 列表筛选 / CSV/XLSX 导出 / 看板统计 / AssetType 自定义字段 / serve 子命令（start/stop/status/restart/logs/doctor）/ 在 Windows 部署 asset-hub / asset-hub 升级，或在项目目录里直接调用 asset-hub 命令。
+  小组实物资产管理工具（命令 asset-hub）的 Agent 入口，管理笔记本/显示器/GPU/工作站等硬件设备的登记、派发、归还、维修、退役全生命周期。
+  在 asset-hub 项目里使用此 skill 当用户提到：登记/录入设备、把某台设备派给某人、归还设备、设备坏了/出现故障/送修/修不好/报废/退役/注销、把设备从某工位换到另一处（重新分配）、查询闲置/在用/故障设备、按保管人/类型/状态筛选列表、导出 CSV/XLSX、看板统计、AssetType 自定义字段（CPU/RAM/序列号等）、serve 子命令（start/stop/status/restart/logs/doctor）排障、在 Windows 上部署或升级 asset-hub，或在项目目录里直接调用 asset-hub 命令。即便用户用口语词（"借出"、"还回来"、"坏了"、"换工位"），只要语境是公司/小组内部实物设备管理就触发。
+  不适用于：网页 image asset / 静态资源加载问题、金融资产、CSS asset bundling 等同名不同义场景。
   包含 6 态状态机（闲置/在用/送修/故障/退役/注销）、12 种 transition、JSON envelope 契约、CLI 命令速查、常见任务流。
 ---
 
