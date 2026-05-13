@@ -11,7 +11,9 @@ from asset_hub.services._idle_days import idle_since_expr, last_idle_subq
 # idle_days 故意不在此 map——idle_days 走上面的 outerjoin 分支单独处理。
 _SORT_COLUMN_MAP: dict[str, object] = {
     "name": Asset.name,
+    "model": Asset.model,
     "asset_code": Asset.asset_code,
+    "serial_number": Asset.serial_number,
     "created_at": Asset.created_at,
     "updated_at": Asset.updated_at,
     "acquired_at": Asset.acquired_at,
@@ -67,6 +69,7 @@ class AssetRepository:
             stmt = stmt.where(
                 Asset.name.contains(q)
                 | Asset.serial_number.contains(q)
+                | Asset.model.contains(q)
                 | Asset.notes.contains(q)
                 | Asset.asset_code.contains(q)
             )
