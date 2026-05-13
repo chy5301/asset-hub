@@ -82,16 +82,32 @@ def start_detached(
     return proc.pid
 
 
-def is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
-    """检查 host:port 是否被占用（true = 已占用）。"""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(0.5)
-    try:
-        s.bind((host, port))
-    except OSError:
-        return True
-    finally:
-        s.close()
+def is_port_in_use(port: int) -> bool:
+    """检查指定端口是否被占用（IPv4 127.0.0.1 或 IPv6 ::1 任一被占即 True）。
+
+    Vite 8.x dev 默认只监听 IPv6 ::1；uvicorn 显式 --host 绑 IPv4 127.0.0.1。
+    任一栈被占用都需要识别，否则会出现 "IPv4 探测显示空闲但 IPv6 已被占" 的漏检，
+    导致 Vite 偷偷 fallback 到下一个端口而 PID 文件撒谎。
+
+    系统级 IPv6 不可用（容器、特殊网络栈）时，AF_INET6 socket 创建即抛 OSError，
+    捕获后视为"那一栈不占"继续 IPv4 探测——graceful degrade 不让该函数变成系统
+    可用性 gate。
+    """
+    for family, host in (
+        (socket.AF_INET, "127.0.0.1"),
+        (socket.AF_INET6, "::1"),
+    ):
+        try:
+            s = socket.socket(family, socket.SOCK_STREAM)
+        except OSError:
+            continue
+        s.settimeout(0.5)
+        try:
+            s.bind((host, port))
+        except OSError:
+            return True
+        finally:
+            s.close()
     return False
 
 
