@@ -11,6 +11,7 @@ from sqlmodel import Session
 
 from asset_hub.cli.envelope import print_error
 from asset_hub.db import get_engine
+from asset_hub.errors import ValidationError
 from asset_hub.services._common import UNSET, UnsetType
 
 
@@ -70,6 +71,69 @@ def parse_unset_or_value(value: str | None) -> str | None | UnsetType:
     if value == "":
         return None
     return value
+
+
+# --- --fields 字段掩码 helper（spec §4.4 / v2.0 PR-2 T20+T21）---
+
+
+def parse_cli_fields(fields: str | None) -> set[str] | None:
+    """解析 --fields "a,b,c" → {'a','b','c'}。空/None 返回 None。"""
+    if fields is None:
+        return None
+    parsed = {f.strip() for f in fields.split(",") if f.strip()}
+    return parsed or None
+
+
+def _raise_unknown_fields(unknown: set[str], allowed: set[str], json_output: bool) -> None:
+    """统一 unknown-field 报错路径（list / single record 共用）。"""
+    msg = f"未知字段: {', '.join(sorted(unknown))}"
+    print_error(
+        msg,
+        json_output,
+        code="validation",
+        exit_code=1,
+        exc=ValidationError(
+            msg,
+            fields_invalid={f: "未知字段" for f in unknown},
+            hint=f"合法字段：{', '.join(sorted(allowed))}",
+        ),
+    )
+
+
+def filter_record_fields(
+    record: dict,
+    fields: set[str] | None,
+    *,
+    allowed: set[str],
+    json_output: bool,
+) -> dict:
+    """按 fields 过滤单 record（dict）。
+
+    fields=None → 原样返回。
+    fields 含未知字段 → print_error 退出（exit 1）。
+    """
+    if fields is None:
+        return record
+    unknown = fields - allowed
+    if unknown:
+        _raise_unknown_fields(unknown, allowed, json_output)
+    return {k: v for k, v in record.items() if k in fields}
+
+
+def filter_list_fields(
+    records: list[dict],
+    fields: set[str] | None,
+    *,
+    allowed: set[str],
+    json_output: bool,
+) -> list[dict]:
+    """list 版——unknown 检查放循环外。"""
+    if fields is None:
+        return records
+    unknown = fields - allowed
+    if unknown:
+        _raise_unknown_fields(unknown, allowed, json_output)
+    return [{k: v for k, v in r.items() if k in fields} for r in records]
 
 
 def load_schema_from_file(path: Path, json_output: bool) -> dict:
