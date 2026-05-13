@@ -76,7 +76,7 @@ description: |-
 **资产 CRUD：**
 
 ```
-asset-hub asset register --name <txt> --type-id <uuid> [--sn <txt>] [--holder <txt>] [--location <txt>] [--notes <txt>] [--custom <json>] [--acquired-at YYYY-MM-DD] [--json]
+asset-hub asset register --name <txt> --type-id <uuid> [--sn <txt>] [--model <txt>] [--holder <txt>] [--location <txt>] [--notes <txt>] [--custom <json>] [--acquired-at YYYY-MM-DD] [--json]
 asset-hub asset list [--type-id <uuid>] [--status <s>] [--holder <txt>] [--q <txt>] [--include-retired/--no-include-retired] [--include-disposed/--no-include-disposed] [--sort <field>] [--order asc|desc] [--limit N] [--offset N] [--json]
 asset-hub asset show <asset_id> [--json]
 asset-hub asset update <asset_id> --set <json> [--json]

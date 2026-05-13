@@ -1,11 +1,12 @@
 # v2.0.0 发版升级指南（草稿）
 
-> ⏳ **状态**：草稿。v2.0.0 GA 待 PR-2（[#4](https://github.com/chy5301/asset-hub/pull/4)）merge 后由维护者打 tag。本 doc 内容稳定，merge commit / tag 日期合并后回填。
+> ⏳ **状态**：草稿。v2.0.0 GA 待 PR-3（名称/型号拆列）merge 后由维护者打 tag。本 doc 内容稳定，merge commit / tag 日期合并后回填。
 
-v2.0 GA 收口两大主线，由两个独立 PR 顺序合入 main 后发 `v2.0.0`：
+v2.0 GA 收口三条主线，由三个独立 PR 顺序合入 main 后发 `v2.0.0`：
 
 1. **状态机扩展**（PR-1 BC，merge commit `b689148`）：5 态 → 6 态（加 `BROKEN` 故障态）；10 → 12 transition kind；引入 `keep` rule（解决 v1.0 "调用方不传字段就被无声清空"）；合并 `RELOCATE` + `TRANSFER_HOLDER` 为 `REASSIGN`；全 6 态两字文案对齐
 2. **Agent-native 收口**（PR-2 A，merge commit `05345d2`）：M3e Phase 1 三 followup 补丁；envelope error 深度结构化；`--help-json` agent 元数据导出；`--fields` 字段掩码；SKILL.md description trigger eval
+3. **Asset.model 字段拆列**（PR-3，merge commit 待回填）：Asset 新增 `model: str \| None` 顶层字段（nullable / index / 非 unique），打通后端 schema/service/DTO/CLI/前端表单+详情+列表/导出/SKILL.md 全栈；顺修 v1 `SortByField` 不含 `serial_number` 的不一致；删 `examples/types/gpu.json` 冗余 `model` custom_field
 
 本指南面向已运行 v1.0.0 的主干用户，逐步说明升级路径、breaking changes 全列表、回滚方式与已知 gap。
 
@@ -17,6 +18,7 @@ v2.0 GA 收口两大主线，由两个独立 PR 顺序合入 main 后发 `v2.0.0
 |---|---|---|
 | PR-1 BC | 状态机焕新 + 文案重定 + CLI flag 标准化 | `b689148` (#3) |
 | PR-2 A | Agent-native 收口（envelope / --help-json / --fields / description eval）| `05345d2` (#4) |
+| PR-3 | Asset.model 字段拆列 + sn sortable 顺修 | `<待填>` (#<待填>) |
 
 ---
 
@@ -102,6 +104,38 @@ Agent 想清空 v2.0 字段必须 **explicit 传 `--to-holder ""` / `--to-locati
 - `DISPOSE` UI label / KIND_META label / GUI dispose dialog confirm phrase："处置" → "注销"
 - 导出 CSV/XLSX 状态/transition kind 列值变（旧脚本按字符串匹配旧文案会断）
 
+### Schema 层（PR-3）
+
+- `Asset` 加 `model: str | None` 顶层字段（**addition**，nullable，非 unique，加 `ix_assets_model` 索引）
+- 历史 `Asset.model = NULL`，行为零变化
+
+### HTTP API 层（PR-3）
+
+- `POST /api/assets` body 接受可选 `model` 字段
+- `PATCH /api/assets/{id}` body 接受可选 `model`（exclude_unset 模式区分 "未传 vs null 清空"）
+- `GET /api/assets` response 含 `model` 字段
+- `GET /api/assets?q=foo` 搜索范围扩到 model（其他字段 sn / notes / asset_code 已在 v1 覆盖范围内）
+- `GET /api/assets?sort_by=model` / `?sort_by=serial_number` 现可用（v1 sn sortable 顺修——前端可点表头但后端 422 的不一致）
+
+### CLI 层（PR-3）
+
+- `asset register` 加 `--model <str>` flag
+- `asset update <id> --set '{"model": ...}'` 复用 v1 `--set` JSON 模式自然支持 model 设值 / null 清空 / 不传保持
+- `asset list --sort model` / `--sort serial_number` 现可用
+- `asset list --sort` help text 更新含 `model` / `serial_number`
+
+### UI 层（PR-3）
+
+- 列表表格新增 "型号" 列（位于 "名称" 列右侧，默认显示，可由 column-visibility 隐藏）
+- 详情页 header 副行加 model 显示（model 为空时不渲染该段）
+- 详情页 general-fields 加 "型号" 行（紧贴 "类型" 行之后）
+- 编辑表单加 model 输入（紧贴 name 字段之后）
+- CSV/XLSX 导出新增 "型号" 列（位于 "名称" 之后，10 固定列 → 11）
+
+### 升级注意（PR-3）
+
+- 若曾按 v1 `examples/types/gpu.json` 创建过 GPU AssetType，请在 type 管理页面手动编辑该 type，删除 `custom_fields` 中的 `model` 项——否则新创建 GPU 资产时会出现 "顶层 model + custom_data.model" 双输入框（已录入资产的 `custom_data.model` 键保留不影响，JSON 弹性结构）
+
 ---
 
 ## SemVer 判定：v2.0.0
@@ -162,7 +196,7 @@ dialog test wrapper 重复 / `find_open_checkout_id` 2 查询合并 / migration 
 | 里程碑 | 主线 | 状态 |
 |---|---|---|
 | ✅ v1.0.0 | M1-M3e 全部 | 已完成 2026-05-09 |
-| ✅ v2.0.0 | 状态机扩展 + agent-native | 本 release（草稿，等 PR-2 merge）|
+| ✅ v2.0.0 | 状态机扩展 + agent-native + Asset.model 字段拆列 | 本 release（草稿，等 PR-3 merge）|
 | ⏳ v2.x | CLI / SKILL.md 持续打磨、formal description eval、typer 注入方案重审 | 规划中 |
 | ⏳ M4 | UI 视觉打磨 + A3 dialog 合并 + 配色重设计 | 规划中 |
 | ⏳ M5 | People 实体化（spec §14.4）| 规划中 |
@@ -177,6 +211,13 @@ dialog test wrapper 重复 / `find_open_checkout_id` 2 查询合并 / migration 
 - [ ] `uv run asset-hub asset list --fields id,name --json` 仅含 id/name 字段
 - [ ] GUI dispose 资产路径文案显示 "注销"
 - [ ] BROKEN 状态资产的 dialog 全 5 按钮（report-broken / declare-unrepairable / dismiss / repair / retire）按 transition 矩阵显示
+- [ ] `uv run asset-hub asset register --name "测试" --type-id <id> --model "X" --json` 输出 data.model = "X"
+- [ ] `uv run asset-hub asset list --sort model --json` exit 0
+- [ ] `uv run asset-hub asset list --sort serial_number --json` exit 0（v1 顺修）
+- [ ] GUI 列表表格显示 "型号" 列且可点击表头排序
+- [ ] GUI 详情页 header 副行显示 model（资产有 model 时）
+- [ ] GUI 编辑表单含 "型号" 输入框
+- [ ] CSV / XLSX 导出含 "型号" 列（在 "名称" 之后）
 
 ---
 
