@@ -120,7 +120,7 @@ def type_delete(
         if ref_count == 0 and not yes and not json_output:
             confirm = typer.confirm(f"确认删除 type '{t.name}' ({t.code_prefix})？")
             if not confirm:
-                print_error("用户取消", json_output, code="cancelled", exit_code=1)
+                print_error("用户取消", json_output, code="cancelled", exit_code=10)
 
         # delete_type 内部再校验 ref，>0 时抛 ConflictError → envelope → exit 1
         svc.delete_type(uid)

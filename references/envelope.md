@@ -40,9 +40,9 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 | `state_conflict` | `StateError`（业务规则冲突） | 409 | 1 |
 | `conflict` | `ConflictError`（跨对象引用冲突，如 type 被资产引用时删除） | 409 | 1 |
 | `illegal_transition` | `IllegalTransitionError` | 409 | 1 |
-| `cancelled` | 用户在 dry-run 后取消操作（见 `type_cmd.py:123`） | — | 1 |
+| `cancelled` | 用户在 dry-run 后取消操作（见 `type_cmd.py:123`） | — | 10 |
 
-> **注**：`cancelled` 是 v1.0 现有行为（`type delete` dry-run 后用户拒绝确认），规范化为 v1.1 正式 formalize candidate（与 release-notes-v1.0.md 已知 gap 关联）。
+> **注**：`cancelled` 是 v1.0 现有行为（`type delete` dry-run 后用户拒绝确认），v2.0 正式化为 exit_code=10，与 dry-run 预览同档（用户主动取消非错误）。
 
 ### serve 子命令（dot prefix namespace）
 
@@ -82,10 +82,10 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 | exit_code | 含义 |
 |---|---|
 | 0 | 成功执行 |
-| 1 | 一般错误（duplicate / validation / conflict / state_conflict / illegal_transition / cancelled / serve.*） |
+| 1 | 一般错误（duplicate / validation / conflict / state_conflict / illegal_transition / serve.*） |
 | 2 | 用法错误（UUID 格式非法、参数缺失）|
 | 3 | 资源不存在（not_found） |
-| 10 | dry-run 预览（非错误；`success=true`） |
+| 10 | 用户主动取消或 dry-run 预览（非错误；`success=true`） |
 
 ## edge case
 
