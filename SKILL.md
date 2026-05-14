@@ -71,6 +71,26 @@ description: |-
 
 退出码：`0` 成功 / `1` 一般错误 / `2` 用法/参数错误 / `3` 资源不存在 / `10` dry-run 预览（非错误）。
 
+## Asset 顶层公共字段
+
+所有 AssetType 共享的字段，由 `Asset` 模型直接承载——**不要**在 `AssetType.custom_fields` 里重复定义同名 key，否则顶层 vs custom 两边各存一份导致数据漂移。
+
+| 字段 | 类型 | register flag | 说明 |
+|---|---|---|---|
+| `name` | str（必填）| `--name` | 资产实例名（自定义代号，与厂家型号无关） |
+| `type_id` | UUID（必填）| `--type-id` | 关联 AssetType |
+| `serial_number` | str / null | `--sn` | 厂家 SN，**unique index** |
+| `model` | str / null | `--model` | 厂家型号（v2.0 PR-3 拆为顶层列） |
+| `holder` | str / null | `--holder` | 保管人（可 register 时预填，更常见由 checkout transition 写入） |
+| `location` | str / null | `--location` | 物理位置 |
+| `notes` | str / null | `--notes` | 备注自由文本 |
+| `acquired_at` | date / null | `--acquired-at` | 入库日期 ISO `YYYY-MM-DD` |
+| `custom_data` | dict | `--custom` | 类型特有规格，结构由 AssetType.custom_fields 定义 |
+| `asset_code` | str | （服务生成 `{prefix}-{seq:03d}`，不可传） | 资产编号 |
+| `status` | enum | （服务默认 IDLE，**只能**经 transition 改） | 状态 |
+
+**设计 type 时的边界**：`custom_fields` 只放**类型特有规格**——笔记本的 `cpu` / `ram_gb` / `os_family`、显示器的 `resolution` / `panel_type`、GPU 的 `vram_gb`。涉及上表任意字段时走顶层 flag，不要进 `custom_fields`。
+
 ## 命令速查
 
 **资产 CRUD：**
@@ -151,6 +171,7 @@ asset-hub serve doctor [--mode dev|prod] [--json]
 5. **declare-unrepairable vs retire**：DECLARE_UNREPAIRABLE 是"维修过程判定不可修"（MAINTENANCE → BROKEN）；RETIRE 是"主动下架"（多个起点）。两者均需 confirm，含 `--yes/--dry-run`。
 6. **派出集 closes 通用化**：任何从 `{IN_USE, BROKEN}` 走出到 `{IN_USE, BROKEN}` 之外的 transition 都自动闭合最近 OPEN CHECKOUT。即不只 RETURN，BROKEN → IDLE (DISMISS) / IN_USE → MAINTENANCE 等都会闭合最初的 CHECKOUT。
 7. **DISPOSE 中文术语是"注销"**：CLI confirm phrase、UI label、export 文案统一为"注销"。前端 AlertDialog 解锁短语是 `"注销"`，旧脚本若硬编码 `"处置"` 会失败（CLI 唯一跳过确认的方式是 `--yes`）。
+8. **顶层字段 vs custom_fields 边界**：`custom_fields` **只放类型特有规格**（`cpu` / `ram_gb` / `os_family` 等），**不要**重复定义 Asset 顶层字段（`name` / `model` / `serial_number` / `holder` / `location` / `notes` / `acquired_at`）。重复定义会造成数据漂移：顶层一份 + custom 一份谁是真值不明。设计 AssetType 前先对照上方"Asset 顶层公共字段"段。
 
 ## 详细参考
 
