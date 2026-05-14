@@ -11,15 +11,15 @@
 | `CHECKOUT_INTERNAL` | IDLE | IN_USE | 组内派发 |
 | `CHECKOUT_EXTERNAL` | IDLE | IN_USE | 向外出借 |
 | `RETURN` | IN_USE | IDLE | kind 跟随对应 OPEN checkout；service 自动查最近 OPEN CHECKOUT_* 行写 closes_transition_id |
-| `SEND_TO_MAINTENANCE` | IDLE / BROKEN | MAINTENANCE | 送修；IN_USE 期间送修走两步（先 RETURN 或 REPORT_BROKEN 再 SEND）；v2.0 起 BROKEN 可直接送修 |
+| `SEND_TO_MAINTENANCE` | IDLE / BROKEN | MAINTENANCE | 送修；IN_USE 期间送修走两步（先 RETURN 或 REPORT_BROKEN 再 SEND） |
 | `RECOVER_FROM_MAINTENANCE` | MAINTENANCE | IDLE | 修好回库 |
-| `RETIRE` | IDLE / MAINTENANCE / BROKEN | RETIRED | 暂时退役（可复活）；v2.0 起 BROKEN 可直接退役 |
+| `RETIRE` | IDLE / MAINTENANCE / BROKEN | RETIRED | 暂时退役（可复活） |
 | `REINSTATE` | RETIRED | IDLE | 仅 RETIRED → IDLE |
-| `DISPOSE` | RETIRED / MAINTENANCE / BROKEN | DISPOSED | **IDLE 不可直 DISPOSE**（必先 RETIRE）；DISPOSED 是终态——一旦设置不可回退；v2.0 起 BROKEN 可直接注销；confirm phrase 改"注销" |
-| `REASSIGN` | IDLE / IN_USE / MAINTENANCE / BROKEN / RETIRED → 同 status | 同 status | 合并 v1 RELOCATE + TRANSFER_HOLDER；holder 或 location 至少改一项；DISPOSED 排除 |
-| `REPORT_BROKEN` | IDLE / IN_USE | BROKEN | 出现故障（v2.0 新）；IN_USE → BROKEN 时不闭合 OPEN CHECKOUT（派出延续语义） |
-| `DECLARE_UNREPAIRABLE` | MAINTENANCE | BROKEN | 维修过程判定不可修（v2.0 新） |
-| `DISMISS` | BROKEN | IDLE | 故障解除/自愈（v2.0 新）；走通用化 closes 逻辑自动闭合 OPEN CHECKOUT |
+| `DISPOSE` | RETIRED / MAINTENANCE / BROKEN | DISPOSED | **IDLE 不可直 DISPOSE**（必先 RETIRE）；DISPOSED 是终态——一旦设置不可回退；confirm phrase 是"注销" |
+| `REASSIGN` | IDLE / IN_USE / MAINTENANCE / BROKEN / RETIRED → 同 status | 同 status | 持有人 + 位置同时改的单一入口（holder 或 location 至少改一项；DISPOSED 排除） |
+| `REPORT_BROKEN` | IDLE / IN_USE | BROKEN | 出现故障；IN_USE → BROKEN 时不闭合 OPEN CHECKOUT（派出延续语义） |
+| `DECLARE_UNREPAIRABLE` | MAINTENANCE | BROKEN | 维修过程判定不可修 |
+| `DISMISS` | BROKEN | IDLE | 故障解除/自愈；走通用化 closes 逻辑自动闭合 OPEN CHECKOUT |
 
 ## 必填字段（按 kind）
 
@@ -75,7 +75,7 @@ asset dismiss <id> [--to-holder --to-location --note --json]
 - 违法 → `IllegalTransitionError(detail)` → router 409 Conflict / CLI exit 1 + `error.code = "illegal_transition"`
 - 写入 `state_transition_records` 表 + 反规范化更新 `Asset.status` / `Asset.holder` / `Asset.location`
 - **keep rule**：`to_holder/_UNSET` 时保留 asset 当前值；显式传 `None`/`""` 清空
-- **派出集 closes 通用化（v2.0）**：任何从 `{IN_USE, BROKEN}` 走出的 transition 自动闭合最近 OPEN CHECKOUT；`RETURN` 强约束（找不到 OPEN CHECKOUT 则报错）；其他 kind finds_id = None 也合法
+- **派出集 closes 通用化**：任何从 `{IN_USE, BROKEN}` 走出的 transition 自动闭合最近 OPEN CHECKOUT；`RETURN` 强约束（找不到 OPEN CHECKOUT 则报错）；其他 kind closes_id = None 也合法
 - REASSIGN 必改一项校验：holder 或 location 至少一个实际变化，否则报 `illegal_transition`
 
 ## REST 端点

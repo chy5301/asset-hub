@@ -27,7 +27,7 @@ description: |-
 | `IDLE` | 闲置 | 在库可派发 | ✓ | ✓ |
 | `IN_USE` | 在用 | 已派出（kind 区分组内/对外） | ✗ | ✓ |
 | `MAINTENANCE` | 送修 | 维修中 | ✗ | ✓ |
-| `BROKEN` | 故障 | 已发现故障，未送修 / 维修不可修（v2.0 新） | ✗ | ✓ |
+| `BROKEN` | 故障 | 已发现故障，未送修 / 维修不可修 | ✗ | ✓ |
 | `RETIRED` | 退役 | 暂时退役（备件/转借/暂停服役，可复活） | ✗ | ✗（toggle） |
 | `DISPOSED` | 注销 | 彻底处置（卖/捐/销毁，终态） | ✗ | ✗（toggle） |
 
@@ -43,10 +43,10 @@ description: |-
 | `RETIRE` | 退役 | IDLE / MAINTENANCE / BROKEN | RETIRED | keep | keep |
 | `REINSTATE` | 重新启用 | RETIRED | IDLE | keep | keep |
 | `DISPOSE` | 注销 | RETIRED / MAINTENANCE / BROKEN | DISPOSED | forced_null | forced_null |
-| `REASSIGN` | 重新分配（v2.0 合并 RELOCATE+TRANSFER_HOLDER） | ALL_BUT_DISPOSED | (self) | keep | keep |
-| `REPORT_BROKEN` | 出现故障（v2.0 新） | IDLE / IN_USE | BROKEN | keep | keep |
-| `DECLARE_UNREPAIRABLE` | 判定不可修复（v2.0 新） | MAINTENANCE | BROKEN | keep | keep |
-| `DISMISS` | 故障解除（v2.0 新） | BROKEN | IDLE | keep | keep |
+| `REASSIGN` | 重新分配（持有人 + 位置同时改的单一入口） | ALL_BUT_DISPOSED | (self) | keep | keep |
+| `REPORT_BROKEN` | 出现故障 | IDLE / IN_USE | BROKEN | keep | keep |
+| `DECLARE_UNREPAIRABLE` | 判定不可修复 | MAINTENANCE | BROKEN | keep | keep |
+| `DISMISS` | 故障解除 | BROKEN | IDLE | keep | keep |
 
 **规则约定**：
 - `keep`：未传字段保留 asset 当前值；显式传 `""`（CLI）/`null`（API）清空
@@ -145,16 +145,16 @@ asset-hub serve doctor [--mode dev|prod] [--json]
 ## Gotcha
 
 1. **破坏性命令需 --yes 跳过 prompt**：`asset retire/dispose/declare-unrepairable/delete` 默认互交确认；脚本场景必须传 `--yes`，否则挂起。
-2. **keep rule 陷阱**：v2.0 多数 transition holder/location 是 `keep` 规则——未传字段**保留 asset 当前值**（非清空）。如要显式清空，传空字符串：`--to-holder ""`（CLI）或 `null`（API JSON）。
+2. **keep rule 陷阱**：多数 transition 的 holder/location 是 `keep` 规则——未传字段**保留 asset 当前值**（非清空）。如要显式清空，传空字符串：`--to-holder ""`（CLI）或 `null`（API JSON）。
 3. **REASSIGN 必改一项**：`asset reassign` 必须实际改变 holder 或 location；都不改（不传或传当前值）报 409 `illegal_transition`。
-4. **CLI flag 全面 v2 标准化（vs v1.0 BC）**：v1 的 `--to`/`--receiver`/`--holder`/`--location` 全统一为 `--to-holder`/`--to-location`。脚本如有旧 flag 必报 typer usage error。
+4. **CLI flag 命名**：所有 transition 命令的目标字段统一为 `--to-holder` / `--to-location`。旧脚本若仍用 `--to` / `--receiver` / `--holder` / `--location`（v1 残留命名）必报 typer usage error。
 5. **declare-unrepairable vs retire**：DECLARE_UNREPAIRABLE 是"维修过程判定不可修"（MAINTENANCE → BROKEN）；RETIRE 是"主动下架"（多个起点）。两者均需 confirm，含 `--yes/--dry-run`。
-6. **派出集 closes 通用化（v2.0）**：v1 中只有 `RETURN` 闭合 OPEN CHECKOUT；v2 中任何"从 IN_USE/BROKEN 走出去 IDLE/MAINTENANCE/etc"的 transition 都自动闭合。如 BROKEN → IDLE (DISMISS) 也会闭合最初的 CHECKOUT。
-7. **DISPOSE 改名 → 注销**：v1 的"处置"在 v2 改为"注销"（CLI confirm phrase、UI label、export 文案全统一）。dispose phrase 现是 `"注销"`，旧脚本输入 `"处置"` 会失败。
+6. **派出集 closes 通用化**：任何从 `{IN_USE, BROKEN}` 走出到 `{IN_USE, BROKEN}` 之外的 transition 都自动闭合最近 OPEN CHECKOUT。即不只 RETURN，BROKEN → IDLE (DISMISS) / IN_USE → MAINTENANCE 等都会闭合最初的 CHECKOUT。
+7. **DISPOSE 中文术语是"注销"**：CLI confirm phrase、UI label、export 文案统一为"注销"。前端 AlertDialog 解锁短语是 `"注销"`，旧脚本若硬编码 `"处置"` 会失败（CLI 唯一跳过确认的方式是 `--yes`）。
 
 ## 详细参考
 
-- 12 transition 完整规则（**何时读**：用户问 REASSIGN 与各新 kind 区别 / dialog 行为 / from-status 边界）：[references/transitions.md](./references/transitions.md)
+- 12 transition 完整规则（**何时读**：用户问 REASSIGN 与各 kind 边界、dialog 行为、from-status 矩阵）：[references/transitions.md](./references/transitions.md)
 - envelope error code 完整 inventory（**何时读**：解析 CLI error 遇到未知 code、调试 exit_code、需引用错误处理对照表）：[references/envelope.md](./references/envelope.md)
 - 端到端任务流（**何时读**：用户给出"帮我登记 + 派发 + 归还"完整流程，或需要 `--json` 输出对照样本）：[references/workflows.md](./references/workflows.md)
 - 部署 / serve doctor / 故障排查（**何时读**：`serve start` 失败、`serve doctor` 输出有 issue、用户问"在 Windows 怎么部署 / 怎么备份"）：[references/deploy.md](./references/deploy.md)

@@ -32,8 +32,7 @@ _ALL_BUT_DISPOSED = frozenset(
 )
 
 
-# 派出延续状态集合（v2.0 新引入）
-# closes 通用化检测：from ∈ 派出集 且 to ∉ 派出集 → 自动 closes 最近 OPEN CHECKOUT
+# 派出延续状态集合：from ∈ 派出集 且 to ∉ 派出集 → 自动 closes 最近 OPEN CHECKOUT
 PERSISTED_CHECKOUT_STATES = frozenset({AssetStatus.IN_USE, AssetStatus.BROKEN})
 
 
@@ -125,8 +124,8 @@ def validate_transition(
 ) -> AssetStatus | None:
     """返回 to_status；非法抛 IllegalTransitionError。
 
-    注：v2.0 中 to_holder/to_location 在 keep rule 下由 service 层（transition.py）
-    决定是否清空/保留——此函数只校验 required 规则。"keep" rule 不要求字段，但若
+    注：to_holder/to_location 在 keep rule 下由 service 层（transition.py）决定
+    是否清空/保留——此函数只校验 required 规则。"keep" rule 不要求字段，但若
     显式传 None 表示清空（service 层会区分 UNSET 哨兵 vs None）。
     """
     rule = TRANSITION_RULES[kind]

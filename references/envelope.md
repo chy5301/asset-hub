@@ -12,7 +12,7 @@ CLI envelope error code 完整 inventory + JSON 示例 + edge case。
 { "success": true, "data": <任意>, "metadata": { "took_ms": 12, "count": 5 }, "error": null }
 ```
 
-错误（CLI envelope；v2.0 加结构化可选字段，exclude None）：
+错误（CLI envelope；可选字段未设值时 exclude None）：
 
 ```json
 {
@@ -30,7 +30,7 @@ CLI envelope error code 完整 inventory + JSON 示例 + edge case。
 }
 ```
 
-> ⚠️ **API vs CLI shape 差异**（v2.0 backward compat）：HTTP API 响应保留 `{ "detail": <message>, "code": ..., "hint?", "fields_missing?", "fields_invalid?", "affected_resource_id?" }` **平铺**形态（前端 `lib/error.ts` 兼容）；CLI envelope 是上述嵌套 `error: {...}` 形态。两端字段集相同、exclude None 行为一致，仅 top-level shape 不同。详见 §v2.0 envelope error 深度结构化 章节。
+> ⚠️ **API vs CLI shape 差异**：HTTP API 响应是 `{ "detail": <message>, "code": ..., "hint?", "fields_missing?", "fields_invalid?", "affected_resource_id?" }` **平铺**形态（前端 `lib/error.ts` 消费）；CLI envelope 是上述嵌套 `error: {...}` 形态。两端字段集相同、exclude None 行为一致，仅 top-level shape 不同。详见 §envelope error 字段语义 章节。
 
 dry-run（破坏性命令的预览）：
 
@@ -44,7 +44,7 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 
 ### 域异常（主 CLI）
 
-来源：`src/asset_hub/errors.py` 6 子类的 `code` 类属性（v2.0 从 cli/envelope.py 的旧 `_DOMAIN_ERROR_CODES` dict 改造，子类 `type(exc).code` 取代字典查询）。
+来源：`src/asset_hub/errors.py` 6 子类的 `code` 类属性（router/CLI 用 `type(exc).code` 取分类码）。
 
 | code | 来源异常 | HTTP map | exit_code |
 |---|---|---|---|
@@ -56,7 +56,7 @@ dry-run 退出码 = 10（语义化区分"成功执行"与"成功预览不执行"
 | `illegal_transition` | `IllegalTransitionError` | 409 | 1 |
 | `cancelled` | 用户在 dry-run 后取消操作（见 `type_cmd.py:123`） | — | 10 |
 
-> **注**：`cancelled` 是 v1.0 现有行为（`type delete` dry-run 后用户拒绝确认），v2.0 正式化为 exit_code=10，与 dry-run 预览同档（用户主动取消非错误）。
+> **注**：`cancelled` 用于 `type delete` dry-run 后用户拒绝确认，exit_code=10 与 dry-run 预览同档（用户主动取消视为非错误）。
 
 ### serve 子命令（dot prefix namespace）
 
@@ -136,9 +136,9 @@ uv run asset-hub asset show "00000000-0000-0000-0000-000000000000" --json
 - `count` 仅在集合返回时出现（如 `asset list`、`type list`）；单体返回（`asset show`）无此字段
 - `took_ms` 在有明确计时的命令中出现（如 `serve status`、`serve doctor`）；快速命令的 `metadata` 可能是 `{}`
 
-### v2.0 envelope error 深度结构化
+### envelope error 字段语义
 
-v2.0 起 error 字段从 `{code, message}` 升级为 `{code, message, hint?, fields_missing?, fields_invalid?, affected_resource_id?}` 结构化，agent 优先读 hint 与 fields_* 字段做下一步行动。**向后兼容**：可选字段 exclude None，旧消费者只读 code/message 不破。
+error 字段是 `{code, message, hint?, fields_missing?, fields_invalid?, affected_resource_id?}` 结构。agent 应优先读 `hint` 与 `fields_*` 字段做下一步行动；可选字段未设值时 exclude None，仅消费 `code` / `message` 的简化路径也能跑。
 
 | 字段 | 类型 | 用途 |
 |---|---|---|
