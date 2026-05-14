@@ -18,7 +18,7 @@
 | `DISPOSE` | RETIRED / MAINTENANCE / BROKEN | DISPOSED | **IDLE 不可直 DISPOSE**（必先 RETIRE）；DISPOSED 是终态——一旦设置不可回退；confirm phrase 是"注销" |
 | `REASSIGN` | IDLE / IN_USE / MAINTENANCE / BROKEN / RETIRED → 同 status | 同 status | 持有人 + 位置同时改的单一入口（holder 或 location 至少改一项；DISPOSED 排除） |
 | `REPORT_BROKEN` | IDLE / IN_USE | BROKEN | 出现故障；IN_USE → BROKEN 时不闭合 OPEN CHECKOUT（派出延续语义） |
-| `DECLARE_UNREPAIRABLE` | MAINTENANCE | BROKEN | 维修过程判定不可修 |
+| `DECLARE_UNREPAIRABLE` | MAINTENANCE | BROKEN | 故障报废 — 维修过程判定不可修 |
 | `DISMISS` | BROKEN | IDLE | 故障解除/自愈；走通用化 closes 逻辑自动闭合 OPEN CHECKOUT |
 
 ## 必填字段（按 kind）

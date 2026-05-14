@@ -80,7 +80,7 @@ function formatLine(t: TransitionRead): string {
     case "REPORT_BROKEN":
       return "出现故障" + (t.note ? ` · ${t.note}` : "");
     case "DECLARE_UNREPAIRABLE":
-      return "判定不可修复" + (t.note ? ` · ${t.note}` : "");
+      return "故障报废" + (t.note ? ` · ${t.note}` : "");
     case "DISMISS":
       return "故障解除" + (t.note ? ` · ${t.note}` : "");
   }
