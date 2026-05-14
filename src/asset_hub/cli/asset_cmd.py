@@ -341,7 +341,7 @@ def asset_declare_unrepairable(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """维修过程判定不可修复（MAINTENANCE → BROKEN）。"""
+    """故障报废（维修过程判定不可修，MAINTENANCE → BROKEN）。"""
     uid = parse_uuid(asset_id, json_output)
     parsed_fields = parse_cli_fields(fields)
     with cli_session() as session, handle_domain_errors(json_output):

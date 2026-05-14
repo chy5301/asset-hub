@@ -45,7 +45,7 @@ description: |-
 | `DISPOSE` | 注销 | RETIRED / MAINTENANCE / BROKEN | DISPOSED | forced_null | forced_null |
 | `REASSIGN` | 重新分配（持有人 + 位置同时改的单一入口） | ALL_BUT_DISPOSED | (self) | keep | keep |
 | `REPORT_BROKEN` | 出现故障 | IDLE / IN_USE | BROKEN | keep | keep |
-| `DECLARE_UNREPAIRABLE` | 判定不可修复 | MAINTENANCE | BROKEN | keep | keep |
+| `DECLARE_UNREPAIRABLE` | 故障报废 | MAINTENANCE | BROKEN | keep | keep |
 | `DISMISS` | 故障解除 | BROKEN | IDLE | keep | keep |
 
 **规则约定**：

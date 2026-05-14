@@ -51,7 +51,7 @@ export function DeclareUnrepairableAlertDialog({
         kind: "DECLARE_UNREPAIRABLE",
         note: note.trim() || null,
       });
-      toast.success("已判定不可修复");
+      toast.success("已故障报废");
       setNote("");
       onOpenChange(false);
     } catch (err) {
@@ -66,12 +66,12 @@ export function DeclareUnrepairableAlertDialog({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive">
               <ShieldOff className="size-3.5" aria-hidden />
-              判定不可修复
+              故障报废
             </span>
           </div>
-          <AlertDialogTitle>判定不可修复</AlertDialogTitle>
+          <AlertDialogTitle>故障报废</AlertDialogTitle>
           <AlertDialogDescription>
-            将"{assetName}"判定为不可修复（送修 → 故障）。后续可走故障报废或故障解除。
+            将"{assetName}"标记为故障报废（送修 → 故障）。后续可走退役、注销或故障解除。
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -94,7 +94,7 @@ export function DeclareUnrepairableAlertDialog({
             取消
           </AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={mutation.isPending}>
-            {mutation.isPending ? "提交中…" : "确认不可修复"}
+            {mutation.isPending ? "提交中…" : "确认故障报废"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

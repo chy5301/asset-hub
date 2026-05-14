@@ -22,7 +22,7 @@ describe("DeclareUnrepairableAlertDialog", () => {
       { wrapper },
     );
     // title text appears in badge + heading; use heading role to pinpoint
-    expect(screen.getByRole("heading", { name: "判定不可修复" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "故障报废" })).toBeInTheDocument();
     expect(screen.getByText(/MacBook Pro/)).toBeInTheDocument();
     expect(screen.getByText(/送修.*故障/)).toBeInTheDocument();
   });
@@ -37,7 +37,7 @@ describe("DeclareUnrepairableAlertDialog", () => {
       />,
       { wrapper },
     );
-    expect(screen.getByRole("button", { name: "确认不可修复" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认故障报废" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
   });
 
