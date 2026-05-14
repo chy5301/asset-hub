@@ -3,6 +3,7 @@ import { AlertTriangle, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { detectUnknownKeys } from '@/lib/unknown-key-detector';
 import type { FieldDef } from '@/features/assets/form/types';
+import { formatCustomFieldValue } from './custom-field-formatter';
 
 interface CustomDataSectionProps {
   customData: Record<string, unknown>;
@@ -76,7 +77,7 @@ export function CustomDataSection({ customData, fieldDefs, assetId }: CustomData
               {def.label ?? def.key}
               {def.required && <span className="ml-1 text-destructive">*</span>}
             </dt>
-            <dd>{formatValue(value)}</dd>
+            <dd>{formatCustomFieldValue(def, value)}</dd>
           </div>
         ))}
         {orphanEntries.map(({ key, value }) => (
@@ -91,9 +92,4 @@ export function CustomDataSection({ customData, fieldDefs, assetId }: CustomData
       </dl>
     </section>
   );
-}
-
-function formatValue(value: unknown): string {
-  if (value == null || value === '') return '—';
-  return String(value);
 }
