@@ -29,9 +29,21 @@ export function formatCustomFieldValue(
       case "text":
         return <span className="whitespace-pre-wrap">{String(value)}</span>;
       case "int":
-      case "float":
+      case "float": {
         if (typeof value !== "number") throw new Error("expected number");
-        return NUMBER_FORMATTER.format(value);
+        const formatted = NUMBER_FORMATTER.format(value);
+        if (def.unit) {
+          return (
+            <span>
+              {formatted}
+              <span className="ml-1 text-xs text-muted-foreground">
+                {def.unit}
+              </span>
+            </span>
+          );
+        }
+        return formatted;
+      }
       case "bool":
         return value ? (
           <Check

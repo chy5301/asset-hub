@@ -45,6 +45,39 @@ describe('formatCustomFieldValue', () => {
     expect(out).toContain('数据格式异常');
   });
 
+  it('int + unit: 数值后追加 muted 单位（与 form NumberField 视觉一致）', () => {
+    const out = html(
+      formatCustomFieldValue(def({ type: 'int', unit: 'GB' }), 16),
+    );
+    expect(out).toContain('16');
+    expect(out).toContain('GB');
+    expect(out).toContain('text-muted-foreground');
+  });
+
+  it('float + unit: 同样追加单位', () => {
+    const out = html(
+      formatCustomFieldValue(def({ type: 'float', unit: 'Hz' }), 2.5),
+    );
+    expect(out).toContain('2.5');
+    expect(out).toContain('Hz');
+  });
+
+  it('int + unit + null → 不渲染单位，仍显示占位符', () => {
+    const out = html(
+      formatCustomFieldValue(def({ type: 'int', unit: 'GB' }), null),
+    );
+    expect(out).toContain('—');
+    expect(out).not.toContain('GB');
+  });
+
+  it('string 类型即便定义了 unit 也不渲染单位（unit 仅 int/float 生效）', () => {
+    const out = formatCustomFieldValue(
+      def({ type: 'string', unit: 'GB' }),
+      'Lenovo',
+    );
+    expect(out).toBe('Lenovo');
+  });
+
   it('bool true → Check 图标（aria-label="是"）', () => {
     const out = html(formatCustomFieldValue(def({ type: 'bool' }), true));
     expect(out).toContain('aria-label="是"');
