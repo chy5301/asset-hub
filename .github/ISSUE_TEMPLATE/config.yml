@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 提问或讨论
+    url: https://github.com/chy5301/asset-hub/discussions
+    about: 一般性问题、用法疑问、设计讨论请使用 Discussions
+  - name: Agent 使用指南
+    url: https://github.com/chy5301/asset-hub/blob/main/SKILL.md
+    about: AI Agent 调用 asset-hub 的完整契约、CLI 命令速查与常见任务流

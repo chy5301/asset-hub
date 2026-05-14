@@ -1,0 +1,103 @@
+name: Bug 报告
+description: 报告 asset-hub 运行异常或错误行为
+title: "[Bug]: "
+labels: ["type: bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及的模块
+      description: 选择问题所在的模块(对应仓库的三层分离架构)
+      options:
+        - "area: cli"
+        - "area: api"
+        - "area: frontend"
+        - "area: serve"
+        - "area: db-migration"
+        - "area: storage"
+        - 不确定 / 跨模块
+    validations:
+      required: true
+
+  - type: dropdown
+    id: trigger
+    attributes:
+      label: 触发场景
+      description: 在哪种使用方式下复现
+      options:
+        - Web GUI
+        - CLI(人类交互式)
+        - CLI(AI Agent,带 --json)
+        - serve 子命令
+        - 数据库迁移(alembic)
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰简要地描述遇到的问题
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 执行 `asset-hub asset register --type ...`
+        2. 在前端打开 ...
+        3. 出现错误 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 简述实际发生的情况;完整 traceback / stderr 请粘到下方"错误日志"字段
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-log
+    attributes:
+      label: 错误日志 / Traceback
+      description: 粘贴 stderr、Python traceback、浏览器 console 错误等(可选)
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: asset-hub 版本
+      description: 运行 `asset-hub --version` 或 `git describe --tags` 获取
+      placeholder: "例如: v2.0.2"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: "例如: Windows 11, macOS 15.2, Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 额外上下文
+      description: 截图、相关 issue/PR 链接、`SKILL.md` 上下文等(可选)
+    validations:
+      required: false
