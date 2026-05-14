@@ -47,7 +47,6 @@ export const MENU_ACTIONS: Record<AssetStatus, MenuAction[]> = {
   ],
   BROKEN: [
     { kind: "SEND_TO_MAINTENANCE",  label: "送修" },
-    { kind: "DECLARE_UNREPAIRABLE", label: "故障报废" },
     { kind: "REASSIGN",             label: "重新分配" },
     { kind: "RETIRE",               label: "退役" },
     { kind: "DISPOSE",              label: "注销" },
