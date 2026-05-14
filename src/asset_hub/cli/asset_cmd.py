@@ -171,7 +171,7 @@ def asset_history(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """查看资产流转历史（10 transition kind 全覆盖）。"""
+    """查看资产流转历史（12 transition kind 全覆盖）。"""
     uid = parse_uuid(asset_id, json_output)
     parsed_fields = parse_cli_fields(fields)
     with cli_session() as session, handle_domain_errors(json_output):

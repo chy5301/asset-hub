@@ -61,9 +61,9 @@ uv run asset-hub asset show <asset_id> --json
 ```bash
 # 派发给张三（北京办公室），组内借用，期望 30 天归还
 uv run asset-hub asset checkout <asset_id> \
-    --to "张三" \
+    --to-holder "张三" \
     --kind internal \
-    --location "北京办公室" \
+    --to-location "北京办公室" \
     --due-at "2026-06-01T00:00:00Z" \
     --json
 # data.kind = "CHECKOUT_INTERNAL"；data.from_status = "IDLE"；data.to_status = "IN_USE"
@@ -71,8 +71,8 @@ uv run asset-hub asset checkout <asset_id> \
 
 # 张三归还，接收人李四，放入上海仓库
 uv run asset-hub asset return <asset_id> \
-    --receiver "李四" \
-    --location "上海仓库" \
+    --to-holder "李四" \
+    --to-location "上海仓库" \
     --note "正常归还" \
     --json
 # data.kind = "RETURN"；data.from_status = "IN_USE"；data.to_status = "IDLE"
@@ -90,14 +90,14 @@ uv run asset-hub asset history <asset_id> --json
 ```bash
 # 屏幕坏了，送修（联系人王五，送至上海联想售后）
 uv run asset-hub asset send-to-maintenance <asset_id> \
-    --holder "王五（客服）" \
-    --location "上海联想售后" \
+    --to-holder "王五（客服）" \
+    --to-location "上海联想售后" \
     --json
 # data.from_status = "IDLE"；data.to_status = "MAINTENANCE"
 
 # 修好回库（放回上海仓库）
 uv run asset-hub asset recover <asset_id> \
-    --location "上海仓库" \
+    --to-location "上海仓库" \
     --json
 # data.from_status = "MAINTENANCE"；data.to_status = "IDLE"
 ```
@@ -115,8 +115,8 @@ uv run asset-hub asset retire <asset_id> --note "硬盘老化备件" --json
 
 # --- 路径 A：决定复活 ---
 uv run asset-hub asset reinstate <asset_id> \
-    --holder "李四" \
-    --location "上海仓库" \
+    --to-holder "李四" \
+    --to-location "上海仓库" \
     --json
 # data.to_status = "IDLE"
 

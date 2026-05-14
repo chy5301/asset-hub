@@ -56,19 +56,17 @@ asset declare-unrepairable <id> [--note --yes --dry-run --json]
 asset dismiss <id> [--to-holder --to-location --note --json]
 ```
 
-## Dialog 行为（前端 9 dialog）
+## Dialog 行为（前端 7 dialog）
 
 | dialog 文件 | 覆盖 kind |
 |---|---|
 | `checkout-dialog.tsx` | CHECKOUT_INTERNAL / CHECKOUT_EXTERNAL |
 | `return-dialog.tsx` | RETURN |
-| `simple-transition-dialog.tsx` | SEND_TO_MAINTENANCE / RECOVER_FROM_MAINTENANCE / REINSTATE |
+| `simple-transition-dialog.tsx` | SEND_TO_MAINTENANCE / RECOVER_FROM_MAINTENANCE / REINSTATE / REPORT_BROKEN / DISMISS |
 | `retire-alert-dialog.tsx` | RETIRE |
-| `dispose-alert-dialog.tsx` | DISPOSE（confirm phrase 改"注销"） |
-| `reassign-dialog.tsx` | REASSIGN（v2.0 新，合并 RELOCATE + TRANSFER_HOLDER） |
-| `report-broken-dialog.tsx` | REPORT_BROKEN（v2.0 新） |
-| `declare-unrepairable-alert-dialog.tsx` | DECLARE_UNREPAIRABLE（v2.0 新） |
-| `dismiss-dialog.tsx` | DISMISS（v2.0 新） |
+| `dispose-alert-dialog.tsx` | DISPOSE（confirm phrase 是"注销"） |
+| `reassign-dialog.tsx` | REASSIGN（持有人 + 位置同时改的单一入口） |
+| `declare-unrepairable-alert-dialog.tsx` | DECLARE_UNREPAIRABLE |
 
 ## Service 行为
 
