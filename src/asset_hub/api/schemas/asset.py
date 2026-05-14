@@ -1,8 +1,9 @@
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from asset_hub.api.schemas._datetime import UtcDatetime
 from asset_hub.models.asset import AssetStatus
 
 
@@ -52,5 +53,5 @@ class AssetRead(BaseModel):
     custom_data: dict
     acquired_at: date | None
     idle_days: int | None = None  # 非 IDLE 状态为 None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDatetime
+    updated_at: UtcDatetime

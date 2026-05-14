@@ -1,7 +1,8 @@
-from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from asset_hub.api.schemas._datetime import UtcDatetime
 
 
 class CustomFieldDef(BaseModel):
@@ -57,5 +58,5 @@ class TypeRead(BaseModel):
     description: str | None
     custom_fields: list[CustomFieldDef]
     ref_count: int = 0
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDatetime
+    updated_at: UtcDatetime
