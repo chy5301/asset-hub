@@ -1,10 +1,11 @@
 """M3b 看板 / stats 端点 DTO."""
 
-from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict
+
+from asset_hub.api.schemas._datetime import UtcDatetime
 
 # 4 段名 — fields 参数 + service 函数签名都引用
 StatsField = Literal[
@@ -35,14 +36,7 @@ class IdleTopItem(BaseModel):
     type_name: str | None
     current_location: str | None
     idle_days: int
-    idle_since: datetime
-
-    @field_validator("idle_since", mode="before")
-    @classmethod
-    def _ensure_utc_idle_since(cls, v: datetime) -> datetime:
-        if isinstance(v, datetime) and v.tzinfo is None:
-            return v.replace(tzinfo=UTC)
-        return v
+    idle_since: UtcDatetime
 
 
 class StatsSummary(BaseModel):
@@ -53,14 +47,7 @@ class StatsSummary(BaseModel):
     idle_count: int
     include_retired: bool
     include_disposed: bool
-    generated_at: datetime
-
-    @field_validator("generated_at", mode="before")
-    @classmethod
-    def _ensure_utc_generated_at(cls, v: datetime) -> datetime:
-        if isinstance(v, datetime) and v.tzinfo is None:
-            return v.replace(tzinfo=UTC)
-        return v
+    generated_at: UtcDatetime
 
 
 class StatsRead(BaseModel):

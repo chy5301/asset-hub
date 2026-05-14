@@ -1,8 +1,8 @@
-from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from asset_hub.api.schemas._datetime import UtcDatetime
 from asset_hub.models.attachment import AttachmentKind
 
 
@@ -16,4 +16,4 @@ class AttachmentRead(BaseModel):
     size: int
     mime_type: str
     original_name: str
-    uploaded_at: datetime
+    uploaded_at: UtcDatetime
