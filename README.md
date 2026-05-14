@@ -6,7 +6,7 @@
 
 - **资产 CRUD** + 顶层 `model` 型号字段 + 类型驱动的自定义字段（string / int / float / bool / enum / multi_enum / date / text / url）
 - **状态机**：6 态（闲置 / 在用 / 送修 / 故障 / 退役 / 注销）
-- **12 种 transition**：派发（组内/外借）/ 归还 / 送修 / 维修完成 / 退役 / 重新启用 / 注销 / 重新分配（合并位置+保管人）/ 出现故障 / 故障报废 / 故障解除
+- **12 种 transition**：派发（组内/外借）/ 归还 / 送修 / 维修完成 / 退役 / 重新启用 / 注销 / 重新分配（合并位置+保管人）/ 出现故障 / 判定不可修复 / 故障解除
 - **看板**：4 段聚合（类型分布 / 状态分布 / 保管人 Top 10 / 闲置时长 Top 10）
 - **导出**：CSV / XLSX，按当前筛选透传，走 Web GUI 或 HTTP API
 - **附件管理**：照片 / 发票，CLI + Web 都可上传
@@ -18,7 +18,7 @@
 |---|---|
 | 后端 | Python 3.12+ · FastAPI · SQLModel · SQLite · Typer · Alembic · openpyxl |
 | 前端 | React 19 · Vite · TanStack Router · TanStack Table · TanStack Query · RHF + Zod · Tailwind v4 · shadcn/ui · Recharts |
-| 测试 | pytest（unit / api / cli 三层）· vitest（unit / hooks / components）· playwright（e2e CI） |
+| 测试 | pytest（unit / api / cli / migration 四层）· vitest（unit / hooks / components）· playwright（e2e CI） |
 | 工具链 | uv · pnpm · ruff · openapi-typescript / openapi-fetch |
 
 ## 架构
@@ -77,7 +77,7 @@ uv run asset-hub asset list --status IDLE --json
 # 看板统计
 uv run asset-hub stats --json
 
-# 导出（走 HTTP API，CLI 无 export 命令）
+# 导出（HTTP API）
 curl -OJ "http://localhost:8000/api/export?format=xlsx&status=IDLE"
 
 # 诊断环境
@@ -95,7 +95,8 @@ uv run asset-hub serve doctor --json
 | **M3c · CSV/XLSX 导出** | /api/export + ExportButton + 5 态色条件格式 | ✅ 已完成 |
 | **M3d · timeline 视觉重构** | Group rail + 月份分段 + 派出类型染色 + 超长派发预警 | ✅ 已完成 |
 | **M3e · v1.0 GA 收口** | SKILL.md + envelope 统一 + serve doctor + Windows 部署 + e2e CI | ✅ 已完成 |
-| **v2.0 · 状态机扩展 + Agent-native + model 字段** | 6 态（加 BROKEN）+ 12 transition + `keep` rule + flag 标准化 + envelope 深化 + `--help-json` + `--fields` + Asset.model 顶层字段 + sn sortable 顺修 | ✅ 已完成 2026-05-13 |
+| **v2.0 · 状态机扩展 + Agent-native + model 字段** | 状态机扩展到 6 态/12 transition + Agent-native flag/envelope + Asset.model 顶层列（详情见 release-notes-v2.0） | ✅ 已完成 2026-05-13 |
+| **v2.x · 工程化** | CI 后端+前端覆盖 + ruff format baseline + serve start IPv6 端口探测修复 | 🛠 进行中 |
 | **M4 · UI 打磨** | 配色 / 间距 / 动效达 frontend-design 审美标准；A3 dialog 合并；§S/§U/§W | ⏳ 规划中 |
 | **M5 · People 实体化** | holder/location 实体化 + 重名/改名管理 | ⏳ 规划中 |
 

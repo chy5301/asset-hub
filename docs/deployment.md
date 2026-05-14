@@ -1,6 +1,6 @@
 # 部署指南
 
-asset-hub v1.0 部署文档。首选 Windows 11 单机；Linux 真机烟测推 v1.1，macOS 仅用于开发。
+asset-hub 部署文档（适用 v2.x）。首选 Windows 11 单机；Linux 待真机验证，macOS 仅用于开发。
 
 ## 环境要求
 
@@ -10,7 +10,7 @@ asset-hub v1.0 部署文档。首选 Windows 11 单机；Linux 真机烟测推 v
 | Node.js | 20+ |
 | uv | 0.4+ |
 | pnpm | 9+ |
-| OS | Windows 11（首选）/ Linux（v1.1 真机验证）/ macOS（开发用）|
+| OS | Windows 11（首选）/ Linux（待真机验证）/ macOS（开发用）|
 
 ## 安装步骤
 
@@ -21,7 +21,7 @@ uv sync                                     # 安装 Python 依赖
 pnpm --dir frontend install                 # 安装前端依赖
 cp .env.example .env                        # 配置（见下节）
 uv run alembic upgrade head                 # 建数据库
-uv run asset-hub serve doctor               # 验证环境（7 项检查全绿再继续）
+uv run asset-hub serve doctor               # 验证环境（prod 7 项 / dev 8 项检查全绿再继续）
 uv run asset-hub serve start --mode prod    # 启动（单端口 :8000）
 ```
 
@@ -43,7 +43,7 @@ uv run asset-hub serve start --mode prod    # 启动（单端口 :8000）
 - pid 文件：`<data_dir>/pids/{backend,frontend}.pid`
 - 日志：`<data_dir>/logs/{backend,frontend}.log`（`.1` 为上一会话）
 
-> 注意：`ASSET_HUB_DATABASE_URL`、`ASSET_HUB_LOGS_DIR`、`ASSET_HUB_PIDS_DIR`、`ASSET_HUB_MODE` **不存在**——在 Settings 中均为派生属性，不接受 env var 覆盖。
+> 注意：`ASSET_HUB_DATABASE_URL`、`ASSET_HUB_LOGS_DIR`、`ASSET_HUB_PIDS_DIR`、`ASSET_HUB_MODE` **即使设置也会被忽略**——它们在 Settings 中是派生属性，`extra="ignore"` 会静默丢弃这些 env var。
 
 ## 数据维护
 
@@ -70,6 +70,8 @@ uv run asset-hub serve start --mode prod
 ```
 
 ## 升级
+
+**升级前先按 §数据维护 备份 data 目录。**
 
 ```bash
 git pull
@@ -118,6 +120,14 @@ uv run asset-hub serve start --mode prod
 ```bash
 uv run asset-hub serve stop
 rm -f data/asset_hub.db-shm data/asset_hub.db-wal
+uv run asset-hub serve start --mode prod
+```
+
+Windows PowerShell 等价：
+
+```powershell
+uv run asset-hub serve stop
+Remove-Item data\asset_hub.db-shm, data\asset_hub.db-wal -ErrorAction SilentlyContinue
 uv run asset-hub serve start --mode prod
 ```
 
