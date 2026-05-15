@@ -14,6 +14,14 @@ uv run asset-hub type define --from examples/types/laptop.json --json
 # 关键响应字段：data.id = <type_id>
 
 # 步骤 2 · 登记资产
+#
+# !! 登记前必问 !!
+# `holder` 和 `location` 是"谁现在拿着这台设备 / 它在哪"的现实世界状态，
+# **必须由用户明确告知**——不要从国资资产卡、铭牌、照片或同批设备推断，
+# 也不要静默缺省。常规做法：register 时**不带** --holder / --location
+# （资产入库为 IDLE，不指派持有人），随后通过 `asset checkout` 显式派发；
+# 若用户明示"入库时就归某人"，再在 register 时直传顶层字段。
+# 这条与 SKILL.md Gotcha #9 同源——更新一处必同步两处。
 uv run asset-hub asset register \
     --name "ThinkPad X1 Carbon" \
     --type-id <type_id> \

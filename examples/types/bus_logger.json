@@ -1,0 +1,15 @@
+{
+  "name": "总线记录仪",
+  "code_prefix": "BL",
+  "description": "独立离线工作的总线数据记录设备，记录 CAN/LIN 等总线报文到内置存储，USB 仅用于配置和数据导出",
+  "custom_fields": [
+    {"key": "brand", "label": "品牌", "type": "string", "required": true, "placeholder": "TOSUN / Vector / Influx / Intrepid"},
+    {"key": "supported_buses", "label": "支持的总线", "type": "multi-enum", "required": true, "options": ["CAN", "LIN", "FlexRay", "Ethernet", "Automotive-Ethernet"], "help": "CAN 含 CAN-FD（向下兼容语义），与总线接口设备类型对齐"},
+    {"key": "total_channels", "label": "硬件通道总数", "type": "int", "unit": "路", "min": 1, "max": 32, "help": "物理通道（接头）总数。各协议通道数之和 > 此值即表示存在协议复用"},
+    {"key": "can_channels", "label": "CAN 通道数", "type": "int", "unit": "路", "min": 0, "max": 32, "help": "含 CAN-FD"},
+    {"key": "lin_channels", "label": "LIN 通道数", "type": "int", "unit": "路", "min": 0, "max": 32},
+    {"key": "storage_gb", "label": "内置存储", "type": "int", "required": true, "unit": "GB", "min": 1, "max": 2048, "help": "eMMC / SD / SSD 容量，记录仪独立工作的核心规格"},
+    {"key": "has_gps", "label": "GPS", "type": "bool", "help": "是否内置 GPS 模块（用于时序同步、位置标记）"},
+    {"key": "power_input_range", "label": "电源输入范围", "type": "string", "placeholder": "9-36V DC + USB / 仅 USB", "help": "记录仪常需车载宽压；接口设备通常仅 USB 供电"}
+  ]
+}

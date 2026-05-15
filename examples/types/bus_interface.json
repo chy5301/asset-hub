@@ -1,0 +1,15 @@
+{
+  "name": "总线接口设备",
+  "code_prefix": "BI",
+  "description": "用于外接 PC 进行 CAN/LIN/FlexRay/车载以太网实时通信的接口设备",
+  "custom_fields": [
+    {"key": "brand", "label": "品牌", "type": "string", "required": true, "placeholder": "TOSUN / Vector / Kvaser / Peak"},
+    {"key": "supported_buses", "label": "支持的总线", "type": "multi-enum", "required": true, "options": ["CAN", "LIN", "FlexRay", "Ethernet", "Automotive-Ethernet"], "help": "CAN 含 CAN-FD（向下兼容语义）"},
+    {"key": "total_channels", "label": "硬件通道总数", "type": "int", "unit": "路", "min": 1, "max": 32, "help": "物理通道（接头/piggy 槽）总数。各协议通道数之和 > 此值即表示存在协议复用（如 piggyback 架构）"},
+    {"key": "can_channels", "label": "CAN 通道数", "type": "int", "unit": "路", "min": 0, "max": 32, "help": "含 CAN-FD"},
+    {"key": "lin_channels", "label": "LIN 通道数", "type": "int", "unit": "路", "min": 0, "max": 32},
+    {"key": "flexray_channels", "label": "FlexRay 通道数", "type": "int", "unit": "路", "min": 0, "max": 16},
+    {"key": "ethernet_channels", "label": "以太网通道数", "type": "int", "unit": "路", "min": 0, "max": 16, "help": "含车载以太网"},
+    {"key": "host_interface", "label": "与主机接口", "type": "multi-enum", "options": ["USB 2.0", "USB 3.0", "Ethernet 1G", "Ethernet 10G"], "help": "按协议代别（不含 Type-C 这类物理形态）"}
+  ]
+}
