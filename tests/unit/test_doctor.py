@@ -223,7 +223,7 @@ def test_check_port_free_occupied(monkeypatch):
 
 @pytest.fixture
 def mock_all_checks_ok(monkeypatch):
-    """全部 7 个 check_* 函数 mock 为 ok，run_all_checks_* 测共用。"""
+    """全部 check_* 函数 mock 为 ok，run_all_checks_* 测共用。"""
     fakes = {
         "check_uv": DoctorCheck(name="uv", ok=True, detail="0.5.4"),
         "check_pnpm": DoctorCheck(name="pnpm", ok=True, detail="9.12.3"),
@@ -238,22 +238,28 @@ def mock_all_checks_ok(monkeypatch):
         "asset_hub.cli.serve.doctor.check_port_free",
         lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
     )
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.check_port_owner",
+        lambda port, expected_pid: DoctorCheck(
+            name=f"port_owner:{port}", ok=True, detail=f"port {port} ok"
+        ),
+    )
 
 
 def test_run_all_checks_aggregates(mock_all_checks_ok):
-    """全部 ok 时 result.ok=True；prod 模式 7 项（含单 :8000 port）。"""
+    """全部 ok 时 result.ok=True；prod 模式 8 项（含 :8000 port + port_owner）。"""
     result = run_all_checks(mode="prod")
     assert result.ok is True
     assert result.issue_count == 0
     assert (
-        len(result.checks) == 7
-    )  # uv/pnpm/python/data/alembic/dist + 1 port (prod 不查 5173)
+        len(result.checks) == 8
+    )  # uv/pnpm/python/data/alembic/dist + port_free(8000) + port_owner(8000)
 
 
 def test_run_all_checks_dev_mode_includes_5173(mock_all_checks_ok):
-    """dev 模式额外查 :5173，共 8 项。"""
+    """dev 模式额外查 :5173 + port_owner，共 10 项。"""
     result = run_all_checks(mode="dev")
-    assert len(result.checks) == 8  # +5173
+    assert len(result.checks) == 10  # +port_free(5173) + port_owner(5173)
 
 
 # CL-4: port_owner 检测组件（6 个失败测）
