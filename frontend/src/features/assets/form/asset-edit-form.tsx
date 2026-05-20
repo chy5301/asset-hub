@@ -36,6 +36,7 @@ export function AssetEditForm() {
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: '',
+      brand: '',
       model: '',
       serial_number: '',
       acquired_at: '',
@@ -50,6 +51,7 @@ export function AssetEditForm() {
     if (asset) {
       form.reset({
         name: asset.name,
+        brand: asset.brand ?? '',
         model: asset.model ?? '',
         serial_number: asset.serial_number ?? '',
         acquired_at: asset.acquired_at ?? '',
@@ -79,6 +81,7 @@ export function AssetEditForm() {
     try {
       await mutation.mutateAsync({
         name: parsed.data.name,
+        brand: parsed.data.brand || null,
         model: parsed.data.model || null,
         serial_number: parsed.data.serial_number || null,
         acquired_at: parsed.data.acquired_at || null,

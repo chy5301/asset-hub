@@ -33,6 +33,7 @@ export function GeneralFieldsForm<TFieldValues extends FieldValues>({
   // CreateFormValues / EditFormValues 都含这些 base 字段；用 Path<TFieldValues> 包一层
   // 让 RHF 在不知道具体 TFieldValues 时仍然接受字面量名。
   const nameField = 'name' as Path<TFieldValues>;
+  const brandField = 'brand' as Path<TFieldValues>;
   const modelField = 'model' as Path<TFieldValues>;
   const typeIdField = 'type_id' as Path<TFieldValues>;
   const serialField = 'serial_number' as Path<TFieldValues>;
@@ -59,6 +60,24 @@ export function GeneralFieldsForm<TFieldValues extends FieldValues>({
           <FormItem>
             <FormLabel>资产名 <span className="text-destructive">*</span></FormLabel>
             <FormControl><Input {...field} placeholder="如 ThinkPad X1 Carbon" /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name={brandField}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>品牌</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                value={field.value ?? ''}
+                placeholder="如 Lenovo / Apple（可空）"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

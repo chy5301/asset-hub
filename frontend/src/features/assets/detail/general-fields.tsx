@@ -24,6 +24,9 @@ export function GeneralFields({ asset, typeName }: GeneralFieldsProps) {
           <CopyableText value={asset.id} toastLabel="资产 ID" />
         </DefinitionRow>
         <DefinitionRow label="类型">{typeName ?? "—"}</DefinitionRow>
+        <DefinitionRow label="品牌">
+          {asset.brand ?? <span className="text-muted-foreground">—</span>}
+        </DefinitionRow>
         <DefinitionRow label="型号">
           {asset.model ?? <span className="text-muted-foreground">—</span>}
         </DefinitionRow>
