@@ -119,6 +119,7 @@ asset-hub asset report-broken <asset_id> [--to-holder <h>] [--to-location <loc>]
 asset-hub asset declare-unrepairable <asset_id> [--note <txt>] [--yes] [--dry-run] [--json]
 asset-hub asset dismiss <asset_id> [--to-holder <h>] [--to-location <loc>] [--note <txt>] [--json]
 asset-hub asset reassign <asset_id> [--to-holder <h>] [--to-location <loc>] [--note <txt>] [--json]
+asset-hub asset undo <asset_id> [--dry-run] [--json]    # 撤销最后一条流转（物理删除元操作）
 ```
 
 ### asset reassign 用法
@@ -180,6 +181,24 @@ asset-hub serve doctor [--mode dev|prod] [--json]
 9. **holder / location 必须由用户明确指定，避免静默缺省 / 推断 / 复用**：登记或流转设备涉及 `holder` 或 `location` 字段时（包括 `register --holder` / `--location`，与所有 transition 的 `--to-holder` / `--to-location`），必须**先向用户确认**。**避免**三种推断模式：(a) 静默不传 → 字段为 null；(b) 从国资资产卡的"负责人"、铭牌、照片背景里抓字段；(c) 复用上一台同型号 / 同批次设备的 holder。其他规格字段（型号 / SN / CPU / RAM 等）正常从命令/照片自动组装；唯独 `holder` 和 `location` 例外——它们是"谁现在拿着这台设备"的现实世界状态，不能静默替用户决策。
 10. **设计 AssetType 前先 `type list --json` 查实际类型**：新建或扩展 `AssetType` 时，**第一步**是 `uv run asset-hub type list --json`，读完现有类型的 `custom_fields` 再动笔——让新类型的字段命名（`brand` 不要写成 `manufacturer`）、required 策略、`help` / `placeholder` 风格、enum vs string 选择、`unit` / `min` / `max` 标注与现有类型对齐。`examples/types/*.json` 是写文档时的快照，会跟数据库实际类型漂移，**只在**实际库里没有同类资产时作补充参考。AssetType 是长期消费的契约，字段风格不一致会让后续聚合 / 导出被字段差异坑。
 11. **录入设备时必须问清初始 status**：register 默认 status=IDLE 且只能经 transition 改；用户若未明确"这台是闲置 / 在用 / 送修 / 故障 / 退役"，**先问再录**，再决定操作链——单独 `register`（IDLE 在库）或 `register` 后跟一个 transition（checkout / send-to-maintenance / report-broken / retire）。**避免**两种推断：(a) 用户没说就默认 IDLE 静默走过；(b) 看 `--holder` 有值就推断 IN_USE。本次踩坑就是后者——"归 X 保管"被自动翻译成 register+checkout，把闲置库存变成"占用中"，破坏 IDLE/IN_USE 看板统计与"派出集 closes 通用化"（Gotcha #6）的事件链。
+
+## 常见任务流
+
+### 撤销最后一条流转记录（手滑回退）
+
+```bash
+# 不确定要撤哪条 → 先预览
+asset undo <asset_id> --dry-run --json   # exit 10
+
+# 确认无误，执行
+asset undo <asset_id> --json             # exit 0；data 是被删的 transition
+```
+
+约束：
+- 只能撤"最后一条"（按 created_at desc），中间记录无法跳删
+- 没有任何 transition 时报 `state_conflict`（exit 1）
+- DISPOSE 也可撤销（v1 单一用户工具，无合规约束）
+- 物理删除、零 DB 脚印；运行日志（`serve logs`）会留一行 `undo transition ...` 供事后追溯
 
 ## 详细参考
 
