@@ -1,8 +1,6 @@
 import { ArrowRightFromLine, CalendarIcon, type LucideIcon } from "lucide-react";
 import { format, startOfDay } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -30,9 +28,9 @@ import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { toFriendlyMessage } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import type { CheckoutKind } from "./available-transitions";
+import { useFormDialog } from "./use-form-dialog";
 
 const META: Record<CheckoutKind, { verb: string; Icon: LucideIcon; audience: string }> = {
   CHECKOUT_INTERNAL: { verb: "派发", Icon: ArrowRightFromLine, audience: "团队成员" },
@@ -62,42 +60,24 @@ export function CheckoutDialog({
 }: CheckoutDialogProps) {
   const meta = META[kind];
   const Icon = meta.Icon;
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      to_holder: "",
-      to_location: "",
-      note: "",
-    },
-    mode: "onSubmit",
-  });
   const mutation = useRecordTransitionMutation(assetId);
-
-  function handleOpenChange(v: boolean) {
-    if (mutation.isPending) return;
-    if (!v) form.reset();
-    onOpenChange(v);
-  }
-
-  async function onSubmit(values: FormValues) {
-    try {
-      await mutation.mutateAsync({
+  const { form, onSubmit, handleOpenChange } = useFormDialog<FormValues>({
+    schema,
+    defaultValues: { to_holder: "", to_location: "", note: "" },
+    mutate: (values) =>
+      mutation.mutateAsync({
         kind,
         to_holder: values.to_holder.trim(),
         to_location: values.to_location?.trim() || null,
         due_at: values.due_at ? `${values.due_at}T00:00:00` : null,
         note: values.note?.trim() || null,
-      });
-      toast.success(`已${meta.verb}`);
-      form.reset();
-      onOpenChange(false);
-    } catch (err) {
-      form.setError("root", { message: toFriendlyMessage(err) });
-    }
-  }
+      }),
+    onSuccess: () => toast.success(`已${meta.verb}`),
+    onOpenChange,
+  });
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => handleOpenChange(v, mutation.isPending)}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -222,7 +202,7 @@ export function CheckoutDialog({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => handleOpenChange(false)}
+                onClick={() => handleOpenChange(false, mutation.isPending)}
                 disabled={mutation.isPending}
               >
                 取消

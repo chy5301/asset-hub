@@ -199,3 +199,14 @@ def test_get_dashboard_stats_fields_none_returns_all_segments(populated_session)
     assert stats.holder_ranking is not None
     assert stats.idle_top is not None
     assert stats.summary is not None
+
+
+def test_idle_top_includes_asset_name(populated_session):
+    """_idle_top 应返回 IdleTopItem 含 name 字段。"""
+    svc = StatsService(populated_session)
+    top = svc._idle_top(limit=10)
+    assert len(top) > 0
+    item = top[0]
+    assert hasattr(item, "name")
+    assert item.name is not None
+    assert isinstance(item.name, str)

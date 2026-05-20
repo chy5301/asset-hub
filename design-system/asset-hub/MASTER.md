@@ -625,3 +625,47 @@ DISPOSE 终态不可逆，dialog 内输入"处置"二字解锁主按钮（参考
 | 看板（hero）| 不纳入此约定 | `/dashboard` 用 `text-3xl font-medium tracking-tight` 独立形态 |
 
 新加页面前按归类挑选；偏离需在本表加行说明。
+
+---
+
+## 实施期纠偏（M4，2026-05-20）
+
+frontend-design skill 合并前闸门由控制器直接判定（M4 改动严格按 MASTER token + 公共组件复用，无创新视觉决策——所有视觉决策点 Phase 7.2 / 7.3 控制器提前下了方案）。
+
+### 1. Dashboard atmosphere radial gradient token 实际落地
+
+`--dashboard-bg-radial-from/to` token 早在前期里程碑已定义 light/dark 两套，但 dashboard route 容器 JSX 之前仅用 inline `style={{ backgroundImage: "radial-gradient(circle at 50% 20%, ...)" }}`，未消费 token。本里程碑改为 Tailwind class `bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]`，gradient 参数从 `circle at 50% 20%` 矫正为 `50% 60% at 50% 20%`，与原 token 注释「顶部 50% 20%」对齐。落地于 commit `f8515e0`。消除 dashboard 卡片 `bg-card` 与全局 `bg-background` 的色块割裂（spec M4-B 修复点 #1）。
+
+### 2. Toggle chip pressed 边框透明度 /30 → /60
+
+M3a 实施期纠偏 §2 引入的 Toggle chip 模式（off muted / on `bg-status-X/15` + `text-status-X-fg` + `border-status-X/30`）实测发现 pressed 视觉态较弱（chip on 时与 off 视觉差异不够第一眼可见，spec §5.10 列入 followup）。本里程碑修订：**列表 + dashboard 两端 Toggle chip 的 `border-status-X/30` 全部改为 `border-status-X/60`**。其他三态 className 不动（`bg-status-X/15` + `text-status-X-fg` 视觉权重保持，避免与 status pill 抢戏）。落地于 commit `8f9d982`。控制器决策方案 A（边框加深 1 级，不加 ring）。
+
+### 3. Dashboard chart 空态 thin wrapper 模式
+
+dashboard 4 个 chart 卡片（闲置 Top / 类型分布 / 状态分布 / 保管人分布）各自空态文案语义差异大，强塞 `<EmptyState title description>` 通用结构丢语义。本里程碑在 `frontend/src/features/dashboard/empty-states/` 新增 4 个 thin wrapper（`IdleEmpty` / `TypeEmpty` / `StatusEmpty` / `HolderEmpty`），各自 hardcoded title/description/icon，内部仍用公共 `EmptyCard`（`EmptyState` 的 chart 变体壳）。**不给 `<EmptyState>` 加 `variant` prop**（避免污染 22 处调用方），**不 inline 实现**（违反公共组件复用）。落地于 commit `2be7c1e`。控制器决策方案 (b)。
+
+### 4. Dashboard filter toggle 文案统一
+
+dashboard `dashboard-header.tsx` 的 "已退役 / 已注销" 与列表 `assets-filters.tsx` 的 "显示退役 / 显示注销" 文案不一致（v2.0 followup-allocation 衍生 minor）。本里程碑统一为 "显示退役 / 显示注销"（与 STATUS_META label 配套语义更清晰）。落地于 commit `f8515e0`。
+
+### 5. CheckoutDialog / ReturnDialog 抽 useFormDialog hook 收敛样板
+
+两 dialog 内 `useForm + zodResolver + onSubmit (含 try/setError('root')) + handleOpenChange (含 mutation 进行中防关闭)` 完全相同 ~30 行样板抽到 `useFormDialog<T>` 泛型 hook。各 dialog 体净减 ~30 行，仅保留字段定义 + mutate mapping + 描述文字。外部行为零变化（现有 dialog test 全绿）。落地于 commit `3a4f324`。
+
+### Pre-Delivery Checklist（M4 PR 验证）
+
+- [x] No emojis as icons（全 Lucide SVG；本 PR 新引入图标仅 dashboard empty wrapper 4 个）
+- [x] cursor-pointer on clickable elements（shadcn Button / Toggle 默认；M4-E 列表 type/status 列 header 改为可点击排序走 TanStack Table 默认 cursor 处理）
+- [x] Hover transitions smooth 150-300ms（仅 `transition-colors` 类 + 边框透明度变化；无 `transform: scale`）
+- [x] Light mode text contrast 4.5:1（status 色 token 沿用 MASTER 锁定值；Phase 7.2 verified BROKEN token 未被改）
+- [x] Focus states visible for keyboard（globals.css `*:focus-visible` 兜底；M4-E sortable header 走 shadcn Table 默认）
+- [x] `prefers-reduced-motion` respected（沿用 M2c-1 globals.css 媒体查询；本 PR 无硬编码新动画）
+- [x] Responsive 1024+（dashboard 改 `grid-cols-12` + chart 卡片 `col-span-6`；< 1024 自动换行 shadcn responsive grid 默认）
+
+### 红线扫描结果
+
+`grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to'` 在 M4 改动面（dashboard / list / detail / components）：**0 命中**（shadcn `skeleton.tsx:7` `animate-pulse` 是历史例外，本 PR 未改）。
+
+### Playwright MCP 烟测
+
+本 PR 视觉烟测由 e2e CI 覆盖（新加 `list-sort-by-type-status` spec + 现有 11 spec），跳过 Playwright MCP 手测。Phase 2 IdleTopBarChart Y 轴长名截断决策点未触发（待生产数据后再 followup 评估）。

@@ -33,6 +33,7 @@ class IdleTopItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     asset_id: UUID
     asset_code: str
+    name: str  # M4-C 新增（紧贴 asset_code 之后）
     type_name: str | None
     current_location: str | None
     idle_days: int

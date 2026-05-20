@@ -33,11 +33,7 @@ export function DashboardPage() {
 
   return (
     <main
-      className="relative min-h-[calc(100vh-4rem)] px-6 py-8"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 50% 20%, var(--dashboard-bg-radial-from), var(--dashboard-bg-radial-to))",
-      }}
+      className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]"
     >
       <div className="border-b border-border/40 mb-8" />
 
@@ -52,16 +48,17 @@ export function DashboardPage() {
       ) : statsQuery.isError ? (
         <ErrorState error={statsQuery.error} onRetry={() => statsQuery.refetch()} />
       ) : statsQuery.data ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 min-h-[640px]">
+        <div className="grid grid-cols-12 gap-6 min-h-[640px]">
           <motion.div
             data-motion-kind="idle"
+            className="col-span-6"
             initial={idleInitial}
             animate={idleAnimate}
             transition={{ ...transition, delay: 0 }}
           >
             <IdleTopBarChart data={statsQuery.data.idle_top ?? []} />
           </motion.div>
-          <div className="grid grid-rows-3 gap-6">
+          <div className="col-span-6 grid grid-rows-3 gap-6">
             <motion.div
               data-motion-kind="type"
               initial={sideInitial}
