@@ -47,11 +47,11 @@ export function IdleTopBarChart({ data }: Props) {
             />
             <YAxis
               type="category"
-              dataKey="asset_code"
+              dataKey="name"
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--foreground)", fontSize: 11 }}
-              width={90}
+              width={140}
             />
             <Tooltip cursor={{ fill: "var(--muted)", opacity: 0.4 }} content={<IdleTooltip />} />
             <Bar
@@ -90,8 +90,8 @@ function IdleTooltip({ active, payload }: IdleTooltipProps) {
   const overdue = item.idle_days > IDLE_THRESHOLD_DAYS;
   return (
     <div className="rounded-md border bg-popover px-3 py-2 shadow-md text-xs space-y-1">
-      <div className="font-medium">{item.asset_code}</div>
-      <div className="text-muted-foreground">{item.type_name}</div>
+      <div className="font-medium">{item.name}</div>
+      <div className="text-muted-foreground">{item.asset_code} · {item.type_name}</div>
       {item.current_location && (
         <div className="text-muted-foreground">📍 {item.current_location}</div>
       )}

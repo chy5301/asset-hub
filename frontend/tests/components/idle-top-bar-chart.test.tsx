@@ -12,6 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
 const item90plus = {
   asset_id: "1",
   asset_code: "G-001",
+  name: "NVIDIA A100 显卡",
   type_name: "GPU",
   current_location: "仓库",
   idle_days: 152,
@@ -20,6 +21,7 @@ const item90plus = {
 const itemUnder90 = {
   asset_id: "2",
   asset_code: "L-002",
+  name: "ThinkPad X1 Carbon",
   type_name: "Laptop",
   current_location: null,
   idle_days: 30,
