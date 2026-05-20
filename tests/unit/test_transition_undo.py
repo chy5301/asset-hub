@@ -9,6 +9,7 @@ from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.asset_type import AssetType
 from asset_hub.models.state_transition import StateTransitionRecord, TransitionKind
 from asset_hub.repositories.state_transition import TransitionRepository
+from asset_hub.services.transition import TransitionService
 
 
 @pytest.fixture
@@ -94,3 +95,81 @@ def test_repo_delete_removes_row(session, asset_type):
     repo.delete(rec)
     session.commit()
     assert repo.find_last(a.id) is None
+
+
+# ===== Service 层 happy path =====
+
+
+def test_undo_checkout_restores_idle(session, asset_type):
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    svc.record_transition(
+        asset_id=a.id,
+        kind=TransitionKind.CHECKOUT_INTERNAL,
+        to_holder="张三",
+        to_location="1F-工位",
+    )
+
+    snapshot = svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.IDLE
+    assert a.holder is None
+    assert a.location is None
+    assert snapshot.kind == TransitionKind.CHECKOUT_INTERNAL
+    assert snapshot.to_holder == "张三"
+    assert TransitionRepository(session).find_last(a.id) is None
+
+
+def test_undo_return_reopens_original_checkout(session, asset_type):
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    co = svc.record_transition(
+        asset_id=a.id,
+        kind=TransitionKind.CHECKOUT_INTERNAL,
+        to_holder="张三",
+    )
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.RETURN)
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.IN_USE
+    assert a.holder == "张三"
+    repo = TransitionRepository(session)
+    last = repo.find_last(a.id)
+    assert last is not None and last.id == co.id
+    # 原 CHECKOUT 应重新被认作 OPEN
+    assert repo.find_open_checkout_id(a.id) == co.id
+
+
+def test_undo_dispose_restores_retired(session, asset_type):
+    """验证 Q1=B：DISPOSE 是元命令可撤销，绕过状态机终态约束。"""
+    a = _new_asset(session, asset_type.id, status=AssetStatus.RETIRED)
+    svc = TransitionService(session)
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.DISPOSE)
+    assert a.status == AssetStatus.DISPOSED  # sanity
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.RETIRED
+    assert TransitionRepository(session).find_last(a.id) is None
+
+
+def test_undo_reassign_restores_holder_and_location(session, asset_type):
+    a = _new_asset(session, asset_type.id, holder="原持有", location="原位置")
+    svc = TransitionService(session)
+    svc.record_transition(
+        asset_id=a.id,
+        kind=TransitionKind.REASSIGN,
+        to_holder="新持有",
+        to_location="新位置",
+    )
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.holder == "原持有"
+    assert a.location == "原位置"
+    assert a.status == AssetStatus.IDLE

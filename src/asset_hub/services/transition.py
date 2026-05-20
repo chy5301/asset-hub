@@ -1,9 +1,11 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from sqlmodel import Session
 
-from asset_hub.errors import IllegalTransitionError
+from asset_hub.api.schemas.transition import TransitionRead
+from asset_hub.errors import IllegalTransitionError, StateError
 from asset_hub.models.state_transition import StateTransitionRecord, TransitionKind
 from asset_hub.repositories.state_transition import TransitionRepository
 from asset_hub.services._common import UNSET, UnsetType
@@ -15,6 +17,8 @@ from asset_hub.services.state_machine import (
     LocationRule,
     validate_transition,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _apply_holder_rule(
@@ -152,6 +156,46 @@ class TransitionService:
         self.session.commit()
         self.session.refresh(record)
         return record
+
+    def undo_last_transition(self, asset_id: uuid.UUID) -> TransitionRead:
+        """删除该 asset 最后一条 transition 并回退 asset 三字段。
+
+        元操作：不走 12 种 transition kind 的状态机校验。
+        - asset 不存在 → NotFoundError (404 / exit 3)
+        - asset 无 transition → StateError (state_conflict / exit 1)
+        - 否则：DELETE 该行 + 重置 asset.status/holder/location = 该行 from_*，
+          并把 asset.updated_at 推到 now。
+        - 返回被删 transition 的 TransitionRead DTO（commit 前 validate，
+          避免后续 ORM 字段访问触发 lazy-load 异常）。
+        """
+        asset = self.asset_svc.get_asset(asset_id)  # 404 兜底
+        last = self.repo.find_last(asset_id)
+        if last is None:
+            raise StateError(
+                f"资产无可撤销的流转记录: {asset_id}",
+                hint="该资产自登记以来无 transition；如需删除资产本身请用 asset delete。",
+                affected_resource_id=str(asset_id),
+            )
+
+        # commit / delete 前快照为 DTO（保证后续可序列化）
+        snapshot = TransitionRead.model_validate(last)
+
+        asset.status = last.from_status
+        asset.holder = last.from_holder
+        asset.location = last.from_location
+        asset.updated_at = datetime.now(UTC)
+        self.repo.delete(last)
+
+        logger.info(
+            "undo transition asset_id=%s record_id=%s kind=%s created_at=%s",
+            asset_id,
+            snapshot.id,
+            snapshot.kind,
+            snapshot.created_at,
+        )
+
+        self.session.commit()
+        return snapshot
 
     def list_transitions(self, asset_id: uuid.UUID) -> list[StateTransitionRecord]:
         self.asset_svc.get_asset(asset_id)  # 404 兜底
