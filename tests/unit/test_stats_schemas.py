@@ -34,6 +34,7 @@ def test_idle_top_item_required_fields():
     item = IdleTopItem(
         asset_id=uuid4(),
         asset_code="GPU-A100-03",
+        name="A100 显卡",
         type_name="GPU",
         current_location="仓库",
         idle_days=152,
@@ -100,6 +101,7 @@ def test_idle_top_item_naive_datetime_coerced_to_utc():
     item = IdleTopItem(
         asset_id=uuid4(),
         asset_code="X-001",
+        name="X 资产",
         type_name="X",
         current_location=None,
         idle_days=10,

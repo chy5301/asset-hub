@@ -139,7 +139,12 @@ class StatsService:
         idle_since = idle_since_expr(Asset, subq=sq)
         stmt = (
             select(
-                Asset.id, Asset.asset_code, AssetType.name, Asset.location, idle_since
+                Asset.id,
+                Asset.asset_code,
+                Asset.name,
+                AssetType.name.label("type_name"),
+                Asset.location,
+                idle_since,
             )
             .join(AssetType, AssetType.id == Asset.type_id)
             .outerjoin(sq, sq.c.asset_id == Asset.id)
@@ -149,13 +154,16 @@ class StatsService:
         )
         now = datetime.now(UTC)
         items = []
-        for aid, code, type_name, location, since in self.session.exec(stmt).all():
+        for aid, code, name, type_name, location, since in self.session.exec(
+            stmt
+        ).all():
             since_aware = ensure_aware(since)
             days = int((now - since_aware).total_seconds() // 86400)
             items.append(
                 IdleTopItem(
                     asset_id=aid,
                     asset_code=code,
+                    name=name,
                     type_name=type_name,
                     current_location=location,
                     idle_days=days,
