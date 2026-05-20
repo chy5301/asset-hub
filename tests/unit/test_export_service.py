@@ -541,3 +541,60 @@ class TestExport:
         non_empty_lines = [line for line in text.splitlines() if line.strip()]
         assert len(non_empty_lines) == 1  # 仅 header
         assert non_empty_lines[0].startswith("资产编号,")
+
+
+class TestExportBrandColumn:
+    """CL-1 Phase 5B: 导出加品牌列 11 → 12 列."""
+
+    def test_export_csv_header_contains_brand_between_name_and_model(
+        self, session: Session
+    ):
+        """CSV header 应含「品牌」，位置在「名称」之后、「型号」之前。"""
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="Laptop", code_prefix="BA", custom_fields=[])
+        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+
+        data, _ = svc.export(format="csv")
+        text = data.decode("utf-8-sig")
+        columns = text.splitlines()[0].split(",")
+
+        assert "品牌" in columns
+        assert columns.index("名称") < columns.index("品牌") < columns.index("型号")
+
+    def test_export_csv_row_contains_brand_value(self, session: Session):
+        """CSV 数据行 brand 列应有正确值。"""
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="Laptop", code_prefix="BB", custom_fields=[])
+        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+
+        data, _ = svc.export(format="csv")
+        text = data.decode("utf-8-sig")
+        lines = text.splitlines()
+        header = lines[0].split(",")
+        data_row = lines[1].split(",")
+
+        brand_idx = header.index("品牌")
+        assert data_row[brand_idx] == "Lenovo"
+
+    def test_export_xlsx_autofilter_range_is_A1_L_for_12_columns(
+        self, session: Session
+    ):
+        """xlsx autofilter 范围应是 A1:L{n}（12 列）。"""
+        type_svc = TypeService(session)
+        asset_svc = AssetService(session)
+        svc = ExportService(session, asset_svc, type_svc)
+
+        t = type_svc.create_type(name="Laptop", code_prefix="BC", custom_fields=[])
+        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+
+        data, _ = svc.export(format="xlsx")
+        wb = openpyxl.load_workbook(BytesIO(data))
+        ws = wb["资产清单"]
+        # 12 列 (CL-1 加 "品牌") + 1 header + 1 data = A1:L2
+        assert ws.auto_filter.ref == "A1:L2"
