@@ -97,3 +97,43 @@ class TestTypeShow:
 
         result = runner.invoke(app, ["type", "show", str(uuid4()), "--json"])
         assert result.exit_code == 3
+
+
+def test_type_define_help_json_includes_valid_field_types():
+    """type define --help-json 应在 --fields 参数下嵌套 valid_field_types（FieldType 9 个枚举值）。"""
+    from asset_hub.services.field_type import FieldType
+
+    result = runner.invoke(app, ["type", "define", "--help-json"])
+    assert result.exit_code == 0, result.stdout
+    payload = json.loads(result.stdout)
+    fields_param = next(
+        (p for p in payload["params"] if p["name"] == "--fields"), None
+    )
+    assert fields_param is not None, f"未找到 --fields 参数：{payload}"
+    assert "valid_field_types" in fields_param, (
+        f"--fields 参数缺 valid_field_types：{fields_param}"
+    )
+    assert fields_param["valid_field_types"] == [t.value for t in FieldType]
+    # 显式列 9 个值，防 FieldType 未来漂移悄悄改变 contract
+    assert set(fields_param["valid_field_types"]) == {
+        "string",
+        "text",
+        "url",
+        "int",
+        "float",
+        "bool",
+        "enum",
+        "multi-enum",
+        "date",
+    }
+
+
+def test_other_commands_help_json_no_valid_field_types():
+    """非 type define 命令的 --help-json 不应被污染（registry 只匹配特定 command）。"""
+    result = runner.invoke(app, ["asset", "register", "--help-json"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    for p in payload["params"]:
+        assert "valid_field_types" not in p, (
+            f"asset register 的 {p['name']} 不应有 valid_field_types"
+        )
