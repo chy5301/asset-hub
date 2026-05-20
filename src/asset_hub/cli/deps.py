@@ -195,6 +195,24 @@ def _default_value(d: object) -> object:
     return str(d)
 
 
+# --- --help-json param enrichment registry ---
+
+
+_PARAM_ENRICHMENTS: dict[tuple[str, str], dict[str, object]] = {}
+
+
+def register_param_enrichment(
+    command_path: str, param_name: str, extra: dict[str, object]
+) -> None:
+    """为指定 (command_path, param_name) 注册附加元数据，--help-json 输出时浅合并。
+
+    command_path: 完整 typer / click 命令路径，如 "asset-hub type define"。
+    param_name:   首个 long option / argument metavar，如 "--fields"。
+    extra:        浅合并到 param dict（同名 key 覆盖默认）。
+    """
+    _PARAM_ENRICHMENTS[(command_path, param_name)] = extra
+
+
 def print_help_json(ctx: typer.Context) -> None:
     """输出当前 command 的 JSON 结构化 help（agent 友好）。spec §4.3。
 
@@ -216,15 +234,18 @@ def print_help_json(ctx: typer.Context) -> None:
         if name in seen:
             continue
         seen.add(name)
-        params.append(
-            {
-                "name": name,
-                "type": _type_name(p.type),
-                "default": _default_value(p.default),
-                "required": bool(getattr(p, "required", False)),
-                "help": getattr(p, "help", None) or "",
-            }
-        )
+        entry: dict[str, object] = {
+            "name": name,
+            "type": _type_name(p.type),
+            "default": _default_value(p.default),
+            "required": bool(getattr(p, "required", False)),
+            "help": getattr(p, "help", None) or "",
+        }
+        cmd_path = ctx.command_path or cmd.name or ""
+        extra = _PARAM_ENRICHMENTS.get((cmd_path, name))
+        if extra:
+            entry.update(extra)
+        params.append(entry)
 
     payload = {
         "command": ctx.command_path or cmd.name or "",
