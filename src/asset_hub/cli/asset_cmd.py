@@ -666,6 +666,61 @@ def asset_update(
     print_result(to_json_dict(AssetRead, a), json_output)
 
 
+@asset_app.command("undo")
+def asset_undo(
+    asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="预览，不实际撤销")
+    ] = False,
+    fields: Annotated[
+        str | None, typer.Option("--fields", help="逗号分隔字段名，按需返回")
+    ] = None,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """撤销该资产最后一条流转记录（物理删除，元操作不进状态机）。"""
+    uid = parse_uuid(asset_id, json_output)
+    parsed_fields = parse_cli_fields(fields)
+
+    with cli_session() as session, handle_domain_errors(json_output):
+        tx_svc = TransitionService(session)
+        tx_svc.asset_svc.get_asset(uid)  # 404 兜底（与 service 路径对称）
+
+        if dry_run:
+            last = tx_svc.repo.find_last(uid)
+            if last is None:
+                from asset_hub.errors import StateError
+
+                raise StateError(
+                    f"资产无可撤销的流转记录: {uid}",
+                    hint="该资产自登记以来无 transition；如需删除资产本身请用 asset delete。",
+                    affected_resource_id=str(uid),
+                )
+            print_dry_run(
+                {
+                    "would_undo": to_json_dict(TransitionRead, last),
+                    "would_restore": {
+                        "status": last.from_status.value,
+                        "holder": last.from_holder,
+                        "location": last.from_location,
+                    },
+                },
+                json_output,
+                message=f"将撤销 {last.kind.value} (created_at={last.created_at.isoformat()})",
+            )
+            return
+
+        rec = tx_svc.undo_last_transition(uid)  # 已是 TransitionRead DTO
+
+    record = rec.model_dump(mode="json")
+    record = filter_record_fields(
+        record,
+        parsed_fields,
+        allowed=_TRANSITION_READ_FIELDS,
+        json_output=json_output,
+    )
+    print_result(record, json_output)
+
+
 @asset_app.command("delete")
 def asset_delete(
     asset_id: Annotated[str, typer.Argument(help="资产 UUID")],
