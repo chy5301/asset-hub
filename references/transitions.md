@@ -95,3 +95,30 @@ asset dismiss <id> [--to-holder --to-location --note --json]
 响应：刚创建的 `StateTransitionRecord` 行（含 `id` / `from_status` / `to_status` / `closes_transition_id` 等）。
 
 > **HTTP/JSON 约定**：JSON 体无 key → 视为未传（service 收 `_UNSET`）→ `keep` 行为；JSON 体 `{"to_holder": null}` → 视为显式 null → 清空。
+
+## undo（元操作，不在 12 kind 内）
+
+`asset-hub asset undo <id>` 物理删除该资产的最后一条 transition 并把 `Asset.status` / `Asset.holder` / `Asset.location` 重置为该 transition 的 `from_*`，`Asset.updated_at` 推到 now。
+
+**契约要点：**
+
+- **不**走 `validate_transition` / 状态机；与 12 种 kind 解耦
+- 取"最后一条"的依据：`created_at DESC LIMIT 1`
+- 物理删除（DB 零脚印），`logger.info` 在 service 层留一行运行日志做事后追溯
+- 只能撤最后一条；中间记录不可跳删
+- 资产无 transition → `StateError`（code=`state_conflict`，CLI exit 1）；asset 不存在 → `NotFoundError`（exit 3）
+- **DISPOSE 可被 undo**（v1 工具无合规约束；元操作不受状态机终态约束）
+
+**副作用：`closes_transition_id` 反向链**
+
+- 删 `RETURN` / `DISMISS` 后，它原本闭合的 `CHECKOUT_*` 会被 `find_open_checkout_id` 重新认作 OPEN —— 这是 undo 想要的语义（恢复派出状态）
+- 删 `CHECKOUT_*` 本身：它不闭合任何记录，无悬挂
+
+**与反向 transition 的语义差异：**
+
+| 维度 | `undo` | 反向 transition（如 `return` 反 `checkout`） |
+|---|---|---|
+| 历史记录 | 零脚印（物理删除）| 多一条记录 |
+| 语义 | "我没派发，只是手滑" | "派出后归还" |
+| 适用 | 误操作回退 | 真实业务往返 |
+| 终态 DISPOSE | 可撤 | 无反向 transition，无法救回 |
