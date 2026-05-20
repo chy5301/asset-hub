@@ -583,3 +583,79 @@ class TestAssetDelete:
         # 验证资产仍然存在
         check = runner.invoke(app, ["asset", "show", asset_id, "--json"])
         assert check.exit_code == 0
+
+
+class TestAssetBrand:
+    def test_register_with_brand_flag(self):
+        """asset register --brand 应落库。"""
+        type_id = _define_type()
+        result = runner.invoke(
+            app,
+            [
+                "asset",
+                "register",
+                "--name",
+                "A1",
+                "--type-id",
+                type_id,
+                "--brand",
+                "Lenovo",
+                "--model",
+                "ThinkPad",
+                "--json",
+            ],
+        )
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        assert body["data"]["brand"] == "Lenovo"
+        assert body["data"]["model"] == "ThinkPad"
+
+    def test_list_sort_by_brand(self):
+        """asset list --sort brand 应可用（字典序）。"""
+        type_id = _define_type()
+        runner.invoke(
+            app,
+            [
+                "asset",
+                "register",
+                "--name",
+                "B1",
+                "--type-id",
+                type_id,
+                "--brand",
+                "Zotac",
+                "--json",
+            ],
+        )
+        runner.invoke(
+            app,
+            [
+                "asset",
+                "register",
+                "--name",
+                "A1",
+                "--type-id",
+                type_id,
+                "--brand",
+                "Apple",
+                "--json",
+            ],
+        )
+        result = runner.invoke(
+            app,
+            [
+                "asset",
+                "list",
+                "--sort",
+                "brand",
+                "--order",
+                "asc",
+                "--json",
+            ],
+        )
+        assert result.exit_code == 0
+        body = json.loads(result.stdout)
+        assert body["success"] is True
+        brands = [item["brand"] for item in body["data"]]
+        assert brands == sorted(brands)
