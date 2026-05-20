@@ -49,19 +49,51 @@ CL-1/2/3/4 可并行打开 PR，合并不互相阻塞，最后一个合完发 v2
 - 跨类型聚合（按品牌统计 / 筛选）需扫 JSON 且依赖每类型 key 命名一致 —— 脆弱
 - 沿用 v2.0 PR-3 `model` 拆列的判断准则：字段在每个 AssetType 重复出现、语义一致、描述资产本身而非类型规格 → 应升顶层
 
-**改动面**（全栈，模仿 v2.0 PR-3 模式）：
+**改动面**（全栈，模仿 v2.0 PR-3 模式；**全栈 brand 列序统一为"name → brand → model"**，与日常语序「Lenovo ThinkPad T14」一致）：
 
-- **数据模型**：`Asset.brand: str | None = Field(default=None, index=True)`，位置紧贴 `model` 之后；alembic v4 migration（`add_column` + `ix_assets_brand` + 反向 drop，batch_alter_table）
+- **数据模型**：`Asset.brand: str | None = Field(default=None, index=True)`，**字段定义位置紧贴 `name` 之后、`model` 之前**；alembic v4 migration（`add_column` + `ix_assets_brand` + 反向 drop，batch_alter_table）
 - **数据迁移**：alembic 同次 migration 内扫所有 row，将 `custom_data.brand`（若存在且顶层 brand 为 null）回填到顶层 `brand` 列；**不动** custom_data.brand 键（JSON 弹性，零破坏）。release-notes-v2.1.0 写明用户应在升级后手动从对应 AssetType 删 brand custom field
-- **AssetType 校验**：service 层加 reserved key 检查，禁止 future create/update 的 `custom_fields[].key == 'brand'`（含 `model` / `serial_number` 也一并纳入 reserved set，统一架构）；error 走 ValidationError + hint 指向新顶层字段
+- **AssetType reserved key 校验**（全集锁）：
+
+  ```python
+  # services/asset_type.py
+  RESERVED_CUSTOM_FIELD_KEYS: frozenset[str] = frozenset({
+      # Asset 顶层 user-writable 字段
+      "asset_code", "serial_number", "name", "model", "brand",
+      "holder", "location", "notes", "acquired_at",
+      # CLI / 直觉别名
+      "sn",
+      # 系统/关系字段（防恶意撞）
+      "type", "type_name", "type_id", "status", "id", "custom_data",
+  })
+  ```
+
+  `create_type` / `update_type` 校验 `custom_fields[].key not in RESERVED_CUSTOM_FIELD_KEYS`，违规 → ValidationError + hint "key 'X' 是 Asset 顶层公共字段或保留名，请用其他 key"。**对现有 AssetType 零破坏**（仅 future create/update 时拒绝 read 不动）。release-notes-v2.1.0 升级路径需明确：用户应手动从对应 AssetType 删 brand / model / 其他 reserved key 重名的 custom field。**理由**：v1 / v2.0 PR-3 都没加这层校验，遗留 GPU AssetType 等含 `key=model` 的 custom field（v2.0 release-notes 只软提醒未强制），CL-1 抓机会一锁全锁、不再留同类坑。
+
 - **Service 层**：`register` / `update_asset` 加 brand 参数（update 用 `_Unset` 哨兵区分"未传 vs null 清空"）；`SortByField` Literal + `SORT_FIELD_WHITELIST` frozenset + repository `_SORT_COLUMN_MAP` 三处加 brand；`list_filtered` q OR-chain 加 `Asset.brand.contains(q)`
-- **DTO 层**：`AssetCreate` / `AssetUpdate` / `AssetRead` 加 brand 字段（位置紧邻 sn）；router `create_asset` 加 `brand=body.brand` 透传
-- **CLI 层**：`asset register --brand <txt>`（位置紧邻 `--model`，help="品牌"）；`asset update --set '{"brand":...}'` 复用 JSON 模式；`asset list --sort brand` + help text 更新；导出输出列加"品牌"
-- **前端层**：types AssetRow 加 brand；表单 `general-fields-form` 在 model FormField 之后插入 brand FormField；详情 `asset-header` 副行加 brand 条件渲染；详情 `general-fields` "型号" 行之后插 "品牌" 行；`assets-table` 在 model 列之后插入 brand 列（可 sort、空 "—"）；`column-visibility` ColumnKey + COLUMN_LABELS + ALL_KEYS 加 brand；`asset-create-form` / `asset-edit-form` 加 defaultValues + reset + submit payload；`build-asset-schema` zod baseShape 加 brand nullable optional
-- **导出**：`services/export.py` `_FIXED_COLUMN_NAMES` 加 "品牌"（11 列 → 12 列，位置在 "名称" 之后或 "型号" 之后 —— **决策**：放 "型号" 之后保持品牌 / 型号视觉相邻）；`_build_rows` 注入 `a.brand or ""`；4 处既有测试 column 索引 / autofilter 范围 `A1:L{n}` / header startswith 更新
+- **DTO 层**：`AssetCreate` / `AssetUpdate` / `AssetRead` 加 brand 字段（**位置紧邻 name 之后、model 之前**）；router `create_asset` 加 `brand=body.brand` 透传
+- **CLI 层**：`asset register --brand <txt>`（**位置紧邻 `--name` 之后、`--model` 之前**，help="品牌"）；`asset update --set '{"brand":...}'` 复用 JSON 模式；`asset list --sort brand` + help text 更新
+- **前端层**：types AssetRow 加 brand（位置 name 后 / model 前）；表单 `general-fields-form` 在 name FormField **之后**、model FormField **之前**插入 brand FormField；详情 `asset-header` 副行排列为「brand · model」（用户期望阅读顺序）；详情 `general-fields` "名称" 行之后、"型号" 行之前插 "品牌" 行；`assets-table` 在 name 列之后、model 列之前插入 brand 列（可 sort、空 "—"）；`column-visibility` ColumnKey + COLUMN_LABELS + ALL_KEYS 加 brand；`asset-create-form` / `asset-edit-form` 加 defaultValues + reset + submit payload；`build-asset-schema` zod baseShape 加 brand nullable optional
+- **导出**：`services/export.py` `_FIXED_COLUMN_NAMES` 加 "品牌"（11 列 → 12 列，**位置在 "名称" 之后、"型号" 之前**）：
+
+  ```python
+  _FIXED_COLUMN_NAMES = [
+      "资产编号", "名称", "品牌", "型号", "类型", "状态",
+      "保管人", "位置", "闲置天数", "入账日期", "铭牌编号", "备注",
+  ]
+  ```
+
+  示例 CSV 行：
+
+  ```csv
+  资产编号,名称,品牌,型号,类型,状态,保管人,位置,闲置天数,入账日期,铭牌编号,备注
+  LP-2024-001,工位本-01,Lenovo,ThinkPad T14 Gen 4,笔记本电脑,使用中,张三,上海办公室,0,2024-03-15,PF-XXXX,
+  ```
+
+  `_build_rows` 注入 `a.brand or ""`；既有测试 column 索引（旧 model 在 index 2，新 brand 在 index 2、model 在 index 3）/ autofilter 范围 `A1:K{n}` → `A1:L{n}` / header startswith 更新
 - **examples/types/\*.json**：删 3 个含 brand custom_field 的 example type 中的 brand 项（laptop / bus-interface / dc-power）
-- **SKILL.md**：Asset 顶层公共字段速查表加 brand 行；Gotcha #8（顶层 vs custom 边界）更新含 brand
-- **CLI / API 测试基线**：service / cli / api / migration 四层 TDD
+- **SKILL.md**：Asset 顶层公共字段速查表加 brand 行（位置 name 后 / model 前）；Gotcha #8（顶层 vs custom 边界）更新含 brand + 提示 reserved key 校验已强制生效
+- **CLI / API 测试基线**：service / cli / api / migration 四层 TDD；reserved key 校验测 5+ case（每类 reserved 一个 + 别名 sn 一个 + 通过 case）
 
 **M4 阻塞原因**：CL-1 与 M4 主 PR 都改 frontend `general-fields-form` / `asset-header` / `general-fields` / `assets-table` / 导出 4-5 个同一改动面文件。先 CL-1 后 M4 = M4 视觉一次画完最终字段集；并行或反向 = 互相覆盖。
 
@@ -221,7 +253,7 @@ CL-1/2/3/4 可并行打开 PR，合并不互相阻塞，最后一个合完发 v2
 ## 风险
 
 1. **CL-1 数据迁移**：用户存量 `custom_data.brand` 与新 `Asset.brand` 同步策略需在 alembic 内部做 read-write 迁移（仅当顶层 null 时回填）。alembic 必须用 `batch_alter_table`（SQLite 改表必需，CLAUDE.md 已明文）。回滚不可逆（同 v2.0.0 PR-1 migration 风险定级）。
-2. **AssetType reserved key 校验时序**：禁止 `key=='brand'` 必须明确 error message 指向新顶层字段；现有 AssetType 含 brand 不应被 break（仅 future create / update 时拒绝）→ release-notes-v2.1.0 升级路径需明确"手动从对应 AssetType 删 brand custom field"步骤
+2. **AssetType reserved key 全集校验**：reserved set 含 16 项（asset_code / serial_number / sn / name / model / brand / holder / location / notes / acquired_at / type / type_name / type_id / status / id / custom_data）。error message 必须指明撞到的具体 reserved 名 + 提示用顶层字段或换 key。**对现有 AssetType 含 model / brand / sn 等 reserved key 重名 custom_field 零破坏**（仅 future create/update 拒绝）。release-notes-v2.1.0 升级路径含"手动从 AssetType 删 brand / model / 其他 reserved key 重名 custom field"步骤；同步更新 SKILL.md Gotcha #8
 3. **gen:api 同步**：CL-1（schema 改 +1 字段）+ M4-C（IdleTopItem 加 name）都必须 `pnpm --dir frontend gen:api`，CLAUDE.md 已明文，但容易漏 → plan 里显式列为 phase 收尾 task
 4. **M4-B 配色精打磨 scope creep**：P 幅度容易越做越宽，本 spec 已锁定 5 修复点 checklist 防扩散；plan 阶段须把每个修复点的"何时停"显式写出
 5. **CL-3 cache key 不当**：playwright 升级时 cache 失效靠 `hashFiles('frontend/pnpm-lock.yaml')` 触发；若改用 monorepo 工具单独锁 playwright 版本 cache 不失效会拿到旧 binary
