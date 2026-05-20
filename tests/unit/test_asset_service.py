@@ -558,3 +558,57 @@ class TestListAssetsRetiredDisposedFilter:
         result = svc.list_assets(status=AssetStatus.DISPOSED)
         statuses = {a.status for a in result}
         assert statuses == {AssetStatus.DISPOSED}
+
+
+# ── brand 透传 tests ────────────────────────────────────────────────────────────
+
+
+def test_register_with_brand(session: Session, sample_type_nb):
+    """register 应接受 brand 参数并落库。"""
+    svc = AssetService(session)
+    a = svc.register(
+        name="Asset 1",
+        type_id=sample_type_nb.id,
+        custom_data={},
+        brand="Lenovo",
+        model="ThinkPad T14",
+    )
+    assert a.brand == "Lenovo"
+
+
+def test_update_asset_brand_unset_keeps_current(session: Session, sample_type_nb):
+    """update_asset 不传 brand → keep current。"""
+    svc = AssetService(session)
+    a = svc.register(name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    a2 = svc.update_asset(a.id, name="A-new")  # 不传 brand
+    assert a2.brand == "Lenovo"  # 保留
+
+
+def test_update_asset_brand_explicit_null_clears(session: Session, sample_type_nb):
+    """update_asset 显式传 brand=None → 清空。"""
+    svc = AssetService(session)
+    a = svc.register(name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    a2 = svc.update_asset(a.id, brand=None)
+    assert a2.brand is None  # 清空
+
+
+def test_list_filtered_q_matches_brand(session: Session, sample_type_nb):
+    """list_assets q 应能搜到 brand。"""
+    svc = AssetService(session)
+    svc.register(name="A1", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    svc.register(name="A2", type_id=sample_type_nb.id, custom_data={}, brand="Apple")
+
+    result = svc.list_assets(q="Lenovo")
+    matched = [a for a in result if a.brand == "Lenovo"]
+    assert len(matched) == 1
+
+
+def test_sort_by_brand(session: Session, sample_type_nb):
+    """list_assets sort_by='brand' 应可用（字典序）。"""
+    svc = AssetService(session)
+    svc.register(name="A1", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    svc.register(name="A2", type_id=sample_type_nb.id, custom_data={}, brand="Apple")
+
+    result = svc.list_assets(sort_by="brand", sort_order="asc")
+    brands = [a.brand for a in result if a.brand]
+    assert brands == sorted(brands)  # ["Apple", "Lenovo"]
