@@ -3,7 +3,6 @@
   "code_prefix": "LP",
   "description": "团队便携笔记本电脑（含信创 ARM 机型）",
   "custom_fields": [
-    {"key": "brand", "label": "品牌", "type": "string", "required": true, "placeholder": "Lenovo / Apple / 清华同方"},
     {"key": "os_family", "label": "操作系统", "type": "enum", "options": ["Windows", "macOS", "Linux", "Other"]},
     {"key": "os_version", "label": "系统版本", "type": "string", "placeholder": "10 22H2 / Kylin V10 GFB-020 / Ubuntu 24.04"},
     {"key": "cpu_arch", "label": "CPU 架构", "type": "enum", "options": ["x86_64", "arm64"]},
