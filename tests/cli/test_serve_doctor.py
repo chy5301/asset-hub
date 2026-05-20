@@ -30,6 +30,12 @@ def _mock_all_ok(monkeypatch):
         "asset_hub.cli.serve.doctor.check_port_free",
         lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
     )
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.check_port_owner",
+        lambda port, expected_pid: DoctorCheck(
+            name=f"port_owner:{port}", ok=True, detail="ok"
+        ),
+    )
 
 
 def _mock_dist_missing(monkeypatch):
@@ -59,6 +65,12 @@ def _mock_dist_missing(monkeypatch):
         "asset_hub.cli.serve.doctor.check_port_free",
         lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
     )
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.check_port_owner",
+        lambda port, expected_pid: DoctorCheck(
+            name=f"port_owner:{port}", ok=True, detail="ok"
+        ),
+    )
 
 
 def test_doctor_plain_all_ok(monkeypatch):
@@ -77,7 +89,7 @@ def test_doctor_json_all_ok(monkeypatch):
     assert payload["success"] is True
     assert payload["data"]["ok"] is True
     assert payload["data"]["issue_count"] == 0
-    assert len(payload["data"]["checks"]) == 7  # prod mode
+    assert len(payload["data"]["checks"]) == 8  # prod mode: 7 原 + port_owner:8000
 
 
 def test_doctor_json_one_fail_exits_1(monkeypatch):
@@ -106,4 +118,6 @@ def test_doctor_dev_mode_includes_5173(monkeypatch):
     _mock_all_ok(monkeypatch)
     result = runner.invoke(app, ["serve", "doctor", "--mode", "dev", "--json"])
     payload = json.loads(result.stdout)
-    assert len(payload["data"]["checks"]) == 8
+    assert (
+        len(payload["data"]["checks"]) == 10
+    )  # dev: 6 原 + port_free 8000 + port_free 5173 + port_owner:8000 + port_owner:5173
