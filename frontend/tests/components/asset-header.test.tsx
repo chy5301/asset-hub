@@ -73,10 +73,21 @@ function renderWithProviders(ui: React.ReactNode) {
 }
 
 describe("AssetHeader overdue 角标 (M3d)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+    });
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("status IN_USE + dueAt 8 天前 + OPEN CHECKOUT → render 逾期 N 天 红角标", async () => {
-    const dueAt = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+    const dueAt = "2026-01-07T12:00:00Z"; // 8 天前
     vi.spyOn(transitionsHook, "useTransitionsQuery").mockReturnValue({
-      data: [mkOpen(`${dueAt}T00:00:00`)],
+      data: [mkOpen(dueAt)],
       isLoading: false,
       isError: false,
       error: null,
@@ -132,9 +143,9 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
   });
 
   it("status IN_USE + dueAt 5 天后 → render 还有 N 天到期 黄角标", async () => {
-    const dueAt = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+    const dueAt = "2026-01-20T12:00:00Z"; // 5 天后
     vi.spyOn(transitionsHook, "useTransitionsQuery").mockReturnValue({
-      data: [mkOpen(`${dueAt}T00:00:00`)],
+      data: [mkOpen(dueAt)],
       isLoading: false,
       isError: false,
       error: null,
@@ -153,8 +164,8 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
   it("OPEN + 已 closed CHECKOUT 共存 → 角标对应新 OPEN 的 due_at（验 closes_transition_id 排除）", async () => {
     // 用 8 天前 due_at 给旧 closed CHECKOUT；用 3 天前 due_at 给新 OPEN CHECKOUT
     // 如果 closedIds 排除逻辑漏了，会拿到最新（含新旧两个 CHECKOUT）但可能误用旧 due_at
-    const newOpenDueAt = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
-    const oldClosedDueAt = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+    const newOpenDueAt = "2026-01-12T12:00:00Z"; // 3 天前（固定 ISO，时区无关）
+    const oldClosedDueAt = "2026-01-07T12:00:00Z"; // 8 天前（固定 ISO，时区无关）
 
     const transitions: TransitionRead[] = [
       // desc 顺序：最新 OPEN
@@ -170,7 +181,7 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
         to_location: "工位 B2",
         note: null,
         created_at: "2026-04-25T10:00:00Z",
-        due_at: `${newOpenDueAt}T00:00:00`,
+        due_at: newOpenDueAt,
         closes_transition_id: null,
       } as TransitionRead,
       // 旧 RETURN closes 旧 CHECKOUT
@@ -202,7 +213,7 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
         to_location: "工位 A1",
         note: null,
         created_at: "2026-04-01T10:00:00Z",
-        due_at: `${oldClosedDueAt}T00:00:00`,
+        due_at: oldClosedDueAt,
         closes_transition_id: null,
       } as TransitionRead,
     ];
