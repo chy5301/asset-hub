@@ -1,6 +1,4 @@
 import { Undo2 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -25,7 +23,7 @@ import {
 import { InlineErrorBanner } from "@/components/feedback/inline-error-banner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toFriendlyMessage } from "@/lib/error";
+import { useFormDialog } from "./use-form-dialog";
 
 const schema = z.object({
   to_holder: z.string().optional(),
@@ -45,37 +43,23 @@ export function ReturnDialog({
   onOpenChange,
   assetId,
 }: ReturnDialogProps) {
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { to_holder: "", to_location: "", note: "" },
-    mode: "onSubmit",
-  });
   const mutation = useRecordTransitionMutation(assetId);
-
-  function handleOpenChange(v: boolean) {
-    if (mutation.isPending) return;
-    if (!v) form.reset();
-    onOpenChange(v);
-  }
-
-  async function onSubmit(values: FormValues) {
-    try {
-      await mutation.mutateAsync({
+  const { form, onSubmit, handleOpenChange } = useFormDialog<FormValues>({
+    schema,
+    defaultValues: { to_holder: "", to_location: "", note: "" },
+    mutate: (values) =>
+      mutation.mutateAsync({
         kind: "RETURN",
         to_holder: values.to_holder?.trim() || null,
         to_location: values.to_location?.trim() || null,
         note: values.note?.trim() || null,
-      });
-      toast.success("已归还");
-      form.reset();
-      onOpenChange(false);
-    } catch (err) {
-      form.setError("root", { message: toFriendlyMessage(err) });
-    }
-  }
+      }),
+    onSuccess: () => toast.success("已归还"),
+    onOpenChange,
+  });
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => handleOpenChange(v, mutation.isPending)}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
@@ -152,7 +136,7 @@ export function ReturnDialog({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => handleOpenChange(false)}
+                onClick={() => handleOpenChange(false, mutation.isPending)}
                 disabled={mutation.isPending}
               >
                 取消
