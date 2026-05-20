@@ -224,6 +224,8 @@ export interface components {
             type_id: string;
             /** Serial Number */
             serial_number?: string | null;
+            /** Brand */
+            brand?: string | null;
             /** Model */
             model?: string | null;
             /** Holder */
@@ -252,6 +254,8 @@ export interface components {
             name: string;
             /** Serial Number */
             serial_number: string | null;
+            /** Brand */
+            brand: string | null;
             /** Model */
             model: string | null;
             /**
@@ -304,6 +308,8 @@ export interface components {
             name?: string | null;
             /** Serial Number */
             serial_number?: string | null;
+            /** Brand */
+            brand?: string | null;
             /** Model */
             model?: string | null;
             /** Notes */
@@ -761,7 +767,7 @@ export interface operations {
                 q?: string | null;
                 include_retired?: boolean;
                 include_disposed?: boolean;
-                sort_by?: ("name" | "model" | "asset_code" | "serial_number" | "created_at" | "updated_at" | "acquired_at" | "idle_days") | null;
+                sort_by?: ("name" | "brand" | "model" | "asset_code" | "serial_number" | "created_at" | "updated_at" | "acquired_at" | "idle_days") | null;
                 sort_order?: "asc" | "desc";
                 limit?: number | null;
                 offset?: number | null;
