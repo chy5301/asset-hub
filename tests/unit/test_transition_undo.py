@@ -242,3 +242,73 @@ def test_undo_recover_after_send_to_maintenance_keeps_holder_location(
     assert a.status == AssetStatus.MAINTENANCE
     assert a.holder == "李仓管"
     assert a.location == "备件柜"
+
+
+def test_undo_chain_walks_back_to_register_state(session, asset_type):
+    """连续多步 undo：checkout → return → undo(return) → undo(checkout)
+    第一次 undo 删 RETURN，asset 回 IN_USE 且原 CHECKOUT 重开 OPEN；
+    第二次 undo 删 CHECKOUT，asset 回 IDLE 且 transition 表为空。
+    与 test_undo_twice_second_raises_state_conflict 不同：那条测的是
+    只有 1 条 transition 时连续 undo 2 次第二次报错；这条测的是有 2 条
+    transition 时连续 undo 2 次全部成功。
+    """
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    repo = TransitionRepository(session)
+    co = svc.record_transition(
+        asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="张三"
+    )
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.RETURN)
+
+    svc.undo_last_transition(a.id)  # 删 RETURN
+    session.refresh(a)
+    assert a.status == AssetStatus.IN_USE
+    assert repo.find_open_checkout_id(a.id) == co.id
+
+    svc.undo_last_transition(a.id)  # 删 CHECKOUT
+    session.refresh(a)
+    assert a.status == AssetStatus.IDLE
+    assert a.holder is None
+    assert repo.find_last(a.id) is None
+
+
+def test_undo_report_broken_restores_in_use_keeps_checkout_open(session, asset_type):
+    """REPORT_BROKEN (IN_USE → BROKEN) 不闭合 OPEN CHECKOUT
+    （IN_USE 和 BROKEN 都属 PERSISTED_CHECKOUT_STATES，不触发 closes 逻辑）。
+    undo 后 asset 回 IN_USE，原 CHECKOUT 仍 OPEN（它从来就没被闭合）。
+    """
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    repo = TransitionRepository(session)
+    co = svc.record_transition(
+        asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="张三"
+    )
+    rb = svc.record_transition(asset_id=a.id, kind=TransitionKind.REPORT_BROKEN)
+    assert rb.closes_transition_id is None  # 不闭合 CHECKOUT
+    assert repo.find_open_checkout_id(a.id) == co.id  # CHECKOUT 仍 OPEN
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.IN_USE
+    assert a.holder == "张三"
+    assert repo.find_open_checkout_id(a.id) == co.id  # 仍 OPEN
+
+
+def test_undo_declare_unrepairable_restores_maintenance(session, asset_type):
+    """DECLARE_UNREPAIRABLE (MAINTENANCE → BROKEN) undo 后回 MAINTENANCE，
+    holder/location 由 keep rule 保留 register 时的值。
+    """
+    a = _new_asset(session, asset_type.id, holder="维修工", location="维修间")
+    svc = TransitionService(session)
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.SEND_TO_MAINTENANCE)
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.DECLARE_UNREPAIRABLE)
+    session.refresh(a)
+    assert a.status == AssetStatus.BROKEN  # sanity
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.MAINTENANCE
+    assert a.holder == "维修工"
+    assert a.location == "维修间"
