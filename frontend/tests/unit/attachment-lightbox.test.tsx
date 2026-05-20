@@ -28,7 +28,7 @@ describe("AttachmentLightbox", () => {
   });
 
   it("DialogContent 应有 !max-w-[90vw] 覆盖 sm:max-w-sm 默认", () => {
-    const { container } = render(
+    render(
       <AttachmentLightbox
         attachment={mockAttachment}
         assetId="asset-1"
@@ -36,10 +36,9 @@ describe("AttachmentLightbox", () => {
       />,
     );
 
-    // Find the DialogContent element (the one with the lightbox content)
-    const dialogContent = container.querySelector('[data-slot="dialog-content"]');
-    expect(dialogContent).toBeTruthy();
-    expect(dialogContent?.className).toContain("!max-w-[90vw]");
+    // 用 testing-library role 查询（portal-friendly，CI jsdom 上 document.querySelector 不一定能穿透 Radix Portal）
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.className).toContain("!max-w-[90vw]");
   });
 
   it("应只渲染一个关闭按钮（自定义工具栏里的）", () => {
