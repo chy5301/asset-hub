@@ -385,3 +385,81 @@ def test_list_sort_by_serial_number(client, asset_factory):
     asset_factory(name="B", serial_number="SN-001")
     r = client.get("/api/assets?sort_by=serial_number&sort_order=asc")
     assert r.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# CL-1 Phase 4：AssetCreate / AssetUpdate / AssetRead 加 brand 字段集成测
+# ---------------------------------------------------------------------------
+
+
+def test_post_asset_with_brand(client, sample_type_nb_via_api):
+    """POST /api/assets body.brand 应落库 + response 含 brand。"""
+    resp = client.post(
+        "/api/assets",
+        json={
+            "name": "A1",
+            "type_id": str(sample_type_nb_via_api),
+            "brand": "Lenovo",
+            "model": "ThinkPad T14",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["brand"] == "Lenovo"
+    assert data["model"] == "ThinkPad T14"
+
+
+def test_patch_asset_brand_unset_keeps(client, sample_type_nb_via_api):
+    """PATCH 不传 brand → 保留 current。"""
+    create_resp = client.post(
+        "/api/assets",
+        json={"name": "A", "type_id": str(sample_type_nb_via_api), "brand": "Lenovo"},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    aid = create_resp.json()["id"]
+    resp = client.patch(f"/api/assets/{aid}", json={"name": "renamed"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["brand"] == "Lenovo"  # 保留
+
+
+def test_patch_asset_brand_explicit_null_clears(client, sample_type_nb_via_api):
+    """PATCH brand=null → 清空。"""
+    create_resp = client.post(
+        "/api/assets",
+        json={"name": "A", "type_id": str(sample_type_nb_via_api), "brand": "Lenovo"},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    aid = create_resp.json()["id"]
+    resp = client.patch(f"/api/assets/{aid}", json={"brand": None})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["brand"] is None
+
+
+def test_list_assets_q_matches_brand(client, sample_type_nb_via_api):
+    """GET /api/assets?q=Lenovo 应能搜到 brand。"""
+    client.post(
+        "/api/assets",
+        json={"name": "A1", "type_id": str(sample_type_nb_via_api), "brand": "Lenovo"},
+    )
+    resp = client.get("/api/assets", params={"q": "Lenovo"})
+    assert resp.status_code == 200
+    body = resp.json()
+    # list_assets 直接返回 list
+    assert any(a.get("brand") == "Lenovo" for a in body)
+
+
+def test_list_assets_sort_by_brand(client, sample_type_nb_via_api):
+    """GET /api/assets?sort_by=brand 应可用（字典序）。"""
+    client.post(
+        "/api/assets",
+        json={"name": "A1", "type_id": str(sample_type_nb_via_api), "brand": "Lenovo"},
+    )
+    client.post(
+        "/api/assets",
+        json={"name": "A2", "type_id": str(sample_type_nb_via_api), "brand": "Apple"},
+    )
+    resp = client.get("/api/assets", params={"sort_by": "brand"})
+    assert resp.status_code == 200
+    body = resp.json()
+    brands = [a["brand"] for a in body if a.get("brand")]
+    assert brands == sorted(brands)
