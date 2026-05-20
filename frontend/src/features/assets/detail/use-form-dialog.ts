@@ -1,11 +1,11 @@
 import { useForm, type DefaultValues, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ZodSchema } from "zod";
+import type { ZodTypeAny } from "zod";
 
 import { toFriendlyMessage } from "@/lib/error";
 
 interface UseFormDialogParams<T extends Record<string, unknown>> {
-  schema: ZodSchema<T>;
+  schema: ZodTypeAny;
   defaultValues: DefaultValues<T>;
   mutate: (values: T) => Promise<unknown>;
   onSuccess?: () => void;
@@ -29,7 +29,8 @@ export function useFormDialog<T extends Record<string, unknown>>({
   onOpenChange,
 }: UseFormDialogParams<T>) {
   const form = useForm<T>({
-    resolver: zodResolver(schema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema as any),
     defaultValues,
     mode: "onSubmit",
   });
