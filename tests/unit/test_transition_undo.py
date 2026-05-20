@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from sqlmodel import Session
 
+from asset_hub.errors import NotFoundError, StateError
 from asset_hub.models.asset import Asset, AssetStatus
 from asset_hub.models.asset_type import AssetType
 from asset_hub.models.state_transition import StateTransitionRecord, TransitionKind
@@ -173,3 +174,71 @@ def test_undo_reassign_restores_holder_and_location(session, asset_type):
     assert a.holder == "原持有"
     assert a.location == "原位置"
     assert a.status == AssetStatus.IDLE
+
+
+# ===== Service 层错误 / 余下场景 =====
+
+
+def test_undo_without_any_transition_raises_state_conflict(session, asset_type):
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    with pytest.raises(StateError) as exc_info:
+        svc.undo_last_transition(a.id)
+    assert "无可撤销的流转记录" in exc_info.value.message
+    assert exc_info.value.hint is not None
+    assert "asset delete" in exc_info.value.hint
+    assert exc_info.value.affected_resource_id == str(a.id)
+
+
+def test_undo_nonexistent_asset_raises_not_found(session):
+    svc = TransitionService(session)
+    bogus = uuid.uuid4()
+    with pytest.raises(NotFoundError):
+        svc.undo_last_transition(bogus)
+
+
+def test_undo_twice_second_raises_state_conflict(session, asset_type):
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    svc.record_transition(
+        asset_id=a.id, kind=TransitionKind.CHECKOUT_INTERNAL, to_holder="张三"
+    )
+    svc.undo_last_transition(a.id)
+
+    with pytest.raises(StateError):
+        svc.undo_last_transition(a.id)
+
+
+def test_undo_checkout_with_due_at_no_residue(session, asset_type):
+    """due_at 仅在 transition 行上，asset 表无该字段，undo 后无残留。"""
+    a = _new_asset(session, asset_type.id)
+    svc = TransitionService(session)
+    svc.record_transition(
+        asset_id=a.id,
+        kind=TransitionKind.CHECKOUT_INTERNAL,
+        to_holder="张三",
+        due_at=datetime(2026, 12, 1, tzinfo=UTC),
+    )
+    svc.undo_last_transition(a.id)
+    session.refresh(a)
+    assert a.status == AssetStatus.IDLE
+    assert TransitionRepository(session).find_last(a.id) is None
+
+
+def test_undo_recover_after_send_to_maintenance_keeps_holder_location(
+    session, asset_type
+):
+    """register → send-to-maintenance → recover → undo
+    asset 回 MAINTENANCE，holder/location 由 keep 规则保留 register 时的值。
+    """
+    a = _new_asset(session, asset_type.id, holder="李仓管", location="备件柜")
+    svc = TransitionService(session)
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.SEND_TO_MAINTENANCE)
+    svc.record_transition(asset_id=a.id, kind=TransitionKind.RECOVER_FROM_MAINTENANCE)
+
+    svc.undo_last_transition(a.id)
+
+    session.refresh(a)
+    assert a.status == AssetStatus.MAINTENANCE
+    assert a.holder == "李仓管"
+    assert a.location == "备件柜"
