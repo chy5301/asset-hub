@@ -52,3 +52,17 @@ class TransitionRepository:
             return None
 
         return latest_checkout.id
+
+    def find_last(self, asset_id: uuid.UUID) -> StateTransitionRecord | None:
+        """按 created_at 倒序取第一条，无则 None。"""
+        stmt = (
+            select(StateTransitionRecord)
+            .where(StateTransitionRecord.asset_id == asset_id)
+            .order_by(StateTransitionRecord.created_at.desc())
+            .limit(1)
+        )
+        return self.session.exec(stmt).first()
+
+    def delete(self, record: StateTransitionRecord) -> None:
+        self.session.delete(record)
+        self.session.flush()
