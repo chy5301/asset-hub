@@ -458,7 +458,7 @@ def test_list_assets_sort_by_brand(client, sample_type_nb_via_api):
         "/api/assets",
         json={"name": "A2", "type_id": str(sample_type_nb_via_api), "brand": "Apple"},
     )
-    resp = client.get("/api/assets", params={"sort_by": "brand"})
+    resp = client.get("/api/assets", params={"sort_by": "brand", "sort_order": "asc"})
     assert resp.status_code == 200
     body = resp.json()
     brands = [a["brand"] for a in body if a.get("brand")]
