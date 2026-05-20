@@ -95,6 +95,7 @@ class TestBuildRows:
         assert keys == [
             "资产编号",
             "名称",
+            "品牌",
             "型号",
             "类型",
             "状态",
@@ -263,7 +264,7 @@ class TestRenderCsv:
         data = svc._render_csv(rows)
         text = data.decode("utf-8-sig")
         first_line = text.splitlines()[0]
-        assert first_line.startswith("资产编号,名称,型号,类型,状态,")
+        assert first_line.startswith("资产编号,名称,品牌,型号,类型,状态,")
 
     def test_empty_rows_writes_header_only(self, session: Session):
         type_svc = TypeService(session)
@@ -273,6 +274,7 @@ class TestRenderCsv:
         column_names = [
             "资产编号",
             "名称",
+            "品牌",
             "型号",
             "类型",
             "状态",
@@ -364,8 +366,8 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # 11 列 (固定，v2.0 PR-3 加 "型号") + 1 row header + 1 row data = "A1:K2"
-        assert ws.auto_filter.ref == "A1:K2"
+        # 12 列 (CL-1 加 "品牌") + 1 row header + 1 row data = "A1:L2"
+        assert ws.auto_filter.ref == "A1:L2"
 
     def test_status_cell_filled_with_status_hex(self, session: Session):
         type_svc = TypeService(session)
@@ -378,8 +380,8 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # 状态列因 "型号" 列插入而后移到第 5 列 (E)
-        status_cell = ws.cell(row=2, column=5)
+        # 状态列因 CL-1 加 "品牌" 列而后移到第 6 列 (F)
+        status_cell = ws.cell(row=2, column=6)
         assert status_cell.value == "闲置"
         # PatternFill 验 fgColor.rgb 与 STATUS_HEX[IDLE] 一致
         assert status_cell.fill.fgColor.rgb == STATUS_HEX[AssetStatus.IDLE]
@@ -392,6 +394,7 @@ class TestRenderXlsx:
         column_names = [
             "资产编号",
             "名称",
+            "品牌",
             "型号",
             "类型",
             "状态",
@@ -424,9 +427,9 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        # 备注是固定第 10 列 (J)
-        assert ws.column_dimensions["J"].width is not None
-        assert ws.column_dimensions["J"].width <= 60
+        # 备注是固定第 12 列 (L)
+        assert ws.column_dimensions["L"].width is not None
+        assert ws.column_dimensions["L"].width <= 60
 
     def test_wrap_text_enabled_on_data_cells(self, session: Session):
         type_svc = TypeService(session)
@@ -441,7 +444,7 @@ class TestRenderXlsx:
 
         data = svc._render_xlsx(rows, column_names=list(rows[0].keys()))
         ws = self._load(data)["资产清单"]
-        notes_cell = ws.cell(row=2, column=10)
+        notes_cell = ws.cell(row=2, column=12)
         assert notes_cell.alignment.wrap_text is True
 
 
@@ -555,7 +558,9 @@ class TestExportBrandColumn:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(name="Laptop", code_prefix="BA", custom_fields=[])
-        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+        asset_svc.register(
+            name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo"
+        )
 
         data, _ = svc.export(format="csv")
         text = data.decode("utf-8-sig")
@@ -571,7 +576,9 @@ class TestExportBrandColumn:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(name="Laptop", code_prefix="BB", custom_fields=[])
-        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+        asset_svc.register(
+            name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo"
+        )
 
         data, _ = svc.export(format="csv")
         text = data.decode("utf-8-sig")
@@ -591,7 +598,9 @@ class TestExportBrandColumn:
         svc = ExportService(session, asset_svc, type_svc)
 
         t = type_svc.create_type(name="Laptop", code_prefix="BC", custom_fields=[])
-        asset_svc.register(name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo")
+        asset_svc.register(
+            name="ThinkPad", type_id=t.id, custom_data={}, brand="Lenovo"
+        )
 
         data, _ = svc.export(format="xlsx")
         wb = openpyxl.load_workbook(BytesIO(data))
