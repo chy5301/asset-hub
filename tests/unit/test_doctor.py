@@ -335,16 +335,24 @@ class TestPortOwnerParentChain:
 
     def test_check_port_owner_self_via_parent_chain(self, monkeypatch):
         """actual_pid 的直接父是 expected_pid → ok=True（uv 父子场景）。"""
-        from asset_hub.cli.serve import doctor
         import psutil
+
+        from asset_hub.cli.serve import doctor
 
         monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 59740)
 
         class FakeParent:
             pid = 59584
+
         class FakePython:
-            def parents(self): return [FakeParent()]
-        monkeypatch.setattr(psutil, "Process", lambda pid: FakePython() if pid == 59740 else FakeParent())
+            def parents(self):
+                return [FakeParent()]
+
+        monkeypatch.setattr(
+            psutil,
+            "Process",
+            lambda pid: FakePython() if pid == 59740 else FakeParent(),
+        )
 
         result = doctor.check_port_owner(8000, expected_pid=59584)
         assert result.ok is True
@@ -353,32 +361,46 @@ class TestPortOwnerParentChain:
 
     def test_check_port_owner_self_via_grandparent_chain(self, monkeypatch):
         """actual_pid 的祖父是 expected_pid（多层 spawn 场景）→ ok=True。"""
-        from asset_hub.cli.serve import doctor
         import psutil
+
+        from asset_hub.cli.serve import doctor
 
         monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 100)
 
         class P:
-            def __init__(self, pid): self.pid = pid
+            def __init__(self, pid):
+                self.pid = pid
+
         class FakeChild:
-            def parents(self): return [P(99), P(98)]
-        monkeypatch.setattr(psutil, "Process", lambda pid: FakeChild() if pid == 100 else None)
+            def parents(self):
+                return [P(99), P(98)]
+
+        monkeypatch.setattr(
+            psutil, "Process", lambda pid: FakeChild() if pid == 100 else None
+        )
 
         result = doctor.check_port_owner(8000, expected_pid=98)
         assert result.ok is True
 
     def test_check_port_owner_external_unrelated_chain(self, monkeypatch):
         """actual_pid 祖先链不含 expected_pid → ok=False（保持原行为）。"""
-        from asset_hub.cli.serve import doctor
         import psutil
+
+        from asset_hub.cli.serve import doctor
 
         monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 9999)
 
         class P:
-            def __init__(self, pid): self.pid = pid
+            def __init__(self, pid):
+                self.pid = pid
+
         class FakeUnrelated:
-            def parents(self): return [P(8888), P(7777)]
-        monkeypatch.setattr(psutil, "Process", lambda pid: FakeUnrelated() if pid == 9999 else None)
+            def parents(self):
+                return [P(8888), P(7777)]
+
+        monkeypatch.setattr(
+            psutil, "Process", lambda pid: FakeUnrelated() if pid == 9999 else None
+        )
 
         result = doctor.check_port_owner(8000, expected_pid=12345)
         assert result.ok is False
@@ -387,11 +409,13 @@ class TestPortOwnerParentChain:
 
     def test_walks_ancestor_chain_handles_psutil_errors(self, monkeypatch):
         """_walks_ancestor_chain: psutil.Process raises → 返 False 不抛。"""
-        from asset_hub.cli.serve import doctor
         import psutil
+
+        from asset_hub.cli.serve import doctor
 
         def raise_no_such(pid):
             raise psutil.NoSuchProcess(pid)
+
         monkeypatch.setattr(psutil, "Process", raise_no_such)
 
         assert doctor._walks_ancestor_chain(9999, 12345) is False

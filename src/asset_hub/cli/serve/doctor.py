@@ -264,6 +264,27 @@ def _find_port_owner_pid(port: int) -> int | None:
     return None
 
 
+def _walks_ancestor_chain(pid: int, target: int) -> bool:
+    """检查 pid 的祖先链（含 pid 自身）是否含 target。
+
+    防 uv run 父子进程链路误报：PID 文件记 uv 父，端口被 python 子绑（#22）。
+    psutil.Process.parents() 跨平台返从直接父到 ROOT 的所有祖先。
+    AccessDenied / NoSuchProcess 兜底返 False（视为"无法判定"）。
+    """
+    import psutil
+
+    if pid == target:
+        return True
+    try:
+        proc = psutil.Process(pid)
+        for ancestor in proc.parents():
+            if ancestor.pid == target:
+                return True
+    except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError):
+        return False
+    return False
+
+
 def check_port_owner(port: int, expected_pid: int | None) -> DoctorCheck:
     """探测端口占用者 PID 与 expected_pid 是否一致。
 
@@ -273,7 +294,7 @@ def check_port_owner(port: int, expected_pid: int | None) -> DoctorCheck:
     actual_pid = _find_port_owner_pid(port)
     if actual_pid is None:
         return DoctorCheck(name=name, ok=True, detail=f"端口 {port} 空闲")
-    if expected_pid is not None and actual_pid == expected_pid:
+    if expected_pid is not None and _walks_ancestor_chain(actual_pid, expected_pid):
         return DoctorCheck(
             name=name,
             ok=True,
