@@ -26,7 +26,7 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
 
       <div className="flex items-center gap-3">
         <TogglePill
-          label="已退役"
+          label="显示退役"
           tokenClass="data-[state=on]:bg-status-retired/15 data-[state=on]:text-status-retired-fg"
           state={includeRetired ? "on" : "off"}
           onClick={() =>
@@ -37,7 +37,7 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
           }
         />
         <TogglePill
-          label="已注销"
+          label="显示注销"
           tokenClass="data-[state=on]:bg-status-disposed/15 data-[state=on]:text-status-disposed-fg"
           state={includeDisposed ? "on" : "off"}
           onClick={() =>
@@ -48,7 +48,7 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
           }
         />
         <HelpCircle className="size-3.5 text-muted-foreground/60" aria-label="提示">
-          <title>默认排除已退役/已注销(与列表一致)</title>
+          <title>默认排除显示退役/显示注销(与列表一致)</title>
         </HelpCircle>
       </div>
     </div>

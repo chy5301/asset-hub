@@ -33,11 +33,7 @@ export function DashboardPage() {
 
   return (
     <main
-      className="relative min-h-[calc(100vh-4rem)] px-6 py-8"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle at 50% 20%, var(--dashboard-bg-radial-from), var(--dashboard-bg-radial-to))",
-      }}
+      className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]"
     >
       <div className="border-b border-border/40 mb-8" />
 
