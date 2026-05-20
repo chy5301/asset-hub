@@ -281,13 +281,10 @@ def check_port_owner(port: int, expected_pid: int | None) -> DoctorCheck:
         )
     # 外部进程占用
     if expected_pid is None:
-        detail = (
-            f"端口 {port} 被进程 {actual_pid} 占用，但本机无对应 PID 文件"
-        )
+        detail = f"端口 {port} 被进程 {actual_pid} 占用，但本机无对应 PID 文件"
     else:
         detail = (
-            f"端口 {port} 被外部进程 {actual_pid} 占用"
-            f"（PID 文件记录 {expected_pid}）"
+            f"端口 {port} 被外部进程 {actual_pid} 占用（PID 文件记录 {expected_pid}）"
         )
     fix_hint = (
         f"端口 {port} 被本工具管理范围外的进程占用，无法启动 serve。\n"
@@ -317,9 +314,7 @@ def run_all_checks(*, mode: str = "prod") -> DoctorResult:
         check_frontend_dist(),
         check_port_free(8000),
     ]
-    backend_state = pid_mod.read_pid_state(
-        settings.pids_dir / "backend.pid", "backend"
-    )
+    backend_state = pid_mod.read_pid_state(settings.pids_dir / "backend.pid", "backend")
     backend_pid = (
         backend_state.pid
         if backend_state.status == pid_mod.PidStateStatus.RUNNING
