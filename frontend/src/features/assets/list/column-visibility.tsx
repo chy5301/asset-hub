@@ -13,6 +13,7 @@ import {
 export type ColumnKey =
   | "asset_code"
   | "name"
+  | "brand"
   | "model"
   | "serial_number"
   | "type"
@@ -25,6 +26,7 @@ export type ColumnKey =
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
   asset_code: "编号",
   name: "名称",
+  brand: "品牌",
   model: "型号",
   serial_number: "SN",
   type: "类型",
@@ -39,6 +41,7 @@ const STORAGE_KEY = "asset-hub.list.columns.v2";
 const ALL_KEYS: ColumnKey[] = [
   "asset_code",
   "name",
+  "brand",
   "model",
   "serial_number",
   "type",

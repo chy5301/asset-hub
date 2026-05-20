@@ -11,6 +11,7 @@ class AssetCreate(BaseModel):
     name: str
     type_id: UUID
     serial_number: str | None = None
+    brand: str | None = None
     model: str | None = None
     holder: str | None = None
     location: str | None = None
@@ -30,6 +31,7 @@ class AssetUpdate(BaseModel):
 
     name: str | None = None
     serial_number: str | None = None
+    brand: str | None = None
     model: str | None = None  # exclude_unset 模式区分"未传 vs null 清空"
     notes: str | None = None
     custom_data: dict | None = None
@@ -43,6 +45,7 @@ class AssetRead(BaseModel):
     asset_code: str
     name: str
     serial_number: str | None
+    brand: str | None
     model: str | None
     type_id: UUID
     type_name: str | None  # 从 Asset.type_name @property 自动读取

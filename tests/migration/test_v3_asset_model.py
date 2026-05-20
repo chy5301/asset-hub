@@ -70,7 +70,10 @@ def test_v3_upgrade_adds_model_column_and_index(v2_db):
 
 
 def test_v3_downgrade_removes_model_column_and_index(v2_db):
-    """upgrade 到 head 再 downgrade -1：model 列 + ix_assets_model 索引一并消失。"""
+    """upgrade 到 head 再 downgrade 回 v2：model 列 + ix_assets_model 索引一并消失。
+
+    CL-1 加 v4 后 head 移到 v4，downgrade target 从 -1 → -2（v4 → v3 → v2）。
+    """
     db_path, cfg, db_url, mock_settings = v2_db
 
     _clear_env_cache()
@@ -79,7 +82,7 @@ def test_v3_downgrade_removes_model_column_and_index(v2_db):
 
     _clear_env_cache()
     with patch("asset_hub.config.Settings", return_value=mock_settings):
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "-2")
 
     engine = create_engine(db_url)
     cols = {c["name"] for c in inspect(engine).get_columns("assets")}

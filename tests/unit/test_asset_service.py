@@ -27,7 +27,7 @@ def laptop_type(type_svc: TypeService):
         name="笔记本电脑",
         code_prefix="NB",
         custom_fields=[
-            {"key": "brand", "label": "品牌", "type": "string", "required": True},
+            {"key": "cpu", "label": "处理器", "type": "string", "required": True},
             {
                 "key": "os",
                 "label": "操作系统",
@@ -44,7 +44,7 @@ class TestRegisterAsset:
         a = svc.register(
             name="ThinkPad X1",
             type_id=laptop_type.id,
-            custom_data={"brand": "Lenovo"},
+            custom_data={"cpu": "Intel i7"},
         )
         assert a.id is not None
         assert a.name == "ThinkPad X1"
@@ -58,7 +58,7 @@ class TestRegisterAsset:
             holder="张三",
             location="工位 5",
             notes="全新",
-            custom_data={"brand": "Apple", "os": "macOS", "ram_gb": 16},
+            custom_data={"cpu": "Apple M2", "os": "macOS", "ram_gb": 16},
         )
         assert a.serial_number == "C02X12345"
         assert a.holder == "张三"
@@ -73,20 +73,20 @@ class TestRegisterAsset:
             name="A",
             type_id=laptop_type.id,
             serial_number="SN001",
-            custom_data={"brand": "X"},
+            custom_data={"cpu": "Intel i5"},
         )
         with pytest.raises(DuplicateError):
             svc.register(
                 name="B",
                 type_id=laptop_type.id,
                 serial_number="SN001",
-                custom_data={"brand": "Y"},
+                custom_data={"cpu": "Intel i7"},
             )
 
     def test_register_missing_required_field_raises(
         self, svc: AssetService, laptop_type
     ):
-        with pytest.raises(ValidationError, match="品牌"):
+        with pytest.raises(ValidationError, match="处理器"):
             svc.register(name="X", type_id=laptop_type.id, custom_data={})
 
     def test_register_invalid_enum_raises(self, svc: AssetService, laptop_type):
@@ -94,7 +94,7 @@ class TestRegisterAsset:
             svc.register(
                 name="X",
                 type_id=laptop_type.id,
-                custom_data={"brand": "Dell", "os": "FreeBSD"},
+                custom_data={"cpu": "Intel i7", "os": "FreeBSD"},
             )
 
     def test_register_unknown_custom_key_raises(self, svc: AssetService, laptop_type):
@@ -102,7 +102,7 @@ class TestRegisterAsset:
             svc.register(
                 name="X",
                 type_id=laptop_type.id,
-                custom_data={"brand": "Dell", "unknown_key": "val"},
+                custom_data={"cpu": "Intel i7", "unknown_key": "val"},
             )
 
 
@@ -111,16 +111,16 @@ class TestListAssets:
         assert svc.list_assets() == []
 
     def test_list_all(self, svc: AssetService, laptop_type):
-        svc.register(name="A", type_id=laptop_type.id, custom_data={"brand": "X"})
-        svc.register(name="B", type_id=laptop_type.id, custom_data={"brand": "Y"})
+        svc.register(name="A", type_id=laptop_type.id, custom_data={"cpu": "Intel i5"})
+        svc.register(name="B", type_id=laptop_type.id, custom_data={"cpu": "Intel i7"})
         assert len(svc.list_assets()) == 2
 
     def test_filter_by_q(self, svc: AssetService, laptop_type):
         svc.register(
-            name="ThinkPad X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+            name="ThinkPad X1", type_id=laptop_type.id, custom_data={"cpu": "Intel i7"}
         )
         svc.register(
-            name="MacBook Pro", type_id=laptop_type.id, custom_data={"brand": "Apple"}
+            name="MacBook Pro", type_id=laptop_type.id, custom_data={"cpu": "Apple M2"}
         )
         result = svc.list_assets(q="ThinkPad")
         assert len(result) == 1
@@ -129,7 +129,7 @@ class TestListAssets:
 class TestGetAsset:
     def test_get_existing(self, svc: AssetService, laptop_type):
         created = svc.register(
-            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+            name="X1", type_id=laptop_type.id, custom_data={"cpu": "Intel i7"}
         )
         fetched = svc.get_asset(created.id)
         assert fetched.name == "X1"
@@ -142,7 +142,7 @@ class TestGetAsset:
 class TestUpdateAsset:
     def test_update_notes(self, svc: AssetService, laptop_type):
         a = svc.register(
-            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+            name="X1", type_id=laptop_type.id, custom_data={"cpu": "Intel i7"}
         )
         updated = svc.update_asset(a.id, notes="新备注")
         assert updated.notes == "新备注"
@@ -155,7 +155,7 @@ class TestUpdateAsset:
 class TestDeleteAsset:
     def test_delete_existing(self, svc: AssetService, laptop_type):
         a = svc.register(
-            name="X1", type_id=laptop_type.id, custom_data={"brand": "Lenovo"}
+            name="X1", type_id=laptop_type.id, custom_data={"cpu": "Intel i7"}
         )
         svc.delete_asset(a.id)
         with pytest.raises(NotFoundError):
@@ -558,3 +558,61 @@ class TestListAssetsRetiredDisposedFilter:
         result = svc.list_assets(status=AssetStatus.DISPOSED)
         statuses = {a.status for a in result}
         assert statuses == {AssetStatus.DISPOSED}
+
+
+# ── brand 透传 tests ────────────────────────────────────────────────────────────
+
+
+def test_register_with_brand(session: Session, sample_type_nb):
+    """register 应接受 brand 参数并落库。"""
+    svc = AssetService(session)
+    a = svc.register(
+        name="Asset 1",
+        type_id=sample_type_nb.id,
+        custom_data={},
+        brand="Lenovo",
+        model="ThinkPad T14",
+    )
+    assert a.brand == "Lenovo"
+
+
+def test_update_asset_brand_unset_keeps_current(session: Session, sample_type_nb):
+    """update_asset 不传 brand → keep current。"""
+    svc = AssetService(session)
+    a = svc.register(
+        name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo"
+    )
+    a2 = svc.update_asset(a.id, name="A-new")  # 不传 brand
+    assert a2.brand == "Lenovo"  # 保留
+
+
+def test_update_asset_brand_explicit_null_clears(session: Session, sample_type_nb):
+    """update_asset 显式传 brand=None → 清空。"""
+    svc = AssetService(session)
+    a = svc.register(
+        name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo"
+    )
+    a2 = svc.update_asset(a.id, brand=None)
+    assert a2.brand is None  # 清空
+
+
+def test_list_filtered_q_matches_brand(session: Session, sample_type_nb):
+    """list_assets q 应能搜到 brand。"""
+    svc = AssetService(session)
+    svc.register(name="A1", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    svc.register(name="A2", type_id=sample_type_nb.id, custom_data={}, brand="Apple")
+
+    result = svc.list_assets(q="Lenovo")
+    matched = [a for a in result if a.brand == "Lenovo"]
+    assert len(matched) == 1
+
+
+def test_sort_by_brand(session: Session, sample_type_nb):
+    """list_assets sort_by='brand' 应可用（字典序）。"""
+    svc = AssetService(session)
+    svc.register(name="A1", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    svc.register(name="A2", type_id=sample_type_nb.id, custom_data={}, brand="Apple")
+
+    result = svc.list_assets(sort_by="brand", sort_order="asc")
+    brands = [a.brand for a in result if a.brand]
+    assert brands == sorted(brands)  # ["Apple", "Lenovo"]

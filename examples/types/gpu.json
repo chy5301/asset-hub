@@ -2,7 +2,6 @@
   "name": "显卡",
   "description": "独立图形处理器",
   "custom_fields": [
-    {"key": "brand", "label": "品牌", "type": "string", "required": true},
     {"key": "vram_gb", "label": "显存(GB)", "type": "int"},
     {"key": "interface", "label": "接口", "type": "enum", "options": ["PCIe 4.0", "PCIe 5.0"]}
   ]

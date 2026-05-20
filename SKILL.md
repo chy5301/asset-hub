@@ -80,6 +80,7 @@ description: |-
 | `name` | str（必填）| `--name` | 资产实例名（自定义代号，与厂家型号无关） |
 | `type_id` | UUID（必填）| `--type-id` | 关联 AssetType |
 | `serial_number` | str / null | `--sn` | 厂家 SN，**unique index** |
+| `brand` | str / null | `--brand` | 品牌（CL-1 v2.1 拆为顶层列） |
 | `model` | str / null | `--model` | 厂家型号（v2.0 PR-3 拆为顶层列） |
 | `holder` | str / null | `--holder` | 保管人。register 时可直传（"IDLE + 在库由 X 保管"语义）；由 checkout transition 写入则表达"X 正在使用"。两种语义都合法，按现实情况选 |
 | `location` | str / null | `--location` | 物理位置 |
@@ -171,7 +172,9 @@ asset-hub serve doctor [--mode dev|prod] [--json]
 5. **declare-unrepairable vs retire**：DECLARE_UNREPAIRABLE 是"维修过程判定不可修"（MAINTENANCE → BROKEN）；RETIRE 是"主动下架"（多个起点）。两者均需 confirm，含 `--yes/--dry-run`。
 6. **派出集 closes 通用化**：任何从 `{IN_USE, BROKEN}` 走出到 `{IN_USE, BROKEN}` 之外的 transition 都自动闭合最近 OPEN CHECKOUT。即不只 RETURN，BROKEN → IDLE (DISMISS) / IN_USE → MAINTENANCE 等都会闭合最初的 CHECKOUT。
 7. **DISPOSE 中文术语是"注销"**：CLI confirm phrase、UI label、export 文案统一为"注销"。前端 AlertDialog 解锁短语是 `"注销"`，旧脚本若硬编码 `"处置"` 会失败（CLI 唯一跳过确认的方式是 `--yes`）。
-8. **顶层字段 vs custom_fields 边界**：`custom_fields` **只放类型特有规格**（`cpu` / `ram_gb` / `os_family` 等），**不要**重复定义 Asset 顶层字段（`name` / `model` / `serial_number` / `holder` / `location` / `notes` / `acquired_at`）。重复定义会造成数据漂移：顶层一份 + custom 一份谁是真值不明。设计 AssetType 前先对照上方"Asset 顶层公共字段"段。
+8. **顶层字段 vs custom_fields 边界**：`custom_fields` **只放类型特有规格**（`cpu` / `ram_gb` / `os_family` 等），**不要**重复定义 Asset 顶层字段（`name` / `brand` / `model` / `serial_number` / `holder` / `location` / `notes` / `acquired_at`）。重复定义会造成数据漂移：顶层一份 + custom 一份谁是真值不明。设计 AssetType 前先对照上方"Asset 顶层公共字段"段。
+
+   **v2.1+** 起 AssetType `custom_fields[].key` 已强制校验 reserved 全集 16 项：顶层字段 9 个（`asset_code` / `serial_number` / `name` / `model` / `brand` / `holder` / `location` / `notes` / `acquired_at`）+ CLI 别名 `sn` + 系统/关系字段 6 个（`type` / `type_name` / `type_id` / `status` / `id` / `custom_data`）。违规 `create_type` / `update_type` 会直接 `ValidationError`。**对现有 AssetType 含 reserved key 重名 custom_field 零破坏**（仅 future create/update 拒绝），但建议手动从 type 中删除避免双输入框 UI 怪状。
 9. **holder / location 必须由用户明确指定，避免静默缺省 / 推断 / 复用**：登记或流转设备涉及 `holder` 或 `location` 字段时（包括 `register --holder` / `--location`，与所有 transition 的 `--to-holder` / `--to-location`），必须**先向用户确认**。**避免**三种推断模式：(a) 静默不传 → 字段为 null；(b) 从国资资产卡的"负责人"、铭牌、照片背景里抓字段；(c) 复用上一台同型号 / 同批次设备的 holder。其他规格字段（型号 / SN / CPU / RAM 等）正常从命令/照片自动组装；唯独 `holder` 和 `location` 例外——它们是"谁现在拿着这台设备"的现实世界状态，不能静默替用户决策。
 10. **设计 AssetType 前先 `type list --json` 查实际类型**：新建或扩展 `AssetType` 时，**第一步**是 `uv run asset-hub type list --json`，读完现有类型的 `custom_fields` 再动笔——让新类型的字段命名（`brand` 不要写成 `manufacturer`）、required 策略、`help` / `placeholder` 风格、enum vs string 选择、`unit` / `min` / `max` 标注与现有类型对齐。`examples/types/*.json` 是写文档时的快照，会跟数据库实际类型漂移，**只在**实际库里没有同类资产时作补充参考。AssetType 是长期消费的契约，字段风格不一致会让后续聚合 / 导出被字段差异坑。
 11. **录入设备时必须问清初始 status**：register 默认 status=IDLE 且只能经 transition 改；用户若未明确"这台是闲置 / 在用 / 送修 / 故障 / 退役"，**先问再录**，再决定操作链——单独 `register`（IDLE 在库）或 `register` 后跟一个 transition（checkout / send-to-maintenance / report-broken / retire）。**避免**两种推断：(a) 用户没说就默认 IDLE 静默走过；(b) 看 `--holder` 有值就推断 IN_USE。本次踩坑就是后者——"归 X 保管"被自动翻译成 register+checkout，把闲置库存变成"占用中"，破坏 IDLE/IN_USE 看板统计与"派出集 closes 通用化"（Gotcha #6）的事件链。

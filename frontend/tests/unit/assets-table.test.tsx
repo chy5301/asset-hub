@@ -17,6 +17,7 @@ function renderTable(rows: AssetRow[]) {
   const visible = {
     asset_code: true,
     name: true,
+    brand: true,
     model: true,
     serial_number: true,
     type: true,
@@ -61,6 +62,7 @@ const baseRow: AssetRow = {
   id: 'a1',
   asset_code: 'NB-001',
   name: 'ThinkPad X1',
+  brand: null,
   model: null,
   serial_number: null,
   type_id: 't1',
@@ -92,16 +94,18 @@ describe('AssetsTable · model 列', () => {
     expect(dashes.length).toBeGreaterThan(0);
   });
 
-  it('列顺序：name 之后是 model，model 之后是 serial_number', async () => {
+  it('列顺序：name → brand → model → serial_number', async () => {
     renderTable([baseRow]);
     const headerRow = await screen.findByRole('row', { name: /名称/ });
     const headers = within(headerRow).getAllByRole('columnheader');
     const headerTexts = headers.map((h) => h.textContent ?? '');
     const nameIdx = headerTexts.findIndex((t) => t.includes('名称'));
+    const brandIdx = headerTexts.findIndex((t) => t.includes('品牌'));
     const modelIdx = headerTexts.findIndex((t) => t.includes('型号'));
     const snIdx = headerTexts.findIndex((t) => t.includes('SN'));
     expect(nameIdx).toBeGreaterThanOrEqual(0);
-    expect(modelIdx).toBe(nameIdx + 1);
+    expect(brandIdx).toBe(nameIdx + 1);
+    expect(modelIdx).toBe(brandIdx + 1);
     expect(snIdx).toBe(modelIdx + 1);
   });
 });

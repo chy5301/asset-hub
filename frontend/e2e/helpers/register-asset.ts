@@ -22,7 +22,7 @@ export function registerAsset(opts: {
   const typeId = fs.readFileSync("e2e/.state/type-id.txt", "utf8").trim();
   if (!typeId) throw new Error("type-id.txt 为空（global-setup 未跑？）");
 
-  const customJson = JSON.stringify(opts.custom ?? { brand: "Lenovo", ram_gb: 16 });
+  const customJson = JSON.stringify(opts.custom ?? { ram_gb: 16 });
   // execFileSync argv 数组直传子进程，不走 shell — 避免 name/sn 含元字符时注入或解析错
   const out = execFileSync(
     "uv",

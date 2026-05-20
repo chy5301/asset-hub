@@ -3,7 +3,6 @@
   "code_prefix": "BL",
   "description": "独立离线工作的总线数据记录设备，记录 CAN/LIN 等总线报文到内置存储，USB 仅用于配置和数据导出",
   "custom_fields": [
-    {"key": "brand", "label": "品牌", "type": "string", "required": true, "placeholder": "TOSUN / Vector / Influx / Intrepid"},
     {"key": "supported_buses", "label": "支持的总线", "type": "multi-enum", "required": true, "options": ["CAN", "LIN", "FlexRay", "Ethernet", "Automotive-Ethernet"], "help": "CAN 含 CAN-FD（向下兼容语义），与总线接口设备类型对齐"},
     {"key": "total_channels", "label": "硬件通道总数", "type": "int", "unit": "路", "min": 1, "max": 32, "help": "物理通道（接头）总数。各协议通道数之和 > 此值即表示存在协议复用"},
     {"key": "can_channels", "label": "CAN 通道数", "type": "int", "unit": "路", "min": 0, "max": 32, "help": "含 CAN-FD"},

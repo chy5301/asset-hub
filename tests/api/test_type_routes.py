@@ -19,7 +19,7 @@ class TestCreateType:
             "name": "显卡",
             "code_prefix": "GPU",
             "custom_fields": [
-                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+                {"key": "vram_gb", "label": "显存(GB)", "type": "int", "required": True}
             ],
         }
         resp = client.post("/api/types", json=body)

@@ -17,6 +17,50 @@ from asset_hub.repositories.asset_type import TypeRepository
 
 _PREFIX_RE = re.compile(r"^[A-Z]{2,4}$")
 
+# CL-1：Asset 顶层 user-writable 字段 + 别名 + 系统字段集合，不允许在 custom_fields[].key 重名
+RESERVED_CUSTOM_FIELD_KEYS: frozenset[str] = frozenset(
+    {
+        # Asset 顶层 user-writable 字段
+        "asset_code",
+        "serial_number",
+        "name",
+        "model",
+        "brand",
+        "holder",
+        "location",
+        "notes",
+        "acquired_at",
+        # CLI / 直觉别名
+        "sn",
+        # 系统/关系字段（防恶意撞）
+        "type",
+        "type_name",
+        "type_id",
+        "status",
+        "id",
+        "custom_data",
+    }
+)
+
+
+def _check_reserved_keys(custom_fields: list | None) -> None:
+    """校验 custom_fields[].key 不与 Asset 顶层字段 / 别名 / 系统字段重名。
+
+    raise ValidationError + 提示用户用顶层字段或换 key。
+    """
+    if not custom_fields:
+        return
+    for f in custom_fields:
+        if isinstance(f, dict):
+            key = f.get("key")
+        else:
+            key = getattr(f, "key", None)
+        if isinstance(key, str) and key in RESERVED_CUSTOM_FIELD_KEYS:
+            raise ValidationError(
+                f"key '{key}' 是 Asset 顶层公共字段或保留名，请用顶层字段写入或换 key。"
+                f" reserved 全集: {sorted(RESERVED_CUSTOM_FIELD_KEYS)}"
+            )
+
 
 class TypeService:
     def __init__(self, session: Session):
@@ -48,6 +92,7 @@ class TypeService:
                 f"code_prefix 格式不合法：'{code_prefix}'，需要 2-4 个大写字母（^[A-Z]{{2,4}}$）"
             )
 
+        _check_reserved_keys(custom_fields)  # CL-1 reserved key 校验
         validated_fields = self._validate_and_dump_fields(custom_fields or [])
 
         asset_type = AssetType(
@@ -122,6 +167,7 @@ class TypeService:
             t.description = description
             changed = True
         if custom_fields is not None:
+            _check_reserved_keys(custom_fields)  # CL-1 reserved key 校验
             new_cf = self._validate_and_dump_fields(custom_fields)
             if new_cf != t.custom_fields:
                 t.custom_fields = new_cf

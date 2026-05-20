@@ -33,6 +33,7 @@ export interface AssetRow {
   asset_code: string;
   serial_number?: string | null;
   name: string;
+  brand?: string | null;
   model?: string | null;
   type_id?: string | null;
   type_name?: string | null;
@@ -97,6 +98,15 @@ export function AssetsTable({
         cell: ({ row }) => (
           <span className="font-medium">{row.original.name}</span>
         ),
+      },
+      {
+        id: "brand",
+        accessorKey: "brand",
+        header: COLUMN_LABELS.brand,
+        cell: ({ row }) =>
+          row.original.brand ?? (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: "model",
