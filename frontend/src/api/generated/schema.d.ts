@@ -417,6 +417,8 @@ export interface components {
             asset_id: string;
             /** Asset Code */
             asset_code: string;
+            /** Name */
+            name: string;
             /** Type Name */
             type_name: string | null;
             /** Current Location */
