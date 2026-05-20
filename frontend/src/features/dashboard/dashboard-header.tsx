@@ -27,7 +27,8 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
       <div className="flex items-center gap-3">
         <TogglePill
           label="显示退役"
-          tokenClass="data-[state=on]:bg-status-retired/15 data-[state=on]:text-status-retired-fg"
+          tokenClass="bg-status-retired/15 text-status-retired-fg"
+          borderOnClass="border-status-retired/60"
           state={includeRetired ? "on" : "off"}
           onClick={() =>
             onToggle({
@@ -38,7 +39,8 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
         />
         <TogglePill
           label="显示注销"
-          tokenClass="data-[state=on]:bg-status-disposed/15 data-[state=on]:text-status-disposed-fg"
+          tokenClass="bg-status-disposed/15 text-status-disposed-fg"
+          borderOnClass="border-status-disposed/60"
           state={includeDisposed ? "on" : "off"}
           onClick={() =>
             onToggle({
@@ -58,11 +60,12 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
 interface TogglePillProps {
   label: string;
   tokenClass: string;
+  borderOnClass: string;
   state: "on" | "off";
   onClick: () => void;
 }
 
-function TogglePill({ label, tokenClass, state, onClick }: TogglePillProps) {
+function TogglePill({ label, tokenClass, borderOnClass, state, onClick }: TogglePillProps) {
   return (
     <button
       type="button"
@@ -71,9 +74,10 @@ function TogglePill({ label, tokenClass, state, onClick }: TogglePillProps) {
       aria-label={label}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
-        "border-border/60 text-muted-foreground transition-colors",
-        "hover:bg-muted",
-        tokenClass,
+        "transition-colors",
+        state === "off"
+          ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+          : cn("hover:opacity-90", tokenClass, borderOnClass),
       )}
     >
       <span
