@@ -58,3 +58,16 @@ def test_get_stats_include_retired_passes_to_summary(client, populated_db):
 def test_get_stats_invalid_bool_returns_422(client):
     res = client.get("/api/stats?include_retired=maybe")
     assert res.status_code == 422
+
+
+def test_stats_endpoint_returns_idle_top_with_name(client, populated_db):
+    """GET /api/stats idle_top 数组每项应含 name 字段。"""
+    res = client.get("/api/stats?fields=idle_top")
+    assert res.status_code == 200
+    data = res.json()
+    assert "idle_top" in data
+    assert data["idle_top"] is not None
+    assert len(data["idle_top"]) > 0
+    for item in data["idle_top"]:
+        assert "name" in item, f"idle_top item 缺 name 字段: {item}"
+        assert isinstance(item["name"], str)
