@@ -127,3 +127,68 @@ class TestRefCount:
         asset_svc.register(name="x", type_id=t.id, custom_data={})
         updated = svc.update_type(t.id, description="新描述")
         assert updated.ref_count == 1
+
+
+class TestReservedKeys:
+    """CL-1：AssetType custom_fields[].key 加 reserved 全集 16 项校验。"""
+
+    def test_create_type_rejects_reserved_custom_field_key_brand(self, svc: TypeService):
+        """create_type 含 reserved key 'brand' 的 custom_field 应 ValidationError + hint。"""
+        with pytest.raises(ValidationError) as exc:
+            svc.create_type(
+                name="Test",
+                code_prefix="TST",
+                custom_fields=[
+                    {"key": "brand", "label": "品牌", "type": "string"}
+                ],
+            )
+        msg = str(exc.value)
+        assert "brand" in msg
+        assert "reserved" in msg.lower() or "顶层" in msg
+
+    @pytest.mark.parametrize(
+        "reserved_key",
+        [
+            # Asset 顶层 user-writable 字段
+            "asset_code", "serial_number", "name", "model", "brand",
+            "holder", "location", "notes", "acquired_at",
+            # CLI 直觉别名
+            "sn",
+            # 系统/关系字段
+            "type", "type_name", "type_id", "status", "id", "custom_data",
+        ],
+    )
+    def test_create_type_rejects_all_reserved_keys(
+        self, svc: TypeService, reserved_key: str
+    ):
+        """全集 16 项 reserved 都应被拒。"""
+        with pytest.raises(ValidationError):
+            svc.create_type(
+                name=f"Test-{reserved_key}",
+                code_prefix="TST",
+                custom_fields=[
+                    {"key": reserved_key, "label": "x", "type": "string"}
+                ],
+            )
+
+    def test_create_type_accepts_non_reserved_key(self, svc: TypeService):
+        """非 reserved key 应通过。"""
+        result = svc.create_type(
+            name="Test-OK",
+            code_prefix="TOK",
+            custom_fields=[
+                {"key": "warranty_until", "label": "保修截止", "type": "date"}
+            ],
+        )
+        assert result.id is not None
+
+    def test_update_type_also_rejects_reserved_key(self, svc: TypeService):
+        """update_type 同样应校验 reserved。"""
+        t = svc.create_type(name="T1", code_prefix="TBB", custom_fields=[])
+        with pytest.raises(ValidationError):
+            svc.update_type(
+                type_id=t.id,
+                custom_fields=[
+                    {"key": "model", "label": "型号", "type": "string"}
+                ],
+            )
