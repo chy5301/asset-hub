@@ -42,7 +42,7 @@ class TestAssetRegister:
     def test_register_with_custom_data(self):
         type_id = _define_type(
             fields=[
-                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+                {"key": "cpu", "label": "处理器", "type": "string", "required": True}
             ]
         )
         result = runner.invoke(
@@ -55,13 +55,13 @@ class TestAssetRegister:
                 "--type-id",
                 type_id,
                 "--custom",
-                '{"brand": "Lenovo"}',
+                '{"cpu": "Intel i7"}',
                 "--json",
             ],
         )
         assert result.exit_code == 0
         data = json.loads(result.stdout)
-        assert data["data"]["custom_data"]["brand"] == "Lenovo"
+        assert data["data"]["custom_data"]["cpu"] == "Intel i7"
 
     def test_register_bad_type_exits_3(self):
         from uuid import uuid4

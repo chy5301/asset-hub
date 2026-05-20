@@ -63,14 +63,19 @@ class TestResolveCustomFields:
             name="Laptop",
             code_prefix="NB",
             custom_fields=[
-                {"key": "sn", "label": "铭牌编号", "type": "string", "required": False},
+                {
+                    "key": "barcode",
+                    "label": "铭牌编号",
+                    "type": "string",
+                    "required": False,
+                },
                 {"key": "cpu", "label": "CPU", "type": "string", "required": False},
             ],
         )
 
         fields = svc._resolve_custom_fields(t.id)
         assert len(fields) == 2
-        assert fields[0].key == "sn"
+        assert fields[0].key == "barcode"
         assert fields[0].label == "铭牌编号"
         assert fields[1].key == "cpu"
 
@@ -160,7 +165,7 @@ class TestBuildRows:
             code_prefix="NBX",
             custom_fields=[
                 {
-                    "key": "sn",
+                    "key": "barcode",
                     "label": "铭牌编号 (custom)",
                     "type": "string",
                     "required": False,
@@ -171,7 +176,7 @@ class TestBuildRows:
         a = asset_svc.register(
             name="X",
             type_id=t.id,
-            custom_data={"sn": "SN-001", "cpu": "i9-12900K"},
+            custom_data={"barcode": "SN-001", "cpu": "i9-12900K"},
         )
 
         custom_fields = svc._resolve_custom_fields(t.id)
@@ -191,7 +196,7 @@ class TestBuildRows:
             name="L",
             code_prefix="LE",
             custom_fields=[
-                {"key": "sn", "label": "SN", "type": "string", "required": False},
+                {"key": "barcode", "label": "SN", "type": "string", "required": False},
             ],
         )
         a = asset_svc.register(name="X", type_id=t.id, custom_data={})
@@ -487,12 +492,12 @@ class TestExport:
             name="Laptop",
             code_prefix="EC",
             custom_fields=[
-                {"key": "sn", "label": "SN", "type": "string", "required": False},
+                {"key": "barcode", "label": "SN", "type": "string", "required": False},
             ],
         )
         t2 = type_svc.create_type(name="GPU", code_prefix="ED", custom_fields=[])
-        asset_svc.register(name="A1", type_id=t1.id, custom_data={"sn": "NB-001"})
-        asset_svc.register(name="A2", type_id=t1.id, custom_data={"sn": "NB-002"})
+        asset_svc.register(name="A1", type_id=t1.id, custom_data={"barcode": "NB-001"})
+        asset_svc.register(name="A2", type_id=t1.id, custom_data={"barcode": "NB-002"})
         asset_svc.register(name="A3", type_id=t2.id, custom_data={})  # GPU
 
         data, _ = svc.export(format="csv", type_id=t1.id)
@@ -514,10 +519,10 @@ class TestExport:
             name="Laptop",
             code_prefix="EE",
             custom_fields=[
-                {"key": "sn", "label": "SN", "type": "string", "required": False},
+                {"key": "barcode", "label": "SN", "type": "string", "required": False},
             ],
         )
-        asset_svc.register(name="A1", type_id=t.id, custom_data={"sn": "NB-001"})
+        asset_svc.register(name="A1", type_id=t.id, custom_data={"barcode": "NB-001"})
 
         data, _ = svc.export(format="csv")  # 不传 type_id
         text = data.decode("utf-8-sig")

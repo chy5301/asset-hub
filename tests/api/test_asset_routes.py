@@ -34,7 +34,7 @@ class TestCreateAsset:
         type_id = _create_type(
             client,
             fields=[
-                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+                {"key": "cpu", "label": "处理器", "type": "string", "required": True}
             ],
         )
         resp = client.post(
@@ -42,11 +42,11 @@ class TestCreateAsset:
             json={
                 "name": "ThinkPad X1",
                 "type_id": type_id,
-                "custom_data": {"brand": "Lenovo"},
+                "custom_data": {"cpu": "Intel i7"},
             },
         )
         assert resp.status_code == 201
-        assert resp.json()["custom_data"]["brand"] == "Lenovo"
+        assert resp.json()["custom_data"]["cpu"] == "Intel i7"
 
     def test_create_bad_type_404(self, client: TestClient):
         from uuid import uuid4
@@ -65,7 +65,7 @@ class TestCreateAsset:
         type_id = _create_type(
             client,
             fields=[
-                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+                {"key": "cpu", "label": "处理器", "type": "string", "required": True}
             ],
         )
         resp = client.post(

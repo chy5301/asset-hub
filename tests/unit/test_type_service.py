@@ -21,7 +21,7 @@ class TestCreateType:
 
     def test_create_with_custom_fields(self, svc: TypeService):
         fields = [
-            {"key": "brand", "label": "品牌", "type": "string", "required": True},
+            {"key": "cpu", "label": "处理器", "type": "string", "required": True},
             {
                 "key": "os",
                 "label": "操作系统",
@@ -31,7 +31,7 @@ class TestCreateType:
         ]
         t = svc.create_type(name="笔记本电脑", code_prefix="NB", custom_fields=fields)
         assert len(t.custom_fields) == 2
-        assert t.custom_fields[0].key == "brand"
+        assert t.custom_fields[0].key == "cpu"
 
     def test_create_duplicate_name_raises(self, svc: TypeService):
         svc.create_type(name="显卡", code_prefix="GPU")
@@ -132,15 +132,15 @@ class TestRefCount:
 class TestReservedKeys:
     """CL-1：AssetType custom_fields[].key 加 reserved 全集 16 项校验。"""
 
-    def test_create_type_rejects_reserved_custom_field_key_brand(self, svc: TypeService):
+    def test_create_type_rejects_reserved_custom_field_key_brand(
+        self, svc: TypeService
+    ):
         """create_type 含 reserved key 'brand' 的 custom_field 应 ValidationError + hint。"""
         with pytest.raises(ValidationError) as exc:
             svc.create_type(
                 name="Test",
                 code_prefix="TST",
-                custom_fields=[
-                    {"key": "brand", "label": "品牌", "type": "string"}
-                ],
+                custom_fields=[{"key": "brand", "label": "品牌", "type": "string"}],
             )
         msg = str(exc.value)
         assert "brand" in msg
@@ -150,12 +150,24 @@ class TestReservedKeys:
         "reserved_key",
         [
             # Asset 顶层 user-writable 字段
-            "asset_code", "serial_number", "name", "model", "brand",
-            "holder", "location", "notes", "acquired_at",
+            "asset_code",
+            "serial_number",
+            "name",
+            "model",
+            "brand",
+            "holder",
+            "location",
+            "notes",
+            "acquired_at",
             # CLI 直觉别名
             "sn",
             # 系统/关系字段
-            "type", "type_name", "type_id", "status", "id", "custom_data",
+            "type",
+            "type_name",
+            "type_id",
+            "status",
+            "id",
+            "custom_data",
         ],
     )
     def test_create_type_rejects_all_reserved_keys(
@@ -166,9 +178,7 @@ class TestReservedKeys:
             svc.create_type(
                 name=f"Test-{reserved_key}",
                 code_prefix="TST",
-                custom_fields=[
-                    {"key": reserved_key, "label": "x", "type": "string"}
-                ],
+                custom_fields=[{"key": reserved_key, "label": "x", "type": "string"}],
             )
 
     def test_create_type_accepts_non_reserved_key(self, svc: TypeService):
@@ -188,7 +198,5 @@ class TestReservedKeys:
         with pytest.raises(ValidationError):
             svc.update_type(
                 type_id=t.id,
-                custom_fields=[
-                    {"key": "model", "label": "型号", "type": "string"}
-                ],
+                custom_fields=[{"key": "model", "label": "型号", "type": "string"}],
             )

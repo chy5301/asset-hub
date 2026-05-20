@@ -25,7 +25,7 @@ class TestTypeDefine:
             "code_prefix": "GPU",
             "description": "GPU",
             "custom_fields": [
-                {"key": "brand", "label": "品牌", "type": "string", "required": True}
+                {"key": "vram_gb", "label": "显存(GB)", "type": "int", "required": True}
             ],
         }
         schema_path = isolated_db / "gpu.json"
