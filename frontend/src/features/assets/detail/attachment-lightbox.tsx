@@ -70,7 +70,8 @@ export function AttachmentLightbox({
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
         <DialogContent
-          className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden"
+          className="!max-w-[90vw] max-h-[90vh] p-0 overflow-hidden"
+          showCloseButton={false}
         >
           <DialogTitle className="sr-only">{attachment.original_name}</DialogTitle>
 
