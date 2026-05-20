@@ -38,6 +38,7 @@ def asset_register(
     name: Annotated[str, typer.Option(help="资产名称")],
     type_id: Annotated[str, typer.Option("--type-id", help="类型 UUID")],
     serial_number: Annotated[str | None, typer.Option("--sn", help="铭牌编号")] = None,
+    brand: Annotated[str | None, typer.Option("--brand", help="品牌")] = None,
     model: Annotated[str | None, typer.Option("--model", help="型号")] = None,
     holder: Annotated[str | None, typer.Option(help="保管人")] = None,
     location: Annotated[str | None, typer.Option(help="位置")] = None,
@@ -59,6 +60,7 @@ def asset_register(
             name=name,
             type_id=uid,
             serial_number=serial_number,
+            brand=brand,
             model=model,
             holder=holder,
             location=location,
@@ -573,7 +575,7 @@ def asset_list(
         str | None,
         typer.Option(
             "--sort",
-            help="排序字段：name/model/asset_code/serial_number/created_at/updated_at/acquired_at/idle_days",
+            help="排序字段：name/brand/model/asset_code/serial_number/created_at/updated_at/acquired_at/idle_days",
         ),
     ] = None,
     order: Annotated[
