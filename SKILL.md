@@ -163,6 +163,8 @@ asset-hub serve logs [--service backend|frontend|all] [--lines N] [--follow] [--
 asset-hub serve doctor [--mode dev|prod] [--json]
 ```
 
+`serve doctor` 含 `port_owner` 检测项（v2.2.1+）：PID 文件记 uv 父进程，端口实际由 python 子进程绑定；doctor 通过祖先链比对自动识别 uv 父子场景，不再误报 `external_port_owner`。详见 [references/deploy.md](./references/deploy.md)。
+
 ## Gotcha
 
 1. **破坏性命令需 --yes 跳过 prompt**：`asset retire/dispose/declare-unrepairable/delete` 默认互交确认；脚本场景必须传 `--yes`，否则挂起。
