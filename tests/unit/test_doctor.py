@@ -223,7 +223,7 @@ def test_check_port_free_occupied(monkeypatch):
 
 @pytest.fixture
 def mock_all_checks_ok(monkeypatch):
-    """全部 7 个 check_* 函数 mock 为 ok，run_all_checks_* 测共用。"""
+    """全部 check_* 函数 mock 为 ok，run_all_checks_* 测共用。"""
     fakes = {
         "check_uv": DoctorCheck(name="uv", ok=True, detail="0.5.4"),
         "check_pnpm": DoctorCheck(name="pnpm", ok=True, detail="9.12.3"),
@@ -238,19 +238,93 @@ def mock_all_checks_ok(monkeypatch):
         "asset_hub.cli.serve.doctor.check_port_free",
         lambda port: DoctorCheck(name=f"port_{port}", ok=True, detail="free"),
     )
+    monkeypatch.setattr(
+        "asset_hub.cli.serve.doctor.check_port_owner",
+        lambda port, expected_pid: DoctorCheck(
+            name=f"port_owner:{port}", ok=True, detail=f"port {port} ok"
+        ),
+    )
 
 
 def test_run_all_checks_aggregates(mock_all_checks_ok):
-    """全部 ok 时 result.ok=True；prod 模式 7 项（含单 :8000 port）。"""
+    """全部 ok 时 result.ok=True；prod 模式 8 项（含 :8000 port + port_owner）。"""
     result = run_all_checks(mode="prod")
     assert result.ok is True
     assert result.issue_count == 0
     assert (
-        len(result.checks) == 7
-    )  # uv/pnpm/python/data/alembic/dist + 1 port (prod 不查 5173)
+        len(result.checks) == 8
+    )  # uv/pnpm/python/data/alembic/dist + port_free(8000) + port_owner(8000)
 
 
 def test_run_all_checks_dev_mode_includes_5173(mock_all_checks_ok):
-    """dev 模式额外查 :5173，共 8 项。"""
+    """dev 模式额外查 :5173 + port_owner，共 10 项。"""
     result = run_all_checks(mode="dev")
-    assert len(result.checks) == 8  # +5173
+    assert len(result.checks) == 10  # +port_free(5173) + port_owner(5173)
+
+
+# CL-4: port_owner 检测组件（6 个失败测）
+def test_check_port_owner_free(monkeypatch):
+    """端口空闲 → ok=True, detail 含 '空闲'。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: None)
+    result = doctor.check_port_owner(5173, expected_pid=12345)
+    assert result.ok is True
+    assert "空闲" in result.detail
+
+
+def test_check_port_owner_self(monkeypatch):
+    """端口由 expected_pid 占用 → ok=True, detail 含 PID + '我管理'。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 12345)
+    result = doctor.check_port_owner(5173, expected_pid=12345)
+    assert result.ok is True
+    assert "12345" in result.detail
+    assert "我管理" in result.detail
+
+
+def test_check_port_owner_external(monkeypatch):
+    """端口被外部进程占用，expected_pid 给定 → ok=False + code + fix_hint。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 9999)
+    result = doctor.check_port_owner(5173, expected_pid=12345)
+    assert result.ok is False
+    assert result.code == "external_port_owner"
+    assert "9999" in result.detail
+    assert "5173" in result.fix_hint
+
+
+def test_check_port_owner_external_no_pidfile(monkeypatch):
+    """端口被占但 PID 文件不存在 (expected_pid=None) → ok=False + detail 含 '无对应 PID 文件'。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 9999)
+    result = doctor.check_port_owner(5173, expected_pid=None)
+    assert result.ok is False
+    assert result.code == "external_port_owner"
+    assert "9999" in result.detail
+    assert "无对应 PID 文件" in result.detail
+
+
+def test_run_all_checks_includes_port_owner(monkeypatch):
+    """run_all_checks 在 dev 模式应包含两个 port_owner 检测 (5173 + 8000)。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: None)
+    result = doctor.run_all_checks(mode="dev")
+    names = [c.name for c in result.checks]
+    assert "port_owner:5173" in names
+    assert "port_owner:8000" in names
+
+
+def test_run_all_checks_prod_mode_no_5173_owner(monkeypatch):
+    """prod 模式无前端端口 → port_owner:5173 不应出现，但 port_owner:8000 必须有。"""
+    from asset_hub.cli.serve import doctor
+
+    monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: None)
+    result = doctor.run_all_checks(mode="prod")
+    names = [c.name for c in result.checks]
+    assert "port_owner:5173" not in names
+    assert "port_owner:8000" in names

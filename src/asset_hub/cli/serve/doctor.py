@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from asset_hub.cli.serve import pid as pid_mod
 from asset_hub.cli.serve import proc as proc_mod
 from asset_hub.config import Settings
 
@@ -244,8 +245,66 @@ def check_port_free(port: int) -> DoctorCheck:
     )
 
 
+def _find_port_owner_pid(port: int) -> int | None:
+    """跨平台探测 LISTEN 状态下指定端口的占用进程 PID。返 None 表示无占用。
+
+    psutil.net_connections 在 macOS / Linux 上需 root；在 Windows 上不需要。
+    本工具为单机开发场景，假设进程有权限读自己的连接表。AccessDenied 时兜底返 None
+    （视为"无法判定"，让 check_port_owner 返 ok=True 避免误报）。
+    """
+    import psutil
+
+    try:
+        conns = psutil.net_connections(kind="inet")
+    except (psutil.AccessDenied, PermissionError):
+        return None
+    for c in conns:
+        if c.laddr and c.laddr.port == port and c.status == "LISTEN":
+            return c.pid
+    return None
+
+
+def check_port_owner(port: int, expected_pid: int | None) -> DoctorCheck:
+    """探测端口占用者 PID 与 expected_pid 是否一致。
+
+    expected_pid=None：PID 文件不存在 / 读不出 / 进程已挂（status != RUNNING）。
+    """
+    name = f"port_owner:{port}"
+    actual_pid = _find_port_owner_pid(port)
+    if actual_pid is None:
+        return DoctorCheck(name=name, ok=True, detail=f"端口 {port} 空闲")
+    if expected_pid is not None and actual_pid == expected_pid:
+        return DoctorCheck(
+            name=name,
+            ok=True,
+            detail=f"端口 {port} 由我管理的进程 {actual_pid} 占用",
+        )
+    # 外部进程占用
+    if expected_pid is None:
+        detail = f"端口 {port} 被进程 {actual_pid} 占用，但本机无对应 PID 文件"
+    else:
+        detail = (
+            f"端口 {port} 被外部进程 {actual_pid} 占用（PID 文件记录 {expected_pid}）"
+        )
+    fix_hint = (
+        f"端口 {port} 被本工具管理范围外的进程占用，无法启动 serve。\n"
+        f"  Windows：Get-NetTCPConnection -LocalPort {port} | "
+        f"Select -ExpandProperty OwningProcess | ForEach-Object "
+        f"{{ Stop-Process -Id $_ -Force }}\n"
+        f"  Linux/macOS：lsof -i :{port} 然后 kill <pid>"
+    )
+    return DoctorCheck(
+        name=name,
+        ok=False,
+        detail=detail,
+        code="external_port_owner",
+        fix_hint=fix_hint,
+    )
+
+
 def run_all_checks(*, mode: str = "prod") -> DoctorResult:
-    """聚合 7-8 项检查；mode='dev' 时额外查 :5173。"""
+    """聚合 7-9 项检查；mode='dev' 时额外查 :5173 free + port_owner。"""
+    settings = Settings()
     checks = [
         check_uv(),
         check_pnpm(),
@@ -255,6 +314,22 @@ def run_all_checks(*, mode: str = "prod") -> DoctorResult:
         check_frontend_dist(),
         check_port_free(8000),
     ]
+    backend_state = pid_mod.read_pid_state(settings.pids_dir / "backend.pid", "backend")
+    backend_pid = (
+        backend_state.pid
+        if backend_state.status == pid_mod.PidStateStatus.RUNNING
+        else None
+    )
+    checks.append(check_port_owner(8000, expected_pid=backend_pid))
     if mode == "dev":
         checks.append(check_port_free(5173))
+        frontend_state = pid_mod.read_pid_state(
+            settings.pids_dir / "frontend.pid", "frontend"
+        )
+        frontend_pid = (
+            frontend_state.pid
+            if frontend_state.status == pid_mod.PidStateStatus.RUNNING
+            else None
+        )
+        checks.append(check_port_owner(5173, expected_pid=frontend_pid))
     return DoctorResult(checks=checks)
