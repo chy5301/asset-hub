@@ -12,14 +12,14 @@ describe("DashboardHeader", () => {
 
   it("toggle pills reflect prop state via data-state", () => {
     render(<DashboardHeader includeRetired={true} includeDisposed={false} onToggle={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /已退役/ })).toHaveAttribute("data-state", "on");
-    expect(screen.getByRole("button", { name: /已注销/ })).toHaveAttribute("data-state", "off");
+    expect(screen.getByRole("button", { name: /显示退役/ })).toHaveAttribute("data-state", "on");
+    expect(screen.getByRole("button", { name: /显示注销/ })).toHaveAttribute("data-state", "off");
   });
 
   it("clicking pill calls onToggle with toggled state", () => {
     const onToggle = vi.fn();
     render(<DashboardHeader includeRetired={false} includeDisposed={false} onToggle={onToggle} />);
-    fireEvent.click(screen.getByRole("button", { name: /已退役/ }));
+    fireEvent.click(screen.getByRole("button", { name: /显示退役/ }));
     expect(onToggle).toHaveBeenCalledWith({ include_retired: true, include_disposed: false });
   });
 
