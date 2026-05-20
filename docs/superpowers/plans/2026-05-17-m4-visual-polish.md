@@ -217,19 +217,21 @@ M4-C 后端部分：闲置 Top API 返回值含资产名，看板 Y 轴可显示
 </div>
 ```
 
-- [ ] **Step 3：看板排版微调**
+- [ ] **Step 3：看板排版按 MASTER spacing token 强约束收口**
 
 ```bash
 grep -n "dashboard-page\|dashboard-header" frontend/src/features/dashboard/
 ```
 
-定位 `dashboard-page.tsx` 和 `dashboard-header.tsx` 文件。具体改动：
+定位 `dashboard-page.tsx` 和 `dashboard-header.tsx` 文件。**不要"目测视觉收敛"，按下面强 token 约束做**：
 
-- 卡片间距：检查 `gap-4` / `gap-6` 是否统一，若不一致改为 `gap-6`
-- 栅格对齐：`grid grid-cols-12` 各卡片 `col-span-*` 是否对齐
-- 卡片背景割裂（spec M4-B #1）：将在 Phase 7 配色精打磨阶段一并修
+- 卡片间距统一 `gap-6`（24px = MASTER `--space-lg`）
+- 卡片内 padding 统一 `p-6`（24px = `--space-lg`）
+- 栅格：`grid grid-cols-12` + 4 个 chart 卡片均 `col-span-6`（2x2 布局，不允许 5/7/8 等不规则）
+- 看板 H1 用 `text-3xl font-medium tracking-tight`（MASTER §排版 type scale M3d 引入已锁定）
+- 卡片背景割裂（spec M4-B #1）：**Phase 7 用 dashboard atmosphere token 处理**（见 Phase 7 Task 7.1），不在本 task 改
 
-本 task 仅做 spec M4-C "栅格对齐 + 卡片间距 + 信息密度"——具体改动以"目测视觉收敛"为准，每次改动跑 dev server 视觉确认。
+每改一处跑 dev server 验证 spacing 一致；超出上述 token 的间距需在 commit msg 注明理由。
 
 - [ ] **Step 4：单测**
 
@@ -412,7 +414,19 @@ pnpm --dir frontend exec playwright test list-sort-by-type-status
 
 期望 PASS（如本机 e2e 环境 OK；CI 会跑）。
 
-- [ ] **Step 3：commit**
+- [ ] **Step 3：用 Playwright MCP 烟测排序图标三态视觉**
+
+承接 MASTER §M3a 烟测发现的"列表 Toggle pressed 视觉态较弱"同源风险 —— 排序图标 active 态视觉也要校：
+
+- `browser_navigate` → `http://localhost:5173/`
+- `browser_click` type 列表头：图标应变 `ArrowUp`（升序），与其他列已有图标视觉一致
+- 再 `browser_click` → 图标变 `ArrowDown`（降序）
+- 再 `browser_click` → 图标变 `ArrowUpDown`（清除排序，回中性）
+- 三态视觉差异**应清晰**（不要像 M3a Toggle pressed 那样视觉太弱）
+
+如三态视觉差异不够，加 weight：升降序态用 `text-foreground`，中性态用 `text-muted-foreground/50`。
+
+- [ ] **Step 4：commit**
 
 ```bash
 git add frontend/src/features/assets/list/ frontend/tests/unit/assets-table-sorting.test.ts frontend/e2e/specs/list-sort-by-type-status.spec.ts
@@ -424,6 +438,7 @@ M4-E：
 - status 列加 sortingFn={statusSortingFn}
 - unit test 覆盖 sortingFn + 未知状态兜底
 - 加 e2e spec 防 enableSorting 误改回 false 回归
+- Playwright MCP 烟测排序图标三态视觉清晰（顺修 M3a Toggle pressed 视觉弱化风险）
 
 闭环 issue #15。"
 ```
@@ -495,6 +510,26 @@ pnpm --dir frontend test attachment-lightbox
 **Files:**
 
 - Modify: `D:\CONGHAOYANG\Projects\tools\asset-hub\frontend\src\features\assets\detail\attachment-lightbox.tsx`（行 72-74）
+
+- [ ] **Step 0：复查反 glassmorphism / AI-slop 红线**
+
+```bash
+grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' \
+  frontend/src/features/assets/detail/attachment-lightbox.tsx \
+  frontend/src/components/ui/dialog.tsx
+```
+
+期望 0 命中（shadcn skeleton 的 `animate-pulse` 是历史例外，不算）。
+
+如发现 `backdrop-blur` 命中：MASTER §M2c-2 §1 已明确"Modal backdrop-filter: blur(4px) → bg-black/50 不 blur，glassmorphism overused" —— 必须改回 `bg-black/50` 不 blur。
+
+另顺扫 `ZoomableImage` 组件实现（lightbox 内嵌）：
+
+```bash
+grep -rnE 'scale-|animate-spin|transform.*scale' frontend/src/features/assets/detail/zoomable-image.tsx
+```
+
+确认无 layout-shifting `scale` transform（MASTER 反 AI-slop 红线 #3）；如有则用 `cursor-zoom-in/out` + 真实尺寸切换替代。
 
 - [ ] **Step 1：改 DialogContent props**
 
@@ -899,33 +934,79 @@ M4-F：根因 M3d commit 3dcdf56 引入 due_at = Date.now() - 3 * 86400000，
 
 ## Phase 7：M4-B 配色精打磨 5 修复点
 
-### Task 7.1：#13 看板背景割裂 + filter toggle 文案统一
+### Task 7.1：#13 看板背景割裂用 dashboard atmosphere token + filter toggle 文案统一
 
 **Files:**
 
-- Modify: `D:\CONGHAOYANG\Projects\tools\asset-hub\frontend\src\features\dashboard\` 多文件（具体见下）
+- Modify: dashboard route 根容器文件（具体定位见 Step 1）
 
-- [ ] **Step 1：定位 dashboard 卡片背景类**
+**关键约束**：MASTER §Dashboard Atmosphere 早已定义专用 token：
 
-```bash
-grep -rn "bg-card\|bg-background" frontend/src/features/dashboard/
+```
+--dashboard-bg-radial-from   /* radial gradient 起点 (顶部 50% 20%) */
+--dashboard-bg-radial-to     /* radial gradient 终点 (向外铺) */
 ```
 
-期望返多处使用 `bg-card`。需要决策：
+> "替代 solid 背景, light 模式偏白发光, dark 模式深蓝氛围."
 
-- 选项 A：所有 dashboard 卡片改用 `bg-card/50` + `border` 让边界更柔（仍保留分组感）
-- 选项 B：所有 dashboard 卡片改 `bg-transparent border` 完全融入 body
-- 选项 C：保留 `bg-card` 但改全局 body 用 `bg-muted/30`（卡片对比更柔）
+**决策**：dashboard route 用该 token 实现专属 radial gradient 背景，dashboard 卡片保持 `bg-card`，radial 自然过渡消除色块割裂。**body 全局背景不动**（避免影响列表 / 详情 / 类型管理 3 页）。
 
-**决策**：用 C —— 全局 body 加微妙背景色（`bg-muted/30`），dashboard 卡片保留 `bg-card`。改动最小、视觉层次仍清晰。
-
-具体修改：
+- [ ] **Step 1：定位 dashboard route 根容器**
 
 ```bash
-grep -rn "bg-background\|body" frontend/src/layouts/ frontend/src/main.tsx frontend/src/index.css
+grep -rn "dashboard-bg-radial\|--dashboard-bg" frontend/src/
 ```
 
-找到全局 body / layout 背景类，从 `bg-background` 改为 `bg-muted/30` 或类似（保持与 MASTER.md 配色 token 一致）。**如修改影响其他页面（列表 / 详情）视觉则回退方案 C 改用 A**（仅 dashboard 卡片 `bg-card/50`）。
+期望返：
+
+- `frontend/src/index.css`（或 globals.css）含 token 定义（light + dark 两套）
+- dashboard route 文件（如 `frontend/src/routes/dashboard.tsx` 或 `frontend/src/features/dashboard/dashboard-page.tsx`）—— 若 token **未在 JSX 应用**，本 task 即落地点
+
+如 token 未在 JSX 应用，搜 dashboard route 入口：
+
+```bash
+ls frontend/src/routes/dashboard*
+ls frontend/src/features/dashboard/dashboard-page.tsx
+```
+
+- [ ] **Step 2：在 dashboard route 根容器加 radial gradient**
+
+在 dashboard route 最外层 wrapper 加 className（沿用 MASTER token 而非自定义 hex）：
+
+```tsx
+<div className="min-h-screen bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]">
+  {/* 原 dashboard 内容 */}
+</div>
+```
+
+**说明**：
+
+- 50%_60%_at_50%_20% 与 MASTER §Dashboard Atmosphere 注释"顶部 50% 20%"对齐
+- 卡片保持 `bg-card`，与 radial gradient 自然过渡消除割裂
+- light / dark 两套 token 已在 globals.css 落地，本 task 不动 token 定义
+
+- [ ] **Step 3：filter toggle 文案统一**
+
+`/dashboard` 顶部 toggle 当前文案"已退役 / 已注销"；`/`（列表）filter toggle 当前文案"显示退役 / 显示注销"。
+
+```bash
+grep -rn "已退役\|显示退役\|已注销\|显示注销" frontend/src/features/
+```
+
+定位两处，统一改为 "显示退役 / 显示注销"（spec 决策：与 STATUS_META label 配套更清晰）。
+
+- [ ] **Step 4：本地视觉校对**
+
+```bash
+uv run asset-hub serve start --mode dev
+```
+
+打开 `http://localhost:5173/dashboard`、`/`、随机 `/assets/<id>` 详情，目测：
+
+- dashboard 顶部有 radial gradient 微妙发光（light）/ 深蓝氛围（dark）
+- dashboard 卡片不再有色块割裂（radial 平滑过渡到 bg-card）
+- 列表与详情两页背景**完全未变化**（body 没动）
+- 列表与 dashboard 的 toggle 文案一致
 
 - [ ] **Step 2：filter toggle 文案统一**
 
@@ -955,24 +1036,61 @@ uv run asset-hub serve start --mode dev
 
 - Modify: dashboard 与列表 filter toggle 组件 / 各 status badge 渲染处
 
-- [ ] **Step 1：toggle / chip 样式收敛**
+**关键约束**：MASTER §M3a 实施期纠偏 §2 已实现「Toggle chip + status token 染色」模式：
 
-dashboard 与列表的 toggle 视觉差异目测确认（如 padding / border-radius / hover state 不一致），统一到同一样式（参 MASTER.md token）。
+> "列表 filter 区 '已退役' / '已处置' 两个独立 Toggle chip，按 status token 染色（off muted / on `bg-status-X/15` + `text-status-X-fg` + `border-status-X/30`）。视觉与 status pill 体系延续。URL 持久化。"
 
-- [ ] **Step 2：status 色 token 对比度校准（特别 BROKEN）**
+同时 §M3a 烟测 followup 已识别**遗留**：
+
+> "列表 Toggle pressed 视觉态较弱（chip 在 on 时与 off 视觉差异不够明显）—— spec §5.10 review 时考虑加重 `data-[state=on]` 边框"
+
+本 task 做两件事：(1) dashboard toggle 改用 M3a chip 模式与列表对齐；(2) 顺修 M3a pressed 视觉弱化遗留。
+
+- [ ] **Step 1：dashboard toggle 改用 M3a Toggle chip + status token 染色模式**
+
+```bash
+grep -rn "bg-status-\|data-\[state=on\]" frontend/src/features/assets/list/
+```
+
+定位 M3a Toggle chip 实现位置（列表 filter 区）。然后 grep dashboard 当前 toggle：
+
+```bash
+grep -rn "toggle\|Toggle" frontend/src/features/dashboard/
+```
+
+dashboard 的 RETIRED / DISPOSED 显隐 toggle 走相同 chip pattern：
+
+- off：`bg-muted text-muted-foreground border-transparent`
+- on（已退役）：`bg-status-retired/15 text-status-retired-fg border-status-retired/30`
+- on（已注销）：`bg-status-disposed/15 text-status-disposed-fg border-status-disposed/30`
+
+两端 padding / border-radius / hover state 都用同一组 className。
+
+- [ ] **Step 2：顺修 M3a pressed 视觉弱化遗留**
+
+加重两端 chip 的 `data-[state=on]` 边框（或 ring）：
+
+- 原：`border-status-X/30`
+- 改：`border-status-X/60` 或加 `ring-1 ring-status-X/30`
+
+**停止条件**：dashboard / 列表两端切换 on/off 时视觉差异**第一眼可见**（无需 pixel-peep）。
+
+- [ ] **Step 3：status 色 token 对比度二次 verify（特别 BROKEN）**
+
+MASTER §M2c-1 Pre-Delivery Checklist 已实测 light 模式 OKLCH 对比度 AA；本 task 仅做：
 
 ```bash
 grep -rn "status-broken\|--status-broken" frontend/src/index.css design-system/
 ```
 
-定位 BROKEN 故障态色 token。校准方法：
+确认 BROKEN token 仍是 MASTER §status-broken 段约定的 light `oklch(0.93 0.13 30)` bg / `oklch(0.42 0.18 28)` fg（spec 锁定值），无人为调过。dark 模式做 spot check：
 
-1. 用浏览器 DevTools 取当前 BROKEN badge 颜色值（如 `#a13b00`）和背景值
-2. 跑 WCAG contrast checker（如 https://webaim.org/resources/contrastchecker/）
-3. 如对比度 < AA（4.5:1），调 token 值直到达标
-4. 同时校 IDLE / IN_USE / MAINTENANCE / RETIRED / DISPOSED（应已达标，目测）
+1. 打开 dev server，切 dark 模式
+2. 用浏览器 DevTools 取 BROKEN badge 颜色值
+3. 跑 WCAG contrast checker（https://webaim.org/resources/contrastchecker/）
+4. 期望 ≥ 4.5:1（AA）
 
-**停止条件**：所有 6 态对比度均达 WCAG AA（4.5:1 文字）。
+如未达标，按 MASTER §status-broken 段「dark `oklch(0.32 0.13 25)` bg / `oklch(0.82 0.15 30)` fg」回归即可。其他 5 态默认达标，不动。
 
 - [ ] **Step 3：commit**
 
@@ -987,37 +1105,94 @@ M4-B 修复点 1-4：
 - status 色 token 6 态对比度校准至 WCAG AA（重点 BROKEN）"
 ```
 
-### Task 7.3：空 / 错 / loading 态视觉差距收口
+### Task 7.3：空 / 错 / loading 态用公共组件统一（不重新拍样式）
 
 **Files:**
 
 - Modify: dashboard / 列表 / 详情 3 页的 empty / error / loading state 组件
 
-- [ ] **Step 1：列出 3 页的状态组件**
+**关键约束**：MASTER 已沉淀的公共组件（多轮纠偏成果），本 task **审计是否被复用**而非重新拍：
+
+| 状态 | 公共组件 | 来源 |
+|---|---|---|
+| 空态 | `<EmptyState>` | M2c-1 H4 / TypesPage 接入 / 详情页 NotFoundPanel 抽出 |
+| 404 / 资源不存在 | `<NotFoundPanel>` | M2 视觉收尾 H5 公共化 |
+| loading | `<DetailSkeleton>` / `<GridSkeleton>` / `<TimelineSkeleton>` | M2c-1 / M2c-2 落地 |
+| 错误（非 404）| `<ErrorState onRetry={refetch}>` | M2c-1 实施期默认引入 |
+
+**反 AI-slop 红线**（MASTER §M2c-2 §1 + §M2c-3 §7 已明示）：
+
+- **禁止 `animate-spin`**（spinner 是 AI-slop 重灾区）
+- **禁止 `backdrop-blur`**（glassmorphism overused）
+- **mutation pending → 按钮文字切换**（"派发中…" "归还中…"）
+- **上传进度 → width transition**（不用 spinner）
+
+- [ ] **Step 1：grep 3 页现状**
 
 ```bash
-grep -rn "empty\|loading\|error" frontend/src/features/dashboard/ frontend/src/features/assets/list/ frontend/src/features/assets/detail/ | grep -i "state\|empty\|loading" | head -30
+# 公共组件复用情况
+grep -rn "EmptyState\|NotFoundPanel\|DetailSkeleton\|GridSkeleton\|TimelineSkeleton\|ErrorState" \
+  frontend/src/features/dashboard/ \
+  frontend/src/features/assets/list/ \
+  frontend/src/features/assets/detail/
+
+# 红线扫描（与历次纠偏一致）
+grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' \
+  frontend/src/features/dashboard/ \
+  frontend/src/features/assets/list/ \
+  frontend/src/features/assets/detail/
 ```
 
-定位 dashboard / 列表 / 详情 三页的：
+第二条预期：0 命中（shadcn skeleton 的 `animate-pulse` 是历史例外，不算）。如有命中**必须修**。
 
-- empty state（空态）
-- loading state（loading spinner / skeleton）
-- error state（error banner / error card）
+- [ ] **Step 2：列出 inline 实现 vs 公共组件对照表**
 
-- [ ] **Step 2：视觉一致性收口**
+对每页（dashboard / 列表 / 详情）逐项确认：
 
-目测三页对应状态组件，确认：
+```text
+| 页 | 状态 | 当前实现 | 应改 |
+|---|---|---|---|
+| dashboard | empty | ? | <EmptyState> |
+| dashboard | loading | ? | <GridSkeleton> 或同源 skeleton |
+| dashboard | error | ? | <ErrorState onRetry={refetch}> |
+| 列表 | empty | ? | <EmptyState>（M2c-1 H4 已接入） |
+| 列表 | loading | ? | <GridSkeleton>（M2c-1 已接入） |
+| 列表 | error | ? | <ErrorState> |
+| 详情 | empty | n/a | n/a（单资源页无 empty） |
+| 详情 | 404 | ? | <NotFoundPanel>（M2 视觉收尾 H5 已接入） |
+| 详情 | loading | ? | <DetailSkeleton> |
+| 详情 | timeline loading | ? | <TimelineSkeleton> |
+| 详情 | error | ? | <ErrorState> |
+```
 
-- 同样空态用同样组件（如 `<EmptyCard>` 或同一 illustration）
-- 同样 loading 用同样 skeleton 风格（同样 shimmer 时长 / 颜色）
-- 同样 error 用同样 banner 样式（color token / icon）
+把每行的"当前实现"填入（grep 结果），凡是不等于"应改"列的，记入下一步要改的项。
 
-如发现差异，统一到一个版本。**停止条件**：3 页同状态视觉一致；不深入 chart 内部空态。
+- [ ] **Step 3：把 inline 实现改为公共组件**
 
-- [ ] **Step 3：本地视觉校对**
+仅修「不一致项」，不动已用公共组件的：
 
-清空数据库或临时构造空数据，目测 3 页空态；断网或 mock 503 模拟 error；mock slow query 模拟 loading。
+- inline empty/error/loading → 用公共组件替换
+- spinner / `animate-spin` → 用对应 Skeleton 公共组件 + 按钮文字切换（按 mutation 类型）
+- 任何 `backdrop-blur` → 直接删（沿用 `bg-black/50`）
+
+- [ ] **Step 4：`prefers-reduced-motion` 兼容回归**
+
+MASTER `globals.css` 已有媒体查询降级 stagger / tbody-fade / transition-duration。本 task 不引入新动画，**只验证已用公共组件不破此承诺**：
+
+```bash
+grep -rn "prefers-reduced-motion" frontend/src/
+```
+
+确认 globals.css 媒体查询仍在；新加的代码无 `animation`/`transition` 硬编码（应走 token / Tailwind utility）。
+
+- [ ] **Step 5：本地视觉校对**
+
+- 清空数据库或临时构造空数据：3 页空态视觉一致（全用 EmptyState 组件）
+- 断网或 mock 503：3 页 error 一致（全用 ErrorState）
+- mock slow query：3 页 loading 一致（全用 Skeleton 公共组件，**无 spinner**）
+- 浏览器 DevTools 强制 `prefers-reduced-motion: reduce`：动画降级生效
+
+**停止条件**：3 页同状态全用公共组件；红线 grep 0 命中；reduced-motion 媒体查询生效。
 
 - [ ] **Step 4：commit**
 

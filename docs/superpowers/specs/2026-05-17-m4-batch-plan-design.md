@@ -259,6 +259,13 @@ CL-1/2/3/4 可并行打开 PR，合并不互相阻塞，最后一个合完发 v2
 5. **CL-3 cache key 不当**：playwright 升级时 cache 失效靠 `hashFiles('frontend/pnpm-lock.yaml')` 触发；若改用 monorepo 工具单独锁 playwright 版本 cache 不失效会拿到旧 binary
 6. **CL-4 doctor check 平台差异**：Windows / Linux / macOS 的 "PID by port" 探测命令不同；psutil 已是项目依赖，优先用 psutil 而非 OS 命令
 7. **release-notes 撰写**：v2.1.0（清场期合包，含 #16 user-visible feature + 3 polish）+ v2.2.0（M4 视觉打磨）各自需要独立 release notes，特别是 v2.1.0 brand 升级路径含 AssetType 手动清理步骤
+8. **MASTER 已有公共组件 / token 应优先复用（元风险）**：MASTER.md 经 5 轮实施期纠偏（M2c-1 / M2c-2 / M2c-3 / M2 视觉收尾 / M3a）已沉淀以下公共资产，plan 阶段须显式对照而非自创：
+   - **公共组件**：`<EmptyState>` / `<NotFoundPanel>` / `<DetailSkeleton>` / `<GridSkeleton>` / `<TimelineSkeleton>` / `<ErrorState onRetry>`
+   - **专用 token**：`--dashboard-bg-radial-from/to`（dashboard atmosphere radial gradient）/ `--space-xs/sm/md/lg/xl/2xl/3xl`（spacing）/ `--shadow-sm/md/lg/xl`（shadow）/ `--status-{idle,in-use,maintenance,broken,retired,disposed}` + `-fg`（6 态语义色）/ `--chart-{1..6}`（chart 派色槽）
+   - **既有模式**：M3a Toggle chip + status token 染色（off muted / on `bg-status-X/15` + `text-status-X-fg` + `border-status-X/30`）；M3d type scale（列表 `text-xl`, 详情 `text-2xl`, 看板 hero `text-3xl font-medium tracking-tight`）
+   - **反 AI-slop 红线**（grep 命令统一）：`grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to'` 期望 0 命中（shadcn skeleton 的 `animate-pulse` 是历史例外）；spinner → 按钮文字切换 + Skeleton；mutation pending → form fields `disabled`
+   
+   plan 阶段写"做什么前端改动"时若涉及上述任一资产，**必须显式引用其名**（如"用 `<EmptyState>` 替换 inline empty"），不允许"目测视觉收敛"等模糊措辞。本元风险的具体落地：所有 plan 在涉及前端改动的 task 加 grep 红线 + 公共组件 audit 步骤。
 
 ---
 

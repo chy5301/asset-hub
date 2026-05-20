@@ -1180,6 +1180,34 @@ git commit -m "chore(api): gen:api 同步 brand 字段到 OpenAPI typed client"
 
 **Files:** 较多，按改动面分批做。
 
+**关键约束**：brand 字段所有前端表现形态**必须与现有 model 字段对齐**（命名 / className / placeholder 格式 / disabled prop / cell 样式）。避免自创风格导致 brand 与 model 视觉漂移。
+
+- [ ] **Step 0：grep model 字段在 4 处的现有写法作为对齐基线**
+
+逐处 grep model 字段当前实现，把得到的 className / prop 当 brand 的写法模板：
+
+```bash
+# 1. 表单 FormField（含 disabled / placeholder 模式）
+grep -B 2 -A 15 'name="model"' frontend/src/features/assets/forms/
+
+# 2. 列表 ColumnDef（含 cell className / accessorKey / sortingFn 模式）
+grep -B 2 -A 10 'id: "model"\|accessorKey: "model"' frontend/src/features/assets/list/assets-table.tsx
+
+# 3. 详情 general-fields dt/dd（含 className）
+grep -B 2 -A 5 'asset\.model' frontend/src/features/assets/detail/general-fields.tsx
+grep -B 2 -A 5 'asset\.model' frontend/src/features/assets/detail/asset-header.tsx
+
+# 4. column-visibility（含 ColumnKey / COLUMN_LABELS / ALL_KEYS / DEFAULT_HIDDEN 是否含 model）
+grep -B 1 -A 1 '"model"\|model:' frontend/src/features/assets/list/column-visibility.tsx
+
+# 5. build-asset-schema zod（含 nullable / optional 形态）
+grep -B 1 -A 2 'model:' frontend/src/features/assets/forms/build-asset-schema.ts
+```
+
+把每处现有的 model 实现作为 brand 实现的模板，**仅替换字面量**（`model` → `brand`，"型号" → "品牌"，placeholder 例子用 `Lenovo / Apple` 而非 `ThinkPad X1 Carbon Gen 9`），不改任何 className / disabled / sortingFn / nullable 等结构性属性。
+
+如发现 model 现有实现本身有 bug（如缺 `disabled={mutation.isPending}`），**不在本 task 修**——记入 followup，本 task 严格对齐 model 现状。
+
 - [ ] **Step 1：`frontend/src/features/assets/types.ts` AssetRow 加 brand**
 
 ```bash
@@ -1438,11 +1466,40 @@ uv run asset-hub serve restart --mode prod
 
 ### 升级注意（CL-1）
 
-历史 AssetType 含 `key="brand"` 的 custom_field 不会被破坏（read 仍生效），但**强烈建议手动从 AssetType 删除**：
+历史 AssetType 含 `key="brand"` 的 custom_field 不会被破坏（read 仍生效），但**强烈建议手动从 AssetType 删除**——否则会出现以下 UI 异常：
+
+**双输入框现象**（清理前）：
+
+```
+编辑资产表单：
+  名称：[ 工位本-01           ]
+  品牌：[ Lenovo              ]   ← 顶层 brand 输入框（CL-1 新增）
+  型号：[ ThinkPad T14 Gen 4  ]
+  品牌：[ Lenovo              ]   ← custom_data.brand 输入框（历史 custom_field 残留）
+```
+
+清理后**收敛为单输入框**：
+
+```
+编辑资产表单：
+  名称：[ 工位本-01           ]
+  品牌：[ Lenovo              ]   ← 仅顶层 brand
+  型号：[ ThinkPad T14 Gen 4  ]
+```
+
+**清理流程**：
 
 1. 在前端 type 管理页编辑对应 AssetType
 2. 删除 `custom_fields` 中 `key=brand` 的项
-3. 已录入资产的 `custom_data.brand` 键自动失效（顶层 brand 已是真实数据源，导出/搜索/聚合都从顶层走）
+3. 保存
+4. 已录入资产的 `custom_data.brand` 键自动失效（顶层 brand 已是真实数据源，导出 / 搜索 / 聚合 / 详情页显示都从顶层走）；JSON 弹性，键残留不影响
+
+**视觉变化清单**（清理生效）：
+
+- 编辑表单：双"品牌"输入框 → 单顶层"品牌"输入框
+- 详情页 general-fields：原"品牌"行（来自 custom_data）+ 新"品牌"行（来自顶层）→ 单"品牌"行
+- 详情页 header 副行：原可能含 custom_data.brand 渲染 → 仅顶层 brand 渲染（自然语序 brand · model）
+- 列表表格：原可能 brand custom column → 仅顶层 brand 固定列
 
 同理建议清理已有 AssetType 中 `key in {model, serial_number, sn, name, holder, location, notes, acquired_at}` 等 reserved key 重名 custom_field —— CL-1 起 future create/update 这些 key 会被拒绝。
 
