@@ -328,3 +328,70 @@ def test_run_all_checks_prod_mode_no_5173_owner(monkeypatch):
     names = [c.name for c in result.checks]
     assert "port_owner:5173" not in names
     assert "port_owner:8000" in names
+
+
+class TestPortOwnerParentChain:
+    """CL-22：check_port_owner 识别 uv 父子进程链路（#22 闭环）。"""
+
+    def test_check_port_owner_self_via_parent_chain(self, monkeypatch):
+        """actual_pid 的直接父是 expected_pid → ok=True（uv 父子场景）。"""
+        from asset_hub.cli.serve import doctor
+        import psutil
+
+        monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 59740)
+
+        class FakeParent:
+            pid = 59584
+        class FakePython:
+            def parents(self): return [FakeParent()]
+        monkeypatch.setattr(psutil, "Process", lambda pid: FakePython() if pid == 59740 else FakeParent())
+
+        result = doctor.check_port_owner(8000, expected_pid=59584)
+        assert result.ok is True
+        assert "59740" in result.detail
+        assert "我管理" in result.detail
+
+    def test_check_port_owner_self_via_grandparent_chain(self, monkeypatch):
+        """actual_pid 的祖父是 expected_pid（多层 spawn 场景）→ ok=True。"""
+        from asset_hub.cli.serve import doctor
+        import psutil
+
+        monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 100)
+
+        class P:
+            def __init__(self, pid): self.pid = pid
+        class FakeChild:
+            def parents(self): return [P(99), P(98)]
+        monkeypatch.setattr(psutil, "Process", lambda pid: FakeChild() if pid == 100 else None)
+
+        result = doctor.check_port_owner(8000, expected_pid=98)
+        assert result.ok is True
+
+    def test_check_port_owner_external_unrelated_chain(self, monkeypatch):
+        """actual_pid 祖先链不含 expected_pid → ok=False（保持原行为）。"""
+        from asset_hub.cli.serve import doctor
+        import psutil
+
+        monkeypatch.setattr(doctor, "_find_port_owner_pid", lambda port: 9999)
+
+        class P:
+            def __init__(self, pid): self.pid = pid
+        class FakeUnrelated:
+            def parents(self): return [P(8888), P(7777)]
+        monkeypatch.setattr(psutil, "Process", lambda pid: FakeUnrelated() if pid == 9999 else None)
+
+        result = doctor.check_port_owner(8000, expected_pid=12345)
+        assert result.ok is False
+        assert result.code == "external_port_owner"
+        assert "9999" in result.detail
+
+    def test_walks_ancestor_chain_handles_psutil_errors(self, monkeypatch):
+        """_walks_ancestor_chain: psutil.Process raises → 返 False 不抛。"""
+        from asset_hub.cli.serve import doctor
+        import psutil
+
+        def raise_no_such(pid):
+            raise psutil.NoSuchProcess(pid)
+        monkeypatch.setattr(psutil, "Process", raise_no_such)
+
+        assert doctor._walks_ancestor_chain(9999, 12345) is False
