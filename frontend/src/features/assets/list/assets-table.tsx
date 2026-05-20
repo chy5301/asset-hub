@@ -22,6 +22,7 @@ import {
 import { StatusBadge } from "@/components/status/status-badge";
 import type { AssetStatus } from "@/features/assets/status-labels";
 import { type AssetsSearch, DEFAULT_SORT } from "@/features/assets/list/search-schema";
+import { statusSortingFn } from "./assets-table-sorting";
 import {
   COLUMN_LABELS,
   type ColumnKey,
@@ -132,7 +133,6 @@ export function AssetsTable({
         id: "type",
         accessorFn: (r) => r.type_name ?? "",
         header: COLUMN_LABELS.type,
-        enableSorting: false,
         cell: ({ row }) => (
           <span className="text-sm text-muted-foreground">
             {row.original.type_name ?? "—"}
@@ -143,7 +143,7 @@ export function AssetsTable({
         id: "status",
         accessorKey: "status",
         header: COLUMN_LABELS.status,
-        enableSorting: false,
+        sortingFn: statusSortingFn,
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
