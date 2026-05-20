@@ -106,9 +106,7 @@ def test_type_define_help_json_includes_valid_field_types():
     result = runner.invoke(app, ["type", "define", "--help-json"])
     assert result.exit_code == 0, result.stdout
     payload = json.loads(result.stdout)
-    fields_param = next(
-        (p for p in payload["params"] if p["name"] == "--fields"), None
-    )
+    fields_param = next((p for p in payload["params"] if p["name"] == "--fields"), None)
     assert fields_param is not None, f"未找到 --fields 参数：{payload}"
     assert "valid_field_types" in fields_param, (
         f"--fields 参数缺 valid_field_types：{fields_param}"

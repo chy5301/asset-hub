@@ -257,9 +257,8 @@ def _build_diff(
 
 
 # --- --help-json registry: 暴露 FieldType 9 个枚举值给 Agent ---
-from asset_hub.services.field_type import FieldType  # noqa: E402
 from asset_hub.cli.deps import register_param_enrichment  # noqa: E402
-
+from asset_hub.services.field_type import FieldType  # noqa: E402
 
 register_param_enrichment(
     "asset-hub type define",
