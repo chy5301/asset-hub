@@ -579,7 +579,9 @@ def test_register_with_brand(session: Session, sample_type_nb):
 def test_update_asset_brand_unset_keeps_current(session: Session, sample_type_nb):
     """update_asset 不传 brand → keep current。"""
     svc = AssetService(session)
-    a = svc.register(name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    a = svc.register(
+        name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo"
+    )
     a2 = svc.update_asset(a.id, name="A-new")  # 不传 brand
     assert a2.brand == "Lenovo"  # 保留
 
@@ -587,7 +589,9 @@ def test_update_asset_brand_unset_keeps_current(session: Session, sample_type_nb
 def test_update_asset_brand_explicit_null_clears(session: Session, sample_type_nb):
     """update_asset 显式传 brand=None → 清空。"""
     svc = AssetService(session)
-    a = svc.register(name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo")
+    a = svc.register(
+        name="A", type_id=sample_type_nb.id, custom_data={}, brand="Lenovo"
+    )
     a2 = svc.update_asset(a.id, brand=None)
     assert a2.brand is None  # 清空
 

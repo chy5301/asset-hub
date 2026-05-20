@@ -17,6 +17,7 @@ from asset_hub.services.validation import validate_custom_data
 SortOrder = Literal["asc", "desc"]
 SortByField = Literal[
     "name",
+    "brand",
     "model",
     "asset_code",
     "serial_number",
@@ -28,6 +29,7 @@ SortByField = Literal[
 SORT_FIELD_WHITELIST = frozenset(
     {
         "name",
+        "brand",
         "model",
         "asset_code",
         "serial_number",
@@ -52,6 +54,7 @@ class AssetService:
         type_id: uuid.UUID,
         custom_data: dict,
         serial_number: str | None = None,
+        brand: str | None = None,
         model: str | None = None,
         holder: str | None = None,
         location: str | None = None,
@@ -70,6 +73,7 @@ class AssetService:
             name=name,
             type_id=type_id,
             serial_number=serial_number,
+            brand=brand,
             model=model,
             holder=holder,
             location=location,
@@ -197,6 +201,7 @@ class AssetService:
         asset_id: uuid.UUID,
         name: str | None = None,
         serial_number: str | UnsetType = UNSET,
+        brand: str | None | UnsetType = UNSET,
         model: str | None | UnsetType = UNSET,
         notes: str | UnsetType = UNSET,
         custom_data: dict | UnsetType = UNSET,
@@ -212,6 +217,8 @@ class AssetService:
             a.name = name
         if not isinstance(serial_number, UnsetType):
             a.serial_number = serial_number
+        if not isinstance(brand, UnsetType):
+            a.brand = brand
         if not isinstance(model, UnsetType):
             a.model = model
         if not isinstance(notes, UnsetType):
