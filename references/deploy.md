@@ -37,6 +37,7 @@ uv run asset-hub serve doctor --json | jq '.data | {ok, issue_count, failing: [.
 | PID stale / 进程僵尸 | — | `uv run asset-hub serve stop`，再重启 |
 | `frontend/dist` 缺失 | `serve.dist_missing` | `pnpm --dir frontend build` |
 | 端口被占 | `serve.port_occupied` | `uv run asset-hub serve stop` 或改 `--port` |
+| `port_owner` 误报（外部进程）| `external_port_owner` | v2.2.1+ doctor 已自动识别 uv 父子链路；仍报时按 fix_hint 的 `lsof -i :<port>` / `Get-NetTCPConnection -LocalPort <port>` 排查真实占用进程 |
 | SQLite database lock | WAL 残留 | 先 `serve stop`，再 `rm data/asset_hub.db-shm data/asset_hub.db-wal` |
 | pnpm build 失败 | `serve.build_failed` | 检查 Node 版本 / `pnpm --dir frontend install` 后重试 |
 | 无法杀进程 | `serve.kill_failed` | 手动 `taskkill /PID <pid> /F`（Windows）；PID 文件需手动删 `data/pids/*.pid` |
