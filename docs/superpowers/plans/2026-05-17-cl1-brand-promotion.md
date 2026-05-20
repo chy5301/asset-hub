@@ -1206,7 +1206,13 @@ grep -B 1 -A 2 'model:' frontend/src/features/assets/forms/build-asset-schema.ts
 
 把每处现有的 model 实现作为 brand 实现的模板，**仅替换字面量**（`model` → `brand`，"型号" → "品牌"，placeholder 例子用 `Lenovo / Apple` 而非 `ThinkPad X1 Carbon Gen 9`），不改任何 className / disabled / sortingFn / nullable 等结构性属性。
 
-如发现 model 现有实现本身有 bug（如缺 `disabled={mutation.isPending}`），**不在本 task 修**——记入 followup，本 task 严格对齐 model 现状。
+如发现 model 现有实现本身有 bug（如缺 `disabled={mutation.isPending}` / 缺 muted className / 缺 sortingFn 等违反 MASTER 约定），**不在本 task 默认修**——但需调 `/frontend-design:frontend-design` 决策 followup 优先级：
+
+- 方案 (a)：顺手补到 CL-1 PR 同 commit（如改动面小、模板对齐天然顺手）
+- 方案 (b)：独立 polish PR（如改动面大、与 brand 升顶层无关）
+- 方案 (c)：推到 M4 期顺修（如属于 M4-B 配色精打磨改动面范围内）
+
+决策结果记入 `docs/superpowers/followup-allocation.md` 的 v2.x 段（含具体 bug 描述 + 选定方案 + 触发时机）。brand 字段本身实现严格对齐 model 现状。
 
 - [ ] **Step 1：`frontend/src/features/assets/types.ts` AssetRow 加 brand**
 

@@ -195,6 +195,14 @@ M4-C 后端部分：闲置 Top API 返回值含资产名，看板 Y 轴可显示
 />
 ```
 
+**触发 frontend-design skill 决策的条件**：若 dev server 实测有资产名溢出（中文 > 10 字符 / 英文 > 18 字符），不要随手拍截断方案。调 `/frontend-design:frontend-design` 决策：
+
+- 截断字符数（中文 10 / 英文 18 / 或按视觉 px 上限）
+- 省略号位置（前 / 中 / 后 ——「ThinkPad…X1」vs「ThinkPad X…」vs「…X1 Carbon」哪个最易识别）
+- tooltip 全名是否带 asset_code 副信息（当前 Step 2 已经把 asset_code 放副标，可能足够）
+
+决策结果回写本 plan + 实施期纠偏段。
+
 - [ ] **Step 2：Tooltip 加 asset_code 作辅助信息**
 
 行 87-110 `IdleTooltip` 当前：
@@ -529,7 +537,16 @@ grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' \
 grep -rnE 'scale-|animate-spin|transform.*scale' frontend/src/features/assets/detail/zoomable-image.tsx
 ```
 
-确认无 layout-shifting `scale` transform（MASTER 反 AI-slop 红线 #3）；如有则用 `cursor-zoom-in/out` + 真实尺寸切换替代。
+确认无 layout-shifting `scale` transform（MASTER 反 AI-slop 红线 #3）。
+
+**触发 frontend-design skill 决策的条件**：若发现 `ZoomableImage` 有 scale transform 需替换，**不要随手选交互形态**。调 `/frontend-design:frontend-design` 决策 zoom 交互：
+
+- 单击切 100% / fit-to-screen 二态？
+- scroll wheel 平滑缩放？
+- 双击切？
+- pan + zoom 组合？
+
+参考 MASTER §M2c-3 §7（上传进度用 width transition 而非 spinner 的决策风格）—— 倾向"最朴素的真实尺寸切换、不要花哨缩放动画"。决策结果回写本 plan + 实施期纠偏段。
 
 - [ ] **Step 1：改 DialogContent props**
 
@@ -1068,12 +1085,17 @@ dashboard 的 RETIRED / DISPOSED 显隐 toggle 走相同 chip pattern：
 
 - [ ] **Step 2：顺修 M3a pressed 视觉弱化遗留**
 
-加重两端 chip 的 `data-[state=on]` 边框（或 ring）：
+加重两端 chip 的 `data-[state=on]` 视觉。**触发 frontend-design skill 决策的条件**：两候选方案视觉权重需调 `/frontend-design:frontend-design` 决策选其一（或组合）：
 
-- 原：`border-status-X/30`
-- 改：`border-status-X/60` 或加 `ring-1 ring-status-X/30`
+- 方案 A：`border-status-X/30` → `border-status-X/60`（边框加深 1 级）
+- 方案 B：保留 `border-status-X/30` + 加 `ring-1 ring-status-X/30`（加外圈光环）
+- 方案 C：A + B 组合（边框加深 + 外圈光环）
 
-**停止条件**：dashboard / 列表两端切换 on/off 时视觉差异**第一眼可见**（无需 pixel-peep）。
+决策准则：与现有 M3a status pill 体系的视觉重量是否协调（pill 当前用 `bg-status-X/15` + `text-status-X-fg`，权重轻）；不希望 chip pressed 态比 pill 更突出抢戏；但要"第一眼可见 on/off 差异"。
+
+决策方需对照 dashboard / 列表两端实际渲染（Playwright MCP `browser_snapshot` 取截图），结果回写本 plan + 实施期纠偏段。
+
+**停止条件**：dashboard / 列表两端切换 on/off 时视觉差异**第一眼可见**（无需 pixel-peep）；不破坏与 status pill 的视觉协调。
 
 - [ ] **Step 3：status 色 token 对比度二次 verify（特别 BROKEN）**
 
@@ -1175,6 +1197,14 @@ grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' \
 - spinner / `animate-spin` → 用对应 Skeleton 公共组件 + 按钮文字切换（按 mutation 类型）
 - 任何 `backdrop-blur` → 直接删（沿用 `bg-black/50`）
 
+**触发 frontend-design skill 决策的条件**：若公共组件不完全契合 dashboard 上下文（典型场景：dashboard 4 个 chart 卡片各自的空态语义不同 ——「闲置 Top 10」空态 vs「类型分布」空态文案语义差异大，强塞 `<EmptyState title description>` 通用结构会丢语义），**不要硬塞或自创**。调 `/frontend-design:frontend-design` 决策三选一：
+
+- 方案 (a)：给 `<EmptyState>` 加 `variant` prop（如 `variant="chart" | "list" | "detail"`）以承载场景差异
+- 方案 (b)：dashboard 端用 thin wrapper 收敛文案（参考 MASTER §M2 视觉收尾 §5 `<NotFoundPanel>` 公共化时各 feature 写 thin wrapper 的模式）
+- 方案 (c)：例外用 inline 实现，但在 commit msg 显式标 `doc-debt:` 让 reviewer 看见
+
+决策准则：哪种最少破坏 `<EmptyState>` 已有 22 处调用方 + 最贴 dashboard 各 chart 语义。决策结果回写本 plan + 实施期纠偏段。
+
 - [ ] **Step 4：`prefers-reduced-motion` 兼容回归**
 
 MASTER `globals.css` 已有媒体查询降级 stagger / tbody-fade / transition-duration。本 task 不引入新动画，**只验证已用公共组件不破此承诺**：
@@ -1252,7 +1282,104 @@ pnpm --dir frontend e2e
 
 如某项不通过，回到对应 Phase 修。
 
-### Task 8.2：开 PR
+### Task 8.2：合并前闸门审查（frontend-design + Pre-Delivery + 红线扫描 + MASTER 回写）
+
+**Files:** （无代码改动；产物：MASTER.md 新增「实施期纠偏（M4，YYYY-MM-DD）」段）
+
+承接 MASTER 5 轮纠偏惯例（M2c-1 / M2c-2 / M2c-3 / M2 视觉收尾 / M3a 各跑过同款三件套），M4 PR **合并前必须**：
+
+- [ ] **Step 1：跑全文件红线 grep（与历次纠偏一致）**
+
+```bash
+grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' \
+  frontend/src/features/dashboard/ \
+  frontend/src/features/assets/list/ \
+  frontend/src/features/assets/detail/ \
+  frontend/src/components/
+```
+
+期望：0 命中（shadcn `skeleton.tsx:7` 的 `animate-pulse` 是历史例外）。
+
+若有命中：必须改回符合 MASTER 反 AI-slop 红线再继续；不允许豁免。
+
+- [ ] **Step 2：调 frontend-design skill 做合并前闸门审查**
+
+```text
+调用 /frontend-design:frontend-design 跑闸门审查，传入：
+- spec：docs/superpowers/specs/2026-05-17-m4-batch-plan-design.md
+- diff：M4 PR 全量 frontend/ 改动
+- MASTER override 清单：本 PR 实施过程中是否引入了与 MASTER 不一致的样式 / token / 公共组件
+- 反 AI-slop 红线：scale / animate-spin / backdrop-blur / bg-gradient / Card shadow+hover translateY / glassmorphism
+
+期望审查输出：
+- pass / fail 结论
+- 若 fail，列出未对齐 MASTER 的项 + 改进建议
+- 若 pass，列出本 PR 已新增的 override（写入 MASTER 实施期纠偏段）
+```
+
+如 frontend-design 闸门返 fail，**不开 PR**，回 Phase 7（或对应 phase）修后重跑此 step。
+
+- [ ] **Step 3：Pre-Delivery Checklist 7 项逐条 verify**
+
+按 MASTER §Pre-Delivery Checklist 模式（与 M2c-1/2/3/M2 视觉收尾/M3a 历次格式一致）逐条勾：
+
+```text
+- [ ] No emojis as icons（全 Lucide SVG；本 PR 新加图标列名 + 来源）
+- [ ] cursor-pointer on clickable elements（shadcn Button / Toggle 默认；自定义点击区显式）
+- [ ] Hover transitions smooth 150-300ms（transition-colors；无 transform: scale）
+- [ ] Light mode text contrast 4.5:1 minimum（status 色 token / Y 轴 tick / chart label）
+- [ ] Focus states visible for keyboard（globals.css *:focus-visible 兜底；新 Toggle / sortable header）
+- [ ] prefers-reduced-motion respected（globals.css 媒体查询；新 chart 无 stagger 依赖）
+- [ ] Responsive 1024+（dashboard 卡片 col-span-6 在 < 1024 自动换行）
+```
+
+每项后写"如何 verify"+ 结果。
+
+- [ ] **Step 4：回写「实施期纠偏（M4，YYYY-MM-DD）」段到 MASTER.md**
+
+参考 MASTER 已有 5 段（M2c-1 §256 / M2c-2 §337 / M2c-3 §410 / M2 视觉收尾 §497 / M3a §546）的格式，新增段：
+
+```markdown
+## 实施期纠偏（M4，2026-MM-DD）
+
+frontend-design skill 合并前审查（Task 8.2 Step 2）+ Pre-Delivery Checklist 7 项 + 红线扫描 0 命中后回写。
+
+### 1. M4-C 长资产名截断决策（如触发 frontend-design 决策）
+**问题**：…
+**决议**：…
+
+### 2. M4-D ZoomableImage zoom 交互形态（如触发）
+…
+
+### 3. M4-B Toggle chip pressed 视觉加重 A/B/C 决策（如触发）
+…
+
+### 4. M4-B 公共组件 vs dashboard 上下文不契合三选一（如触发）
+…
+
+### Pre-Delivery Checklist（M4 验证）
+- [x] No emojis as icons（全 Lucide SVG：…列具体新增 icon）
+- [x] …
+
+### 红线扫描结果
+grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to' 在 M4 新增/修改文件内：
+0 命中（shadcn skeleton.tsx animate-pulse 历史例外）
+
+### 视觉烟测（Task 8.1 Step 4 Playwright MCP）
+| # | 场景 | 结果 | 截图 |
+…
+```
+
+无触发的决策点写"无触发项"即可，不写无关内容。
+
+- [ ] **Step 5：commit MASTER 纠偏回写**
+
+```bash
+git add design-system/asset-hub/MASTER.md
+git commit -m "docs(design): 回写 M4 实施期纠偏段（含 frontend-design 闸门 + Pre-Delivery + 红线扫描）"
+```
+
+### Task 8.3：开 PR
 
 - [ ] **Step 1：push + 开 PR**
 

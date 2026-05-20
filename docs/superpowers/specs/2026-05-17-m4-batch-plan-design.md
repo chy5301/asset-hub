@@ -267,6 +267,8 @@ CL-1/2/3/4 可并行打开 PR，合并不互相阻塞，最后一个合完发 v2
    
    plan 阶段写"做什么前端改动"时若涉及上述任一资产，**必须显式引用其名**（如"用 `<EmptyState>` 替换 inline empty"），不允许"目测视觉收敛"等模糊措辞。本元风险的具体落地：所有 plan 在涉及前端改动的 task 加 grep 红线 + 公共组件 audit 步骤。
 
+   **实施期补充元约束**：CL-1 / M4 主 PR 执行过程中遇到**任何前端视觉 / 交互 / 配色临时决策**（典型场景：长名截断方案 / zoom 交互形态 / 视觉权重 A/B 二选一 / 公共组件不契合上下文等），实施者**不得自行拍方案**，必须调 `/frontend-design:frontend-design` skill 决策；决策结果回写本 plan 对应段 + MASTER.md「实施期纠偏」段。**PR 合并前**必须跑三件套：(1) 全文件红线 grep 0 命中；(2) frontend-design 闸门审查 pass；(3) Pre-Delivery Checklist 7 项逐条 verify。这与 MASTER 已有的 5 轮实施期纠偏惯例（M2c-1 / M2c-2 / M2c-3 / M2 视觉收尾 / M3a）格式与约束完全一致，M4 不允许例外。
+
 ---
 
 ## 后续
