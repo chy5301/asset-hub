@@ -53,6 +53,10 @@ Thumbs.db
 .superpowers/
 .worktrees/
 
+# ===== 归档 / 备份 =====
+*.tgz
+*.tar.gz
+
 # ===== 临时调试产物（Playwright MCP 烟测 / ad hoc 截图）=====
 .playwright-mcp/
 .playwright-screenshots/

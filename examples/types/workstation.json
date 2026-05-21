@@ -1,0 +1,18 @@
+{
+  "name": "工作站",
+  "code_prefix": "WS",
+  "description": "固定工位计算设备，涵盖塔式/机架/迷你等形态，用于开发、编译、仿真等工程任务",
+  "custom_fields": [
+    {"key": "os_family", "label": "操作系统", "type": "multi-enum", "options": ["Windows", "Linux", "Other"]},
+    {"key": "os_version", "label": "系统版本", "type": "string", "placeholder": "Windows 11 23H2 / Ubuntu 24.04 LTS"},
+    {"key": "cpu_arch", "label": "CPU 架构", "type": "enum", "options": ["x86_64", "arm64"]},
+    {"key": "cpu", "label": "处理器", "type": "string", "placeholder": "i9-14900K / Xeon W7-3455"},
+    {"key": "cpu_count", "label": "CPU 颗数", "type": "int", "min": 1, "max": 8},
+    {"key": "ram_gb", "label": "内存", "type": "int", "unit": "GB", "min": 1, "max": 4096},
+    {"key": "storage_gb", "label": "存储", "type": "int", "unit": "GB", "min": 16, "max": 65536},
+    {"key": "gpu", "label": "显卡", "type": "string", "placeholder": "Intel UHD Graphics / NVIDIA RTX 4090 / 无"},
+    {"key": "gpu_count", "label": "GPU 数量", "type": "int", "min": 0, "max": 16},
+    {"key": "network_policy", "label": "联网策略", "type": "enum", "options": ["内网", "公网", "隔离"]},
+    {"key": "form_factor", "label": "机箱形态", "type": "enum", "options": ["塔式", "机架", "迷你", "刀片", "一体机"]}
+  ]
+}
