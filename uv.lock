@@ -49,7 +49,7 @@ wheels = [
 
 [[package]]
 name = "asset-hub"
-version = "2.0.2"
+version = "2.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
