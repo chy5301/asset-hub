@@ -197,9 +197,11 @@ dialog test wrapper 重复 / `find_open_checkout_id` 2 查询合并 / migration 
 |---|---|---|
 | ✅ v1.0.0 | M1-M3e 全部 | 已完成 2026-05-09 |
 | ✅ v2.0.0 | 状态机扩展 + agent-native + Asset.model 字段拆列 | 已完成 2026-05-13 |
-| ⏳ v2.x | CLI / SKILL.md 持续打磨、formal description eval、typer 注入方案重审 | 规划中 |
-| ⏳ M4 | UI 视觉打磨 + A3 dialog 合并 + 配色重设计 | 规划中 |
-| ⏳ M5 | People 实体化（spec §14.4）| 规划中 |
+| ✅ v2.1.0 | 清场期 4 PR（brand 升顶层 / FieldType 暴露 / e2e cache / doctor port_owner） | 已完成 2026-05-17 |
+| ✅ v2.2.0 | M4 视觉打磨（dialog 抽离 + 配色精打磨 + 看板/列表/lightbox/排序） | 已完成 2026-05-17 |
+| ❌ M5 | People 实体化（§14.4） | **已放弃**（YAGNI，2026-05-25） |
+
+> **2026-05-25 更新**：M5 是路线图最后一个未做的规划里程碑，经评估**放弃**（单人 + AI agent 定位下 `holder` 字符串足够，真实零痛点）。**v2 宣布功能完整**，进入按需迭代 / 维护态，不再规划主动大里程碑。决策与维护态待办快照见 `specs/2026-05-25-drop-m5-v2-feature-complete.md`。
 
 ---
 

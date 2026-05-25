@@ -407,6 +407,8 @@ asset-hub/
 
 ### 14.4 人员实体化（People 表）
 
+> ❌ **已决定不做（YAGNI）**，2026-05-25。单人 + AI agent 定位下 `holder` 字符串足够，真实使用零痛点。详见决策文档 `2026-05-25-drop-m5-v2-feature-complete.md`（含重新评估触发条件）。以下原设计保留备查。
+
 **独立大里程碑**（拟称 **M5 · 人员实体**）。当前 `Asset.holder` / `CheckoutRecord.holder` 都是 `str`，重名 / 改名 / 联系方式 / 单位 / 部门都没法记。改造为：
 - 新增 `People` 实体：`id` / `name`（必填）/ `contact?` / `org?` / `dept?` / `notes?`
 - `Asset.holder: str` → `Asset.person_id: UUID FK`
