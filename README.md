@@ -96,9 +96,13 @@ uv run asset-hub serve doctor --json
 | **M3d · timeline 视觉重构** | Group rail + 月份分段 + 派出类型染色 + 超长派发预警 | ✅ 已完成 |
 | **M3e · v1.0 GA 收口** | SKILL.md + envelope 统一 + serve doctor + Windows 部署 + e2e CI | ✅ 已完成 |
 | **v2.0 · 状态机扩展 + Agent-native + model 字段** | 状态机扩展到 6 态/12 transition + Agent-native flag/envelope + Asset.model 顶层列（详情见 release-notes-v2.0） | ✅ 已完成 2026-05-13 |
-| **v2.x · 工程化** | CI 后端+前端覆盖 + ruff format baseline + serve start IPv6 端口探测修复 | 🛠 进行中 |
-| **M4 · UI 打磨** | 配色 / 间距 / 动效达 frontend-design 审美标准；A3 dialog 合并；§S/§U/§W | ⏳ 规划中 |
-| **M5 · People 实体化** | holder/location 实体化 + 重名/改名管理 | ⏳ 规划中 |
+| **v2.0.1 · 工程化** | CI 后端+前端覆盖 + ruff format baseline + serve start IPv6 端口探测修复 | ✅ 已完成 |
+| **v2.1.0 · 清场期** | brand 升顶层公共字段 + CLI FieldType 暴露 + e2e cache + doctor port_owner | ✅ 已完成 |
+| **v2.2.0 · M4 UI 打磨** | 配色精打磨 + dialog 抽离 + 看板/列表/lightbox/排序 | ✅ 已完成 |
+| **v2.3.0 · asset undo** | 撤销最后一条流转记录元命令（含 v2.2.1 doctor patch） | ✅ 已完成 |
+| **M5 · People 实体化** | holder 实体化 + 重名/改名管理 | ❌ 已放弃（YAGNI，2026-05-25） |
+
+> **v2 已宣布功能完整**（2026-05-25）：M5 放弃后路线图无剩余规划里程碑，项目进入按需迭代 / 维护态。决策与维护态待办快照见 [`docs/superpowers/specs/2026-05-25-drop-m5-v2-feature-complete.md`](docs/superpowers/specs/2026-05-25-drop-m5-v2-feature-complete.md)。
 
 ## 文档
 
