@@ -25,6 +25,7 @@ function TypeDetailRoute() {
 
   return (
     <>
+      <title>{`${q.data.name} · asset-hub`}</title>
       <TypeDetailView type={q.data} onDelete={() => setDeleting(true)} />
       {deleting && (
         <TypeDeleteDialog

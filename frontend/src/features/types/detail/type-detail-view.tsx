@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
 
 import { DetailPageShell } from "@/components/layout/detail-page-shell";
-import { DefinitionRow } from "@/features/assets/detail/definition-row";
+import { DefinitionRow } from "@/components/ui/definition-row";
 import { SectionTitle } from "@/components/ui/section-heading";
 import { Button } from "@/components/ui/button";
 import {
