@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { useAssetDetailQuery } from "@/api/hooks/assets";
 import { useAttachmentsQuery } from "@/api/hooks/attachments";
 import { useTypeQuery } from "@/api/hooks/types";
 import { ErrorState } from "@/components/feedback/error-state";
+import { DetailPageShell } from "@/components/layout/detail-page-shell";
 import { isHttpError } from "@/lib/error";
 import type { FieldDef } from "@/features/assets/form/types";
 import type { AttachmentRead } from "@/features/assets/types";
 
-import { AssetHeader } from "./asset-header";
+import { AssetActionArea, AssetMeta, AssetTitleAccessory } from "./asset-header";
 import { AssetNotFound } from "./asset-not-found";
 import { AttachmentGrid } from "./attachment-grid";
 import { AttachmentLightbox } from "./attachment-lightbox";
@@ -58,11 +59,21 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
   return (
     <>
       <title>{`${asset.name} · asset-hub`}</title>
-      <main className="mx-auto max-w-[960px] space-y-10 px-4 py-8">
-        <AssetHeader
-          asset={asset}
-          onDelete={() => setDeleteOpen(true)}
-        />
+      <DetailPageShell
+        backLink={
+          <Link
+            to="/"
+            search={{ sort: "asset_code", page: 1, pageSize: 50 }}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← 返回列表
+          </Link>
+        }
+        title={asset.name}
+        titleAccessory={<AssetTitleAccessory asset={asset} />}
+        meta={<AssetMeta asset={asset} />}
+        actions={<AssetActionArea asset={asset} onDelete={() => setDeleteOpen(true)} />}
+      >
         <GeneralFields asset={asset} typeName={typeName} />
         <CustomDataSection
           customData={(asset.custom_data ?? {}) as Record<string, unknown>}
@@ -75,7 +86,7 @@ export function AssetDetailPage({ id }: AssetDetailPageProps) {
           assetId={asset.id}
         />
         <TransitionTimeline assetId={asset.id} assetStatus={asset.status} />
-      </main>
+      </DetailPageShell>
       <AttachmentLightbox
         attachment={lightboxAttachment}
         assetId={id}
