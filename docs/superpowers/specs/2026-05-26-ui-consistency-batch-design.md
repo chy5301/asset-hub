@@ -83,18 +83,64 @@
 
 `asset-header.tsx::useOverdueForOpenCheckout` 在 transitions 加载期返回 null → 角标"先无后突现"轻微跳动。可加 loading 兜底或延迟渲染。**可选，不阻塞本 batch。**
 
-## 待 frontend-design 决策清单
+## 视觉决策（frontend-design pass · 2026-05-27 · 已定）
 
-进入 frontend-design pass 时逐条定，结果回写本 spec：
+6 项全部决策落定，依据 `MASTER.md`（含 M3d type scale + M4 历史）+ 反 AI-slop 红线。
 
-1. **page-header 规范**（§W-列表）：标题字号档位、数量是否/何处展示、副标题用法、三页是否都有头。← 核心视觉决策
-2. **只读类型视图布局**（§W-详情）：展示哪些字段、custom_fields schema 只读怎么呈现（列表？卡片？）、与资产 `general-fields` 风格对齐到什么程度。
-3. **`DetailPageShell` 视觉细节**：返回链接样式、header 间距、actions 区排布。
-4. **看板背景处理**（D1）：去渐变 / 统一 atmosphere / 其它。
-5. **看板右列布局**（D2）：卡片高度策略、空持有人卡片处理、等高约束取舍。
-6. **toggle 基准确认**（§S）：TogglePill 为准 + 提取位置。
+### 决策 1 · page-header 规范（§W-列表）
 
-frontend-design 须遵循 `design-system/asset-hub/MASTER.md` + 反 AI-slop 红线（`grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to'` 期望 0 命中，shadcn `animate-pulse` 历史例外），复用既有公共组件（`<EmptyState>` / `<ErrorState>` / skeleton 等）与 token。
+既有 M3d type scale 已定档位（列表 `text-xl font-semibold` / 详情 `text-2xl` / 看板 hero `text-3xl font-medium tracking-tight`），缺口是 `/` 资产列表**无标题**。
+
+- 定统一「列表页头」结构：`<h1 text-xl font-semibold>{标题}</h1>` + 计数副标题 `<p text-sm text-muted-foreground>{共 N X}</p>`，右侧放主操作按钮。
+- **标题对齐 nav 标签**：`资产`（`/` 新增）/ `类型`（`/types` 从"类型管理"改）/ `看板`（已是，保留 hero 形态）。
+- `/`：补「资产 · 共 N 件」头，filters 移到标题行**下方一行**（标题行 = 标题左 / 登记资产按钮右）。
+- `/types`：「类型 · 共 N 个」（去"管理"二字）。
+- 看板：保持 `text-3xl` hero + tagline（M3d 独立形态），结构上同为"标题左 / 控制右"，不变。
+
+### 决策 2 · 只读类型视图（§W-详情，新建）
+
+镜像资产详情只读区：
+
+- 元信息用 `general-fields.tsx` 同款 dl 行：名称 / 代号前缀（mono）/ 描述 / 创建时间 / 更新时间 / **资产引用数（ref_count）**。
+- 新增「自定义字段」section：只读列出 custom_fields schema（key / label / 类型 / 必填 / 选项），复用 `SectionTitle` + `SectionCaption`。
+- actions：`编辑`（outline → `/types/$id/edit`）+ ⋯ 菜单（删除，**保留 ref_count>0 禁删守卫**）。与 `asset-header` 的 编辑 + ⋯删除 一致。
+
+### 决策 3 · DetailPageShell（§W-详情）
+
+共享骨架组件：
+
+- 外壳 `mx-auto max-w-[960px] px-4 py-8 space-y-10`（采用资产宽度）。
+- 顶部返回链接：`text-sm text-muted-foreground hover:text-foreground transition-colors`，文案 `← 返回列表` / `← 返回类型列表`（slot）。
+- header：`flex items-start justify-between gap-4`，左 = 标题 `text-2xl font-semibold` + meta slot，右 = actions slot。
+- children = 各 section。
+- 资产详情 + 类型只读视图都用它。
+
+### 决策 4 · 看板背景（D1）→ 去渐变，用平背景
+
+实测：body `--background` = `oklch(0.984 0.004 247)`（微蓝 off-white），看板 radial 中心 `oklch(0.985 中性灰)` → 边缘纯白（1.0），即看板比其它页更白 + 中性，渐变幅度仅 1.5% 亮度——太弱读不出"光晕"，却足够破坏一致性。
+
+- **决策**：看板 `<main>` 去掉 radial gradient，改用平 `bg-background`，与 `/`、`/types` 完全一致。
+- **MASTER override**：删除 MASTER §Dashboard Atmosphere 的实际应用（token 可保留不用 or 删）。属 5 轮未做出存在感的 atmosphere 概念的正式放弃。**实施 PR 时在 MASTER.md「实施期纠偏」记录此 override**。
+
+### 决策 5 · 看板右列布局（D2）
+
+- 删 `grid grid-rows-3` + `min-h-[640px]` 强制等高；右列改 `flex flex-col gap-6`（或 `space-y-6`），卡片按内容高度自然堆叠 → 死空间消失。
+- 空持有人卡片：渲染已有的 `HolderEmpty` 空态（M4 §3 `empty-states/` 已建），不塌陷不留白。
+- 左右列不再强制等高（左 10-bar 图本就高，右自然堆叠，整体视觉平衡）。
+
+### 决策 6 · toggle 统一（§S）→ 语义图标
+
+抽一个共享「状态过滤 toggle」组件，两页都用：
+
+- 形态：pill + status token on 态（`bg-status-X/15` + `text-status-X-fg` + `border-status-X/60`，两边已一致）+ 统一 off 态。
+- **指示符用语义 Lucide 图标**：`Moon`（退役，与 timeline RETIRE=Moon 一致）/ `Archive`（注销）。**不用圆点**（无语义）。
+- 即把资产列表 `assets-filters.tsx` 的 Toggle 形态提为共享组件，看板 `dashboard-header.tsx` 的 `TogglePill` 改用它（圆点 → 图标）。
+
+### 通用约束（实施期遵守）
+
+- 反 AI-slop 红线：`grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to'` 期望 0 命中（shadcn `animate-pulse` 历史例外）。**注意 D1 去渐变后看板不再有 `bg-[radial-gradient...]`，红线更干净。**
+- 复用既有公共组件（`<EmptyState>` / `<ErrorState>` / `HolderEmpty` / skeleton 等）与 token，不自创。
+- 合并前跑 Pre-Delivery Checklist 7 项 + frontend-design 闸门 + 红线 grep。
 
 ## 明确不做（YAGNI 边界）
 
