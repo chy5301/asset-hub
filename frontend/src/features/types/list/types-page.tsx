@@ -18,7 +18,7 @@ export function TypesPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-xl font-semibold">类型管理</h1>
+          <h1 className="text-xl font-semibold">类型</h1>
           {q.data && (
             <p className="text-sm text-muted-foreground">共 {q.data.length} 个类型</p>
           )}

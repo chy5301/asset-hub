@@ -60,17 +60,25 @@ function AssetListPage() {
   return (
     <>
       <section className="space-y-4">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">资产</h1>
+            {query.data && (
+              <p className="text-sm text-muted-foreground">共 {query.data.length} 件</p>
+            )}
+          </div>
+          <Link to="/assets/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              登记资产
+            </Button>
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AssetsFilters search={search} />
           <div className="flex items-center gap-2">
             <ColumnVisibilityMenu visible={visible} onToggle={toggle} />
             <ExportButton search={search} />
-            <Link to="/assets/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                登记资产
-              </Button>
-            </Link>
           </div>
         </div>
 
