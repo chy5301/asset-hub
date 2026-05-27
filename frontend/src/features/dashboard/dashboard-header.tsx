@@ -1,6 +1,6 @@
-import { HelpCircle } from "lucide-react";
+import { Archive, HelpCircle, Moon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { StatusFilterToggle } from "@/components/status/status-filter-toggle";
 
 import type { DashboardSearch } from "./search-schema";
 
@@ -25,29 +25,23 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
       </div>
 
       <div className="flex items-center gap-3">
-        <TogglePill
+        <StatusFilterToggle
+          pressed={includeRetired}
+          onPressedChange={(next) =>
+            onToggle({ include_retired: next, include_disposed: includeDisposed })
+          }
+          icon={Moon}
           label="显示退役"
-          tokenClass="bg-status-retired/15 text-status-retired-fg"
-          borderOnClass="border-status-retired/60"
-          state={includeRetired ? "on" : "off"}
-          onClick={() =>
-            onToggle({
-              include_retired: !includeRetired,
-              include_disposed: includeDisposed,
-            })
-          }
+          status="retired"
         />
-        <TogglePill
-          label="显示注销"
-          tokenClass="bg-status-disposed/15 text-status-disposed-fg"
-          borderOnClass="border-status-disposed/60"
-          state={includeDisposed ? "on" : "off"}
-          onClick={() =>
-            onToggle({
-              include_retired: includeRetired,
-              include_disposed: !includeDisposed,
-            })
+        <StatusFilterToggle
+          pressed={includeDisposed}
+          onPressedChange={(next) =>
+            onToggle({ include_retired: includeRetired, include_disposed: next })
           }
+          icon={Archive}
+          label="显示注销"
+          status="disposed"
         />
         <HelpCircle className="size-3.5 text-muted-foreground/60" aria-label="提示">
           <title>默认排除显示退役/显示注销(与列表一致)</title>
@@ -57,36 +51,3 @@ export function DashboardHeader({ includeRetired, includeDisposed, onToggle }: D
   );
 }
 
-interface TogglePillProps {
-  label: string;
-  tokenClass: string;
-  borderOnClass: string;
-  state: "on" | "off";
-  onClick: () => void;
-}
-
-function TogglePill({ label, tokenClass, borderOnClass, state, onClick }: TogglePillProps) {
-  return (
-    <button
-      type="button"
-      data-state={state}
-      onClick={onClick}
-      aria-label={label}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
-        "transition-colors",
-        state === "off"
-          ? "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
-          : cn("hover:opacity-90", tokenClass, borderOnClass),
-      )}
-    >
-      <span
-        className={cn(
-          "size-1.5 rounded-full transition-colors",
-          state === "on" ? "bg-current" : "bg-muted-foreground/40",
-        )}
-      />
-      {label}
-    </button>
-  );
-}
