@@ -32,9 +32,7 @@ export function DashboardPage() {
   const STAGGER_DELAY = { type: 0.1, status: 0.18, holder: 0.26 } as const;
 
   return (
-    <main
-      className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]"
-    >
+    <main className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-background">
       <div className="border-b border-border/40 mb-8" />
 
       <DashboardHeader
