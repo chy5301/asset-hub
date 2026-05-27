@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 
-type StatusKey = "retired" | "disposed";
+export type StatusKey = "retired" | "disposed";
 
 const STATUS_TOKEN: Record<StatusKey, string> = {
   retired:

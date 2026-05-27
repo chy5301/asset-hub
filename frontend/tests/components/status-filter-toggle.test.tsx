@@ -1,6 +1,5 @@
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { Moon } from "lucide-react";
 
 import { StatusFilterToggle } from "@/components/status/status-filter-toggle";
@@ -19,7 +18,7 @@ describe("StatusFilterToggle", () => {
     expect(screen.getByRole("button", { name: "显示退役" })).toBeInTheDocument();
   });
 
-  it("pressed 时 data-state=on，点击回调切换", async () => {
+  it("pressed 时 data-state=on，点击回调切换", () => {
     const onChange = vi.fn();
     render(
       <StatusFilterToggle
@@ -32,7 +31,7 @@ describe("StatusFilterToggle", () => {
     );
     const btn = screen.getByRole("button", { name: "显示退役" });
     expect(btn).toHaveAttribute("data-state", "on");
-    await userEvent.click(btn);
+    fireEvent.click(btn);
     expect(onChange).toHaveBeenCalledWith(false);
   });
 });
