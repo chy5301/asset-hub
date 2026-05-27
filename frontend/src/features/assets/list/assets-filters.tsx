@@ -146,14 +146,14 @@ export function AssetsFilters({ search }: AssetsFiltersProps) {
         pressed={!!search.show_retired}
         onPressedChange={onToggleRetired}
         icon={Moon}
-        label="显示退役资产"
+        label="显示退役"
         status="retired"
       />
       <StatusFilterToggle
         pressed={!!search.show_disposed}
         onPressedChange={onToggleDisposed}
         icon={Archive}
-        label="显示注销资产"
+        label="显示注销"
         status="disposed"
       />
 
