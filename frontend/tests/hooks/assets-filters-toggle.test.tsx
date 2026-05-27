@@ -64,7 +64,7 @@ describe("AssetsFilters Toggle URL sync", () => {
     const { router } = renderFiltersWithRouter();
 
     // 等组件挂载完成
-    const toggle = await screen.findByRole("button", { name: "显示退役资产" });
+    const toggle = await screen.findByRole("button", { name: "显示退役" });
     await user.click(toggle);
 
     await waitFor(() => {
@@ -76,7 +76,7 @@ describe("AssetsFilters Toggle URL sync", () => {
     const user = userEvent.setup();
     const { router } = renderFiltersWithRouter();
 
-    const toggle = await screen.findByRole("button", { name: "显示注销资产" });
+    const toggle = await screen.findByRole("button", { name: "显示注销" });
     await user.click(toggle);
 
     await waitFor(() => {

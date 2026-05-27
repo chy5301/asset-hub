@@ -32,9 +32,7 @@ export function DashboardPage() {
   const STAGGER_DELAY = { type: 0.1, status: 0.18, holder: 0.26 } as const;
 
   return (
-    <main
-      className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]"
-    >
+    <main className="relative min-h-[calc(100vh-4rem)] px-6 py-8 bg-background">
       <div className="border-b border-border/40 mb-8" />
 
       <DashboardHeader
@@ -48,7 +46,7 @@ export function DashboardPage() {
       ) : statsQuery.isError ? (
         <ErrorState error={statsQuery.error} onRetry={() => statsQuery.refetch()} />
       ) : statsQuery.data ? (
-        <div className="grid grid-cols-12 gap-6 min-h-[640px]">
+        <div className="grid grid-cols-12 gap-6 items-start">
           <motion.div
             data-motion-kind="idle"
             className="col-span-6"
@@ -58,7 +56,7 @@ export function DashboardPage() {
           >
             <IdleTopBarChart data={statsQuery.data.idle_top ?? []} />
           </motion.div>
-          <div className="col-span-6 grid grid-rows-3 gap-6">
+          <div className="col-span-6 flex flex-col gap-6">
             <motion.div
               data-motion-kind="type"
               initial={sideInitial}

@@ -669,3 +669,52 @@ dashboard `dashboard-header.tsx` 的 "已退役 / 已注销" 与列表 `assets-f
 ### Playwright MCP 烟测
 
 本 PR 视觉烟测由 e2e CI 覆盖（新加 `list-sort-by-type-status` spec + 现有 11 spec），跳过 Playwright MCP 手测。Phase 2 IdleTopBarChart Y 轴长名截断决策点未触发（待生产数据后再 followup 评估）。
+
+## 实施期纠偏（UI 一致性 batch PR-2，2026-05-27）
+
+收口「前端视觉/结构一致性 batch」（spec `docs/superpowers/specs/2026-05-26-ui-consistency-batch-design.md` 决策 1/4/5/6 + E）。纯前端，无 schema 改动。本 PR squash 合并，下列各项落地于同一 squash commit（非逐条独立 SHA）。
+
+### 1. D1 · 撤销 Dashboard Atmosphere（radial gradient）→ 平背景
+
+**反向纠偏 M4 实施期纠偏 §1。** M4 §1 把 dashboard `<main>` 容器改用 `bg-[radial-gradient(50%_60%_at_50%_20%,var(--dashboard-bg-radial-from),var(--dashboard-bg-radial-to))]` 消费 atmosphere token。实测浅色模式下该 radial（中心 `oklch(0.985)` 中性灰 → 边缘纯白）与全站其它页面的平 `bg-background`（带蓝调 off-white）产生**可见色差**——看板成了带色块的非均匀面，与列表/类型页割裂。本 PR（决策 4）改回平 `bg-background`，与全站一致。`--dashboard-bg-radial-from/to` token 暂留为 dead（无引用，删除放后续清理，本 PR 不强删以缩小改动面）。**MASTER「Dashboard Atmosphere」override 自此作废**：dashboard 背景规则回归 MASTER baseline（平 `bg-background`）。
+
+### 2. D2 · 看板右列去强制等高，改自然堆叠
+
+**修订 M4 §Responsive 的 dashboard grid。** 右列原 `grid grid-rows-3 ... min-h-[640px]` 把右列强制切 3 等高行（各 ~213px），但行内卡片（`<section>`，无 `h-full`）按内容高度浮在行顶 → 下方死空间 = 大间距。决策 5：外层 grid 去 `min-h-[640px]` 加 `items-start`（左右两列各自顶对齐、按内容高度不互相拉伸），右列 `grid grid-rows-3` → `flex flex-col gap-6`（三卡按内容自然堆叠）。`HolderLeaderboard` 已自带 `HolderEmpty` 空态，无需新增。加载骨架 `skeleton.tsx` 的 `DashboardSkeleton` 同步对齐（去 `min-h-[640px]` 加 `items-start`、内层 `grid grid-rows-3` → `flex flex-col`），消除 loading→data 的布局抖动（终审 M1 发现，同 D2 逻辑补齐）。
+
+### 3. §S · toggle 统一为共享 StatusFilterToggle（语义图标）
+
+**承接 M4 §2（边框 /60）+ §4（文案统一），收掉两套实现。** 列表 `assets-filters.tsx`（shadcn Toggle + 语义图标 Moon/Archive）与 dashboard `dashboard-header.tsx`（自定义 `TogglePill` + **圆点** 指示符）此前是两套独立实现。决策 6：抽 `frontend/src/components/status/status-filter-toggle.tsx` 共享组件（基于 shadcn `Toggle`，props `pressed/onPressedChange/icon/label/status`，导出判别类型 `StatusKey`），**指示符统一为语义 Lucide 图标**（Moon=退役 / Archive=注销，与 timeline `RETIRE=Moon` 一致），染色 token 沿用 M4 §2 锁定值（`bg-status-X/15` + `text-status-X-fg` + `border-status-X/60`）。dashboard 删 `TogglePill` + `TogglePillProps`（圆点→图标）。两端 label 统一为「显示退役 / 显示注销」（沿用 M4 §4），列表 toggle 可见文本由共享组件 `aria-label === 可见文本` 同源，消除原 `aria-label="显示退役资产"` + 可见文本「显示退役」的分裂。
+
+### 4. §W-列表 · page-header 规范统一
+
+决策 1：统一「列表页头」=`<h1 text-xl font-semibold>` 标题 + 计数副标题 `<p text-sm text-muted-foreground>` + 右侧主操作，标题文案**对齐 nav 标签**。落地：`types-page.tsx` 标题「类型管理」→「类型」；`routes/index.tsx` 资产列表**补 page-header**（原无标题）——加标题「资产」+ 计数「共 N 件」（筛选后 `query.data.length`），登记按钮上移到标题行，filters + 列显隐/导出留在下方一行。两页标题行 className 对齐（`flex items-end justify-between gap-3`）。顺手修复 `index.tsx` 登记按钮 `<Link><Button>`（`<a>` 嵌套 `<button>` 的非法可交互元素嵌套）→ `<Button asChild><Link>`，与 sibling `types-page.tsx` 既有的 shadcn 范式一致。三页（资产/类型/看板）page-header 风格自此统一。
+
+### 5. E（逾期角标加载闪动）· 不做
+
+决策文档列 E 为可选。评估结论：现状（`useOverdueForOpenCheckout` 在 transitions 加载期返回 null → 角标加载完才渲染、不渲染占位）已是**无布局跳动的最稳妥形态**；加等宽占位反而可能引入视觉噪音，ROI 低。维持现状，E 不做。
+
+### Pre-Delivery Checklist（PR-2 验证）
+
+- [x] No emojis as icons（toggle 指示符由圆点 div 改为语义 Lucide Moon/Archive；全 SVG）
+- [x] cursor-pointer on clickable elements（shadcn Toggle / Button 默认）
+- [x] Hover transitions smooth 150-300ms（StatusFilterToggle `transition-colors duration-200`；D1/D2 纯布局类无新动画）
+- [x] Light mode text contrast 4.5:1（status 色 token 沿用 MASTER 锁定值未改；D1 改回 `bg-background` 提升对比一致性）
+- [x] Focus states visible for keyboard（shadcn Toggle / Button focus-visible 默认 + globals.css 兜底）
+- [x] `prefers-reduced-motion` respected（沿用 globals.css 媒体查询；本 PR 无硬编码新动画）
+- [x] Responsive 1024+（dashboard 仍 `grid-cols-12` + `col-span-6`；右列改 `flex flex-col` 不影响 < 1024 换行）
+
+### 红线扫描结果
+
+`grep -rnE 'scale-|animate-spin|backdrop-blur|bg-gradient-to|radial-gradient'` 在 `frontend/src` 全树：**0 命中**（D1 去 radial 后 dashboard 不再有 `radial-gradient`；shadcn `skeleton.tsx` `animate-pulse` 是历史例外，不在本 pattern 内、本 PR 未改）。后端无改动，未跑 `gen:api`。
+
+### Playwright MCP 烟测（浅色模式，2026-05-27）
+
+作者主用浅色，本批问题（D1 色差）只在浅色明显，故**先在浅色模式**走查（`<html>` 无 `dark` class 即默认浅色）：
+
+- `/dashboard`：背景平整无色差（D1 ✅）；右列三卡（类型分布/状态分布/保管人持有）自然堆叠、间距一致、无死空间（D2 ✅）；toggle 为图标 pill（Moon/Archive，§S ✅）。
+- `/`：页头标题「资产」+「共 5 件」+ 登记资产按钮上移到标题行；下方 filters 行的「显示退役/显示注销」为图标 pill（§W + §S ✅）。
+- `/types`：标题「类型」（非「类型管理」）+「共 2 个类型」（§W ✅）。
+- 三页 page-header 风格一致（标题左 / 主操作右）。
+
+gate 全绿：`tsc -b` clean、`lint` 0 errors（2 个 pre-existing useReactTable warning）、`vitest` 46 files / 197 tests 全通过。
