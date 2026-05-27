@@ -16,9 +16,9 @@ const HOLDER_ROW_COUNT = 5;
 
 export function DashboardSkeleton() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 min-h-[640px]">
+    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 items-start">
       <IdleTopSkeleton />
-      <div className="grid grid-rows-3 gap-6">
+      <div className="flex flex-col gap-6">
         <DonutSkeleton />
         <StatusBarSkeleton />
         <HolderListSkeleton />
