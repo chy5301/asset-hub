@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Clock, MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 
@@ -32,12 +32,7 @@ import { RetireAlertDialog } from "./retire-alert-dialog";
 import { ReturnDialog } from "./return-dialog";
 import { SimpleTransitionDialog } from "./simple-transition-dialog";
 
-interface AssetHeaderProps {
-  asset: AssetRead;
-  onDelete: () => void;
-}
-
-function useOverdueForOpenCheckout(
+export function useOverdueForOpenCheckout(
   assetId: string,
   assetStatus: AssetRead["status"],
 ) {
@@ -48,67 +43,60 @@ function useOverdueForOpenCheckout(
   return calcOverdue(open.due_at, assetStatus);
 }
 
-export function AssetHeader({ asset, onDelete }: AssetHeaderProps) {
+/** 资产详情标题旁的逾期角标（DetailPageShell titleAccessory slot）。 */
+export function AssetTitleAccessory({ asset }: { asset: AssetRead }) {
   const overdue = useOverdueForOpenCheckout(asset.id, asset.status);
+  if (!overdue || overdue.status === "pending") return null;
   return (
-    <header className="flex items-start justify-between gap-4">
-      <div className="space-y-1">
-        <Link
-          to="/"
-          search={{ sort: "asset_code", page: 1, pageSize: 50 }}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← 返回列表
-        </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{asset.name}</h1>
-          {overdue && overdue.status !== "pending" && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                overdue.status === "due-soon" && "bg-warning/15 text-warning-fg",
-                overdue.status === "overdue" && "bg-destructive/15 text-destructive",
-              )}
-            >
-              <Clock className="size-3" aria-hidden />
-              {overdue.status === "due-soon"
-                ? `还有 ${overdue.days} 天到期`
-                : `逾期 ${overdue.days} 天`}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-code text-sm text-muted-foreground">
-            {asset.asset_code}
-          </span>
-          <span className="text-sm text-muted-foreground">·</span>
-          <span className="text-sm text-muted-foreground">
-            {asset.type_name ?? "未知类型"}
-          </span>
-          {(asset.brand || asset.model) && (
-            <>
-              <span className="text-sm text-muted-foreground">·</span>
-              <span className="text-sm text-muted-foreground">
-                {[asset.brand, asset.model].filter(Boolean).join(" · ")}
-              </span>
-            </>
-          )}
-          <StatusBadge status={asset.status} />
-        </div>
-        {asset.holder && (
-          <p className="text-sm text-muted-foreground">
-            当前保管人 ·{" "}
-            <span className="text-foreground">{asset.holder}</span>
-            {asset.location ? <> · {asset.location}</> : null}
-          </p>
-        )}
-      </div>
-      <ActionArea asset={asset} onDelete={onDelete} />
-    </header>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+        overdue.status === "due-soon" && "bg-warning/15 text-warning-fg",
+        overdue.status === "overdue" && "bg-destructive/15 text-destructive",
+      )}
+    >
+      <Clock className="size-3" aria-hidden />
+      {overdue.status === "due-soon"
+        ? `还有 ${overdue.days} 天到期`
+        : `逾期 ${overdue.days} 天`}
+    </span>
   );
 }
 
-function ActionArea({
+/** 资产详情元信息行（DetailPageShell meta slot）。 */
+export function AssetMeta({ asset }: { asset: AssetRead }) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <span className="font-code text-sm text-muted-foreground">
+          {asset.asset_code}
+        </span>
+        <span className="text-sm text-muted-foreground">·</span>
+        <span className="text-sm text-muted-foreground">
+          {asset.type_name ?? "未知类型"}
+        </span>
+        {(asset.brand || asset.model) && (
+          <>
+            <span className="text-sm text-muted-foreground">·</span>
+            <span className="text-sm text-muted-foreground">
+              {[asset.brand, asset.model].filter(Boolean).join(" · ")}
+            </span>
+          </>
+        )}
+        <StatusBadge status={asset.status} />
+      </div>
+      {asset.holder && (
+        <p className="text-sm text-muted-foreground">
+          当前保管人 ·{" "}
+          <span className="text-foreground">{asset.holder}</span>
+          {asset.location ? <> · {asset.location}</> : null}
+        </p>
+      )}
+    </>
+  );
+}
+
+export function AssetActionArea({
   asset,
   onDelete,
 }: {
@@ -132,7 +120,6 @@ function ActionArea({
         </Button>
       ))}
 
-      {/* 编辑非 transition，outline 视觉分层；DISPOSED 全只读时隐藏 */}
       {!isReadonly && (
         <Button
           variant="outline"
@@ -186,7 +173,6 @@ function ActionArea({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* dialog 条件渲染：未打开则不实例化，避免每次详情页 render 都跑 9× useForm + useMutation */}
       {(openDialog === "CHECKOUT_INTERNAL" || openDialog === "CHECKOUT_EXTERNAL") && (
         <CheckoutDialog open onOpenChange={closeDialog} assetId={asset.id} kind={openDialog} />
       )}

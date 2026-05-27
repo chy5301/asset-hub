@@ -1,15 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { TypeDetailPage } from '@/features/types/detail/type-detail-page';
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { z } from "zod";
+import { TypeNotFound } from "@/features/types/detail/type-not-found";
 
-function TypeDetailRoute() {
-  const { id } = Route.useParams();
-  return (
-    <div className="max-w-3xl">
-      <TypeDetailPage id={id} />
-    </div>
-  );
-}
-
-export const Route = createFileRoute('/types/$id')({
-  component: TypeDetailRoute,
+export const Route = createFileRoute("/types/$id")({
+  parseParams: ({ id }) => ({ id: z.string().uuid().parse(id) }),
+  component: () => <Outlet />,
+  errorComponent: TypeNotFound,
 });

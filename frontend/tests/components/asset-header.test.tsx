@@ -10,7 +10,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 
-import { AssetHeader } from "@/features/assets/detail/asset-header";
+import { AssetTitleAccessory } from "@/features/assets/detail/asset-header";
 import * as transitionsHook from "@/api/hooks/transitions";
 import type { AssetRead, TransitionRead } from "@/features/assets/types";
 
@@ -95,10 +95,7 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
     } as never);
 
     renderWithProviders(
-      <AssetHeader
-        asset={{ ...baseAsset, status: "IN_USE" }}
-        onDelete={vi.fn()}
-      />,
+      <AssetTitleAccessory asset={{ ...baseAsset, status: "IN_USE" }} />,
     );
     expect(await screen.findByText(/逾期 \d+ 天/)).toBeInTheDocument();
   });
@@ -113,13 +110,12 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
     } as never);
 
     renderWithProviders(
-      <AssetHeader
-        asset={{ ...baseAsset, status: "IDLE" }}
-        onDelete={vi.fn()}
-      />,
+      <span data-testid="anchor">
+        <AssetTitleAccessory asset={{ ...baseAsset, status: "IDLE" }} />
+      </span>,
     );
-    // 等路由 mount 完（任意稳定文字）
-    await screen.findByText("ThinkPad");
+    // 等路由 mount 完（anchor 元素）
+    await screen.findByTestId("anchor");
     expect(screen.queryByText(/逾期|还有/)).not.toBeInTheDocument();
   });
 
@@ -133,12 +129,11 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
     } as never);
 
     renderWithProviders(
-      <AssetHeader
-        asset={{ ...baseAsset, status: "IN_USE" }}
-        onDelete={vi.fn()}
-      />,
+      <span data-testid="anchor">
+        <AssetTitleAccessory asset={{ ...baseAsset, status: "IN_USE" }} />
+      </span>,
     );
-    await screen.findByText("ThinkPad");
+    await screen.findByTestId("anchor");
     expect(screen.queryByText(/逾期|还有/)).not.toBeInTheDocument();
   });
 
@@ -153,10 +148,7 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
     } as never);
 
     renderWithProviders(
-      <AssetHeader
-        asset={{ ...baseAsset, status: "IN_USE" }}
-        onDelete={vi.fn()}
-      />,
+      <AssetTitleAccessory asset={{ ...baseAsset, status: "IN_USE" }} />,
     );
     expect(await screen.findByText(/还有 \d+ 天到期/)).toBeInTheDocument();
   });
@@ -227,10 +219,7 @@ describe("AssetHeader overdue 角标 (M3d)", () => {
     } as never);
 
     renderWithProviders(
-      <AssetHeader
-        asset={{ ...baseAsset, status: "IN_USE" }}
-        onDelete={vi.fn()}
-      />,
+      <AssetTitleAccessory asset={{ ...baseAsset, status: "IN_USE" }} />,
     );
     // 必须显示"逾期 3 天"（新 OPEN），不是"逾期 8 天"（旧 closed）
     expect(await screen.findByText(/逾期 3 天/)).toBeInTheDocument();

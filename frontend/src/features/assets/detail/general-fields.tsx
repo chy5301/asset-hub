@@ -1,7 +1,7 @@
 import { CopyableText } from "@/components/copyable-text";
 import { formatDateTime } from "@/lib/date";
 import type { AssetRead } from "@/features/assets/types";
-import { DefinitionRow } from "./definition-row";
+import { DefinitionRow } from "@/components/ui/definition-row";
 
 interface GeneralFieldsProps {
   asset: AssetRead;
