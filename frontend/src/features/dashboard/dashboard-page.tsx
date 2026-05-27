@@ -46,7 +46,7 @@ export function DashboardPage() {
       ) : statsQuery.isError ? (
         <ErrorState error={statsQuery.error} onRetry={() => statsQuery.refetch()} />
       ) : statsQuery.data ? (
-        <div className="grid grid-cols-12 gap-6 min-h-[640px]">
+        <div className="grid grid-cols-12 gap-6 items-start">
           <motion.div
             data-motion-kind="idle"
             className="col-span-6"
@@ -56,7 +56,7 @@ export function DashboardPage() {
           >
             <IdleTopBarChart data={statsQuery.data.idle_top ?? []} />
           </motion.div>
-          <div className="col-span-6 grid grid-rows-3 gap-6">
+          <div className="col-span-6 flex flex-col gap-6">
             <motion.div
               data-motion-kind="type"
               initial={sideInitial}
