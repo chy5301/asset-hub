@@ -680,7 +680,7 @@ dashboard `dashboard-header.tsx` 的 "已退役 / 已注销" 与列表 `assets-f
 
 ### 2. D2 · 看板右列去强制等高，改自然堆叠
 
-**修订 M4 §Responsive 的 dashboard grid。** 右列原 `grid grid-rows-3 ... min-h-[640px]` 把右列强制切 3 等高行（各 ~213px），但行内卡片（`<section>`，无 `h-full`）按内容高度浮在行顶 → 下方死空间 = 大间距。决策 5：外层 grid 去 `min-h-[640px]` 加 `items-start`（左右两列各自顶对齐、按内容高度不互相拉伸），右列 `grid grid-rows-3` → `flex flex-col gap-6`（三卡按内容自然堆叠）。`HolderLeaderboard` 已自带 `HolderEmpty` 空态，无需新增。
+**修订 M4 §Responsive 的 dashboard grid。** 右列原 `grid grid-rows-3 ... min-h-[640px]` 把右列强制切 3 等高行（各 ~213px），但行内卡片（`<section>`，无 `h-full`）按内容高度浮在行顶 → 下方死空间 = 大间距。决策 5：外层 grid 去 `min-h-[640px]` 加 `items-start`（左右两列各自顶对齐、按内容高度不互相拉伸），右列 `grid grid-rows-3` → `flex flex-col gap-6`（三卡按内容自然堆叠）。`HolderLeaderboard` 已自带 `HolderEmpty` 空态，无需新增。加载骨架 `skeleton.tsx` 的 `DashboardSkeleton` 同步对齐（去 `min-h-[640px]` 加 `items-start`、内层 `grid grid-rows-3` → `flex flex-col`），消除 loading→data 的布局抖动（终审 M1 发现，同 D2 逻辑补齐）。
 
 ### 3. §S · toggle 统一为共享 StatusFilterToggle（语义图标）
 
