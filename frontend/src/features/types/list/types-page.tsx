@@ -16,7 +16,7 @@ export function TypesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">类型</h1>
           {q.data && (

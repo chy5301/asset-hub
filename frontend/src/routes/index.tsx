@@ -67,12 +67,12 @@ function AssetListPage() {
               <p className="text-sm text-muted-foreground">共 {query.data.length} 件</p>
             )}
           </div>
-          <Link to="/assets/new">
-            <Button>
+          <Button asChild>
+            <Link to="/assets/new">
               <Plus className="mr-2 h-4 w-4" />
               登记资产
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AssetsFilters search={search} />
