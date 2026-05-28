@@ -59,6 +59,34 @@ def test_help_json_hidden_from_normal_help():
     assert "--help-json" not in result.stdout
 
 
+def test_help_json_examples_extracted():
+    """命令 docstring 末的 Examples: 段被解析进 examples 列表。"""
+    result = runner.invoke(app, ["asset", "register", "--help-json"])
+    assert result.exit_code == 0, result.stdout
+    data = json.loads(result.stdout)
+    assert isinstance(data["examples"], list)
+    assert len(data["examples"]) >= 1
+    assert all(isinstance(e, str) and e.strip() for e in data["examples"])
+    assert any("asset register" in e for e in data["examples"])
+
+
+def test_help_json_examples_empty_when_no_section():
+    """没有 Examples: 段的命令，examples 为空列表（不报错）。"""
+    result = runner.invoke(app, ["asset", "recover", "--help-json"])
+    assert result.exit_code == 0, result.stdout
+    data = json.loads(result.stdout)
+    assert data["examples"] == []
+
+
+def test_help_json_help_excludes_examples_block():
+    """help 字段只含描述，不重复 Examples: 段内容。"""
+    result = runner.invoke(app, ["asset", "register", "--help-json"])
+    assert result.exit_code == 0, result.stdout
+    data = json.loads(result.stdout)
+    assert "Examples:" not in data["help"]
+    assert "登记新资产" in data["help"]
+
+
 def test_help_json_covers_all_top_groups():
     """5 个 top-level groups 都 work，不只 asset.*（防 Typer 升级时部分 group 失 patch）。
 

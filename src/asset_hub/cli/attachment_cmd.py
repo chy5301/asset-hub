@@ -27,7 +27,12 @@ def attachment_add(
     ] = AttachmentKind.OTHER,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """上传附件到指定资产。"""
+    """上传附件到指定资产。
+
+    Examples:
+        asset-hub attachment add <asset-id> --file ./invoice.pdf --json
+        asset-hub attachment add <asset-id> --file ./photo.jpg --kind photo --json
+    """
     uid = parse_uuid(asset_id, json_output)
     storage = get_default_storage()
     with cli_session() as session, handle_domain_errors(json_output):

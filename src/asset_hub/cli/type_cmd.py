@@ -31,7 +31,13 @@ def type_define(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json", help="JSON 信封输出")] = False,
 ) -> None:
-    """定义新的资产类型。"""
+    """定义新的资产类型。
+
+    Examples:
+        asset-hub type define --name 笔记本 --prefix NB --json
+        asset-hub type define --name GPU --prefix GPU --fields '[{"key": "vram_gb", "label": "显存(GB)", "type": "int", "required": true}]' --json
+        asset-hub type define --from examples/types/gpu.json --json
+    """
     if from_file is not None:
         schema = load_schema_from_file(from_file, json_output)
         name = schema["name"]

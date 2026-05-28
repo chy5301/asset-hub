@@ -58,7 +58,12 @@ def stats_root(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """看板 4 段聚合查询（CLI 入口）。"""
+    """看板 4 段聚合查询（CLI 入口）。
+
+    Examples:
+        asset-hub stats --json
+        asset-hub stats --fields idle_top,status_distribution --json
+    """
     if ctx.invoked_subcommand is not None:
         return
 

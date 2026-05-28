@@ -94,6 +94,8 @@ description: |-
 
 ## 命令速查
 
+> 任意命令加 `--help-json` 取结构化元数据 `{command, help, params, examples}`，其中 `examples` 是可直接照抄的示例命令。不确定某命令的参数或用法时优先用它——它从代码实时生成，比本速查更新更准。
+
 **资产 CRUD：**
 
 ```
