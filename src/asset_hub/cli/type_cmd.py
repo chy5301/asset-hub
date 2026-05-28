@@ -35,7 +35,7 @@ def type_define(
 
     Examples:
         asset-hub type define --name 笔记本 --prefix NB --json
-        asset-hub type define --name GPU --prefix GPU --fields '[{"key": "vram_gb", "label": "显存(GB)", "type": "number", "required": true}]' --json
+        asset-hub type define --name GPU --prefix GPU --fields '[{"key": "vram_gb", "label": "显存(GB)", "type": "int", "required": true}]' --json
         asset-hub type define --from examples/types/gpu.json --json
     """
     if from_file is not None:
