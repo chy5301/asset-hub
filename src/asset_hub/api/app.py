@@ -1,4 +1,5 @@
 import os
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Literal
 
@@ -67,7 +68,7 @@ def _make_handler(status: int):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="asset-hub", version="0.1.0")
+    app = FastAPI(title="asset-hub", version=pkg_version("asset-hub"))
     app.include_router(types.router, prefix="/api/types", tags=["types"])
     app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
     app.include_router(transitions.router, prefix="/api/assets", tags=["transitions"])
