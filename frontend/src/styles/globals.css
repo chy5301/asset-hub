@@ -138,10 +138,6 @@
   --chart-5: oklch(0.7 0.13 280);
   --chart-6: oklch(0.7 0.13 0);
 
-  /* dashboard atmosphere */
-  --dashboard-bg-radial-from: oklch(0.985 0 0 / 0.95);
-  --dashboard-bg-radial-to: oklch(1 0 0);
-
   --radius: 0.375rem;
 
   --sidebar: oklch(0.984 0.004 247);
@@ -210,9 +206,6 @@
   --chart-4: oklch(0.62 0.13 80);
   --chart-5: oklch(0.62 0.13 280);
   --chart-6: oklch(0.62 0.13 0);
-
-  --dashboard-bg-radial-from: oklch(0.18 0.005 250 / 0.95);
-  --dashboard-bg-radial-to: oklch(0.13 0.005 250);
 
   --sidebar: oklch(0.18 0.025 258);
   --sidebar-foreground: oklch(0.95 0.01 247);
