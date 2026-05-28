@@ -213,6 +213,21 @@ def register_param_enrichment(
     _PARAM_ENRICHMENTS[(command_path, param_name)] = extra
 
 
+def _split_examples(help_text: str) -> tuple[str, list[str]]:
+    """从 docstring 切出描述与 Examples: 段。
+
+    约定：docstring 末尾以单独一行 ``Examples:`` 起始，其下每个非空行为一条
+    示例命令。返回 (描述, 示例列表)；无 Examples: 段则示例为空、描述为全文。
+    """
+    lines = help_text.splitlines()
+    idx = next((i for i, ln in enumerate(lines) if ln.strip() == "Examples:"), None)
+    if idx is None:
+        return help_text.strip(), []
+    description = "\n".join(lines[:idx]).strip()
+    examples = [ln.strip() for ln in lines[idx + 1 :] if ln.strip()]
+    return description, examples
+
+
 def print_help_json(ctx: typer.Context) -> None:
     """输出当前 command 的 JSON 结构化 help（agent 友好）。spec §4.3。
 
@@ -247,11 +262,12 @@ def print_help_json(ctx: typer.Context) -> None:
             entry.update(extra)
         params.append(entry)
 
+    description, examples = _split_examples(cmd.help or "")
     payload = {
         "command": ctx.command_path or cmd.name or "",
-        "help": (cmd.help or "").strip(),
+        "help": description,
         "params": params,
-        "examples": [],  # TODO v2.1：从 command docstring 末 "Examples:" 段提取
+        "examples": examples,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 

@@ -49,7 +49,12 @@ def asset_register(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """登记新资产。"""
+    """登记新资产。
+
+    Examples:
+        asset-hub asset register --name "MacBook Pro 14" --type-id <type-uuid>
+        asset-hub asset register --name GPU-A100 --type-id <type-uuid> --sn SN-2024-001 --custom '{"vram_gb": 80}' --json
+    """
     uid = parse_uuid(type_id, json_output)
     custom_data = json.loads(custom) if custom else {}
     parsed_date = date.fromisoformat(acquired_at) if acquired_at else None
@@ -93,7 +98,12 @@ def asset_checkout(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """派发资产（kind: internal 内部派发 / external 对外出借）。"""
+    """派发资产（kind: internal 内部派发 / external 对外出借）。
+
+    Examples:
+        asset-hub asset checkout <asset-id> --to-holder 张三
+        asset-hub asset checkout <asset-id> --to-holder 外部供应商 --kind external --due-at 2026-06-30 --json
+    """
     uid = parse_uuid(asset_id, json_output)
     parsed_fields = parse_cli_fields(fields)
     kind_map = {
@@ -142,7 +152,12 @@ def asset_return(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """归还资产（--to-holder 是归还接收人，归还后成为新 holder；不传则资产无 holder）。"""
+    """归还资产（--to-holder 是归还接收人，归还后成为新 holder；不传则资产无 holder）。
+
+    Examples:
+        asset-hub asset return <asset-id>
+        asset-hub asset return <asset-id> --to-holder 仓管员 --to-location 仓库A --json
+    """
     uid = parse_uuid(asset_id, json_output)
     parsed_fields = parse_cli_fields(fields)
 
@@ -426,10 +441,12 @@ def asset_reassign(
 ) -> None:
     """重新分配持有人或位置（合并 v1.0 RELOCATE + TRANSFER_HOLDER）。
 
-    必须改 holder 或 location 至少一项：
-      asset reassign <id> --to-holder 李四
-      asset reassign <id> --to-location 仓库
-      asset reassign <id> --to-holder 李四 --to-location 仓库
+    必须改 holder 或 location 至少一项。
+
+    Examples:
+        asset-hub asset reassign <asset-id> --to-holder 李四
+        asset-hub asset reassign <asset-id> --to-location 仓库
+        asset-hub asset reassign <asset-id> --to-holder 李四 --to-location 仓库 --json
     """
     _record_simple_transition(
         asset_id,
@@ -591,7 +608,13 @@ def asset_list(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """列出资产。"""
+    """列出资产。
+
+    Examples:
+        asset-hub asset list --json
+        asset-hub asset list --status IN_USE --holder 张三 --json
+        asset-hub asset list --q macbook --sort updated_at --order desc --limit 20 --json
+    """
     parsed_type_id = parse_uuid(type_id, json_output)
     parsed_status = parse_enum(AssetStatus, status, json_output)
     parsed_fields = parse_cli_fields(fields)
@@ -655,7 +678,12 @@ def asset_update(
     set_data: Annotated[str, typer.Option("--set", help="要更新的字段 JSON")],
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """更新资产字段。"""
+    """更新资产字段。
+
+    Examples:
+        asset-hub asset update <asset-id> --set '{"location": "仓库B", "notes": "已校准"}' --json
+        asset-hub asset update <asset-id> --set '{"notes": null}' --json
+    """
     uid = parse_uuid(asset_id, json_output)
     updates = json.loads(set_data)
 
@@ -730,7 +758,12 @@ def asset_delete(
     ] = False,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """删除资产。"""
+    """删除资产。
+
+    Examples:
+        asset-hub asset delete <asset-id> --dry-run --json
+        asset-hub asset delete <asset-id> --yes --json
+    """
     uid = parse_uuid(asset_id, json_output)
 
     with cli_session() as session, handle_domain_errors(json_output):
