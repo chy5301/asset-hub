@@ -23,7 +23,7 @@ def find_free_port() -> int:
 class BackgroundServer:
     def __init__(self, host: str = "127.0.0.1", port: int | None = None) -> None:
         self.host = host
-        self.port = port or find_free_port()
+        self.port = port if port is not None else find_free_port()
         config = uvicorn.Config(
             create_app(),
             host=self.host,

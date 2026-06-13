@@ -8,6 +8,14 @@ def test_find_free_port_returns_bindable_int():
     assert isinstance(port, int) and 1024 < port < 65536
 
 
+def test_stop_without_start_is_noop():
+    """stop() 在未 start 的实例上不应抛异常。"""
+    from asset_hub.desktop.server import BackgroundServer
+
+    srv = BackgroundServer()
+    srv.stop()  # 不应 raise
+
+
 def test_background_server_serves_healthz():
     """真起一个后台 uvicorn，健康探测通过后访问 /api/healthz。"""
     from asset_hub.desktop.server import BackgroundServer
