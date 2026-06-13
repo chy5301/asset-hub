@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import { http } from "@/api/client";
 import type { components } from "@/api/generated/schema";
@@ -7,6 +12,13 @@ import { unwrap } from "@/api/types";
 
 type TransitionRead = components["schemas"]["TransitionRead"];
 type TransitionCreate = components["schemas"]["TransitionCreate"];
+
+/** transition / undo 成功后统一失效资产相关缓存（detail + transitions + 列表）。 */
+function invalidateAssetCaches(qc: QueryClient, assetId: string) {
+  qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
+  qc.invalidateQueries({ queryKey: qk.assets.transitions(assetId) });
+  qc.invalidateQueries({ queryKey: qk.assets.all });
+}
 
 export function useTransitionsQuery(assetId: string | undefined) {
   return useQuery({
@@ -31,11 +43,7 @@ export function useRecordTransitionMutation(assetId: string) {
       });
       return unwrap(res);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.transitions(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.all });
-    },
+    onSuccess: () => invalidateAssetCaches(qc, assetId),
   });
 }
 
@@ -48,10 +56,6 @@ export function useUndoLastTransitionMutation(assetId: string) {
       });
       return unwrap(res);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.transitions(assetId) });
-      qc.invalidateQueries({ queryKey: qk.assets.all });
-    },
+    onSuccess: () => invalidateAssetCaches(qc, assetId),
   });
 }

@@ -23,7 +23,7 @@ def test_background_server_serves_healthz():
     srv = BackgroundServer()
     srv.start()
     try:
-        assert srv.wait_until_ready(timeout=15.0) is True
+        assert srv.wait_until_ready() is True
         with urllib.request.urlopen(srv.url + "api/healthz", timeout=2.0) as r:
             assert r.status == 200
     finally:

@@ -6,12 +6,11 @@
 
 import socket
 import threading
-import time
-import urllib.request
 
 import uvicorn
 
 from asset_hub.api.app import create_app
+from asset_hub.probe import probe_until_ready
 
 
 def find_free_port() -> int:
@@ -46,17 +45,10 @@ class BackgroundServer:
     def start(self) -> None:
         self._thread.start()
 
-    def wait_until_ready(self, timeout: float = 15.0) -> bool:
-        deadline = time.monotonic() + timeout
-        health = f"http://{self.host}:{self.port}/api/healthz"
-        while time.monotonic() < deadline:
-            try:
-                with urllib.request.urlopen(health, timeout=1.0) as r:
-                    if r.status == 200:
-                        return True
-            except OSError:
-                time.sleep(0.2)
-        return False
+    def wait_until_ready(self) -> bool:
+        """轮询 /api/healthz 直到就绪。复用 asset_hub.probe（退避重试 + 绕过 HTTP 代理：
+        loopback 探测若走系统代理会被吞 → 误判超时，对设了代理的用户尤其致命）。"""
+        return probe_until_ready(f"{self.url}api/healthz").ok
 
     def stop(self) -> None:
         self._server.should_exit = True
