@@ -60,4 +60,5 @@ class BackgroundServer:
 
     def stop(self) -> None:
         self._server.should_exit = True
-        self._thread.join(timeout=5.0)  # 等线程真正收束，"干净退出"才名副其实
+        if self._thread.is_alive():
+            self._thread.join(timeout=5.0)  # 等线程真正收束，"干净退出"才名副其实
