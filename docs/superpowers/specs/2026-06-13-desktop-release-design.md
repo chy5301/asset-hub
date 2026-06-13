@@ -44,7 +44,7 @@
 | Q3 | 人类 UI 外壳 | **pywebview 原生窗口** | 用 Windows 内置 WebView2 开真窗口，不打包 Chromium、单 Python 工具链、PyInstaller 友好。Electron 要双工具链 + Python sidecar + ~200MB Chromium，杀鸡用牛刀 |
 | Q4 | CLI 表面 | **纯 GUI，不暴露 CLI** | GUI 已覆盖全部领域操作（见 §4.1）；`cli` 包在打包时 `excludes` 排除 |
 | Q5 | 升级时旧库迁移 | **启动时编程式 `alembic upgrade head`** | 数据便携 → 跨版本保留 → 必须自动迁移；人类不会手动跑 alembic。失败弹窗而非裸崩 |
-| Q6 | 数据落点 | **exe 同级 `./data`**，只读位置回退 `%LOCALAPPDATA%\asset-hub`，`ASSET_HUB_DATA_DIR` 可覆盖 | 便携优先；装在 Program Files 等只读位置时仍可用 |
+| Q6 | 数据落点 | **exe 同级 `./data`（铁律）**；只读位置 → 启动预检弹框提示用户移动文件夹后退出（不自动搬家）；`ASSET_HUB_DATA_DIR`（可经 exe 同级 `.env`）作唯一显式逃生口 | "数据永远贴着 exe"为不可破的便携前提；隐形回退到 AppData 会让用户误以为数据丢失 |
 | Q7 | 打包目标数量 | **单一目标（桌面版）** | 服务端走源码，无需 headless server exe |
 | Q8 | undo 是否补 GUI/API | **补** | issue24 Q2 明确"未来真要 GUI 化再补"，本设计正是该时刻；否则纯 GUI 版比 CLI 少一个能力 |
 
@@ -70,11 +70,14 @@
 
 ```
 desktop/launcher.py::main()
- ├─ 1. runtime: 解析 resource_root(_MEIPASS, 只读) + data_root(exe同级/LOCALAPPDATA, 可写)
- ├─ 2. migrate.run_migrations(): 编程式 alembic upgrade head（失败→弹原生错误框, 退出）
- ├─ 3. 后台线程: uvicorn.Server(create_app(), 127.0.0.1:<空闲端口>, reload=False, workers=1)
- ├─ 4. server.wait_until_ready(): 轮询 /api/healthz 直到就绪（复用 serve 的 probe 思路）
- └─ 5. 主线程: window.open_window(title, url) → pywebview.start() 阻塞
+ ├─ 1. runtime: 解析 resource_root(只读 _MEIPASS) + data_root(可写, exe同级 ./data)
+ ├─ 2. 预检（见 §7.7）:
+ │       · data_root 不可写 → 原生消息框"请把文件夹移到可写位置" → 退出
+ │       · WebView2 缺失   → 原生消息框"请安装 Edge WebView2 Runtime" → 退出
+ ├─ 3. migrate.run_migrations(): 编程式 alembic upgrade head（失败→弹原生错误框, 退出）
+ ├─ 4. 后台线程: uvicorn.Server(create_app(), 127.0.0.1:<空闲端口>, reload=False, workers=1)
+ ├─ 5. server.wait_until_ready(): 轮询 /api/healthz 直到就绪（复用 serve 的 probe 思路）
+ └─ 6. 主线程: window.open_window(title, url) → pywebview.start() 阻塞
         关窗 → server.should_exit = True → 进程干净退出
 ```
 
@@ -141,13 +144,13 @@ def resource_path(*parts: str) -> Path:
     return resource_root().joinpath(*parts)
 
 def data_root() -> Path:
-    """可写数据根。优先级：ASSET_HUB_DATA_DIR > exe 同级 ./data > %LOCALAPPDATA%/asset-hub。
-    源码态保持 cwd 下 ./data（不破坏现有 Agent/测试行为）。"""
-    # frozen: 首选 Path(sys.executable).parent / "data"；试写失败回退 LOCALAPPDATA
+    """可写数据根。frozen → exe 同级 ./data；源码 → cwd 下 ./data。
+    无自动回退——exe 同级不可写时由启动预检弹框提示用户移动文件夹（见 §7.7）。"""
+    # frozen: Path(sys.executable).parent / "data"；源码: Path("data")
 ```
 
 - **只读资源**统一走 `sys._MEIPASS`：PyInstaller 在 onedir 与 onefile 下**都**会设置它（onedir 指向 bundle 目录），故 `resource_root()` 无需区分两种模式。
-- **可写数据**才用 exe 同级：`data_root()` frozen 时首选 `Path(sys.executable).parent / "data"`，试写失败回退 `%LOCALAPPDATA%`。
+- **可写数据**才用 exe 同级：`data_root()` frozen 时 = `Path(sys.executable).parent / "data"`。**不自动回退**到 AppData——不可写由启动预检处理（§7.7），守住"数据永远贴着 exe"的铁律。
 - 源码态 `data_root()` 必须等价于现状 `Path("data")`，否则破坏 Agent CLI 与测试（`isolated_db` 走 `ASSET_HUB_DATA_DIR`，仍优先生效）。
 - **v1 用 onedir**（启动快、无解压临时目录、杀软误报低）；onefile 仅作可选格式。
 
@@ -161,7 +164,9 @@ class Settings(BaseSettings):
     ...
 ```
 
-`data_dir` 默认从字面量 `Path("data")` 改为 `default_factory=runtime.data_root`。`ASSET_HUB_DATA_DIR` 环境变量覆盖语义不变（pydantic-settings 字段名映射）。
+`data_dir` 默认从字面量 `Path("data")` 改为 `default_factory=runtime.data_root`。`ASSET_HUB_DATA_DIR` 环境变量/`.env` 覆盖语义不变（pydantic-settings 字段名映射；显式值优先于 `default_factory`）。
+
+**`.env` 逃生口（exe 同级解析）**：`Settings` 已配 `env_file=".env"` + `env_prefix="ASSET_HUB_"`，故在 `.env` 写一行 `ASSET_HUB_DATA_DIR=<路径>` 即可覆盖数据落点。但 pydantic-settings 默认在 **cwd** 找 `.env`，而双击 exe 的 cwd 不可控——所以 frozen 下 launcher 必须显式按 **exe 同级**解析：`Settings(_env_file=Path(sys.executable).parent / ".env")`。这样"在 exe 旁放个 `.env`"才生效，且随便携文件夹一起搬迁；源码态行为不变（cwd=仓库根，`.env` 照旧）。
 
 ### 7.3 `migrate.py`（新增）
 
@@ -222,6 +227,18 @@ desktop = ["pywebview>=5"]
 
 核心 `dependencies` 不变 → Agent 侧 `uv sync` 默认不装 pywebview，零影响。构建桌面版时 `uv sync --extra desktop`。
 
+### 7.7 启动预检（`desktop/launcher.py` + `window.py`）
+
+开窗 / 起服务前的两道预检，失败都走"原生消息框 + 退出"而非裸崩。检查逻辑抽成可测纯函数，只有"弹框"本身不可测。
+
+**可写性预检**：复用 `serve` 已有的 `_ensure_dirs_writable` 思路——往 `data_root()` `touch` 一个临时文件再删，试得动才继续。不可写时弹框：
+
+> asset-hub 需要写入数据，但当前位置（`<exe目录>`）不可写。请把整个 asset-hub 文件夹移动到文档/桌面等你有权限的位置后重新运行。（高级用户可在 exe 同级 `.env` 设 `ASSET_HUB_DATA_DIR` 指定别处。）
+
+→ 退出（非零码）。**不自动回退**到 AppData（Q6 铁律）。
+
+**WebView2 预检**：`window.py` 捕获 pywebview 启动失败（Win 后端找不到 WebView2 Runtime），弹框提示安装并给微软下载链接，退出。
+
 ## 8. 打包：模块选择机制
 
 PyInstaller **不自动判断形态**，由 spec 的**入口脚本**驱动，四条叠加：
@@ -248,12 +265,12 @@ PyInstaller **不自动判断形态**，由 spec 的**入口脚本**驱动，四
 - **首启**：`data_root` 不存在则建；`run_migrations()` upgrade head（全新库由迁移链建表并 stamp）。
 - **后续启动**：`upgrade head` 把旧库升到当前版本（已是 head 则秒过）。
 - **便携**：整个 exe 文件夹（含 `data/`）拷到另一台机器，数据原样可用。
-- **只读安装位置**：exe 同级不可写时 `data_root` 回退 `%LOCALAPPDATA%\asset-hub`（此时不再"便携"，但仍可用）。
+- **只读安装位置**：exe 同级不可写时，启动预检弹框提示用户把文件夹移到可写位置后退出（不自动搬家，§7.7）。高级用户可在 exe 同级 `.env` 写 `ASSET_HUB_DATA_DIR=...` 显式指定别处。
 - **WebView2 缺失**（极老机器）：`window.py` 捕获 pywebview 启动失败，弹原生消息框提示"请安装 Edge WebView2 Runtime"并给下载链接，而非裸崩。
 
 ## 10. 测试计划
 
-- **`tests/unit/test_runtime.py`**：`resource_path` / `data_root` 在 frozen / 源码两态解析（monkeypatch `sys.frozen` / `sys._MEIPASS` / `sys.executable` / `ASSET_HUB_DATA_DIR`）；只读回退分支；WebView2 缺失兜底（mock pywebview 抛错）。
+- **`tests/unit/test_runtime.py`**：`resource_path` / `data_root` 在 frozen / 源码两态解析（monkeypatch `sys.frozen` / `sys._MEIPASS` / `sys.executable` / `ASSET_HUB_DATA_DIR`）；`.env` 按 exe 同级解析；启动预检的可测纯函数——不可写时返回"提示移动"判定（弹框前那一步）、WebView2 缺失兜底（mock pywebview 抛错）。
 - **`tests/migration/`**（CLAUDE.md 强制）：新增一条覆盖"编程式 `run_migrations()` 把旧版本 schema 库 upgrade 到 head"，并验证 `create_all` 与迁移先后不冲突。
 - **`tests/api/test_transition_undo_api.py`**：新 undo 端点 —— 成功（200 + TransitionRead）、asset 不存在（404）、无 transition（409）。
 - **前端**：`useUndoLastTransition` hook 测试（msw mock）；撤销入口组件 unit；一条 e2e 烟测（checkout → undo → 状态回退）。
@@ -264,7 +281,7 @@ PyInstaller **不自动判断形态**，由 spec 的**入口脚本**驱动，四
 
 | 文件 | 变更 |
 |---|---|
-| `references/deploy.md` | 新增"桌面便携版"段：构建命令、数据落点、升级（替换 exe 保留 data）、WebView2 前置 |
+| `references/deploy.md` | 新增"桌面便携版"段：构建命令、数据落点（exe 同级 `./data`；只读位置提示移动；`.env` 设 `ASSET_HUB_DATA_DIR` 逃生口）、升级（替换 exe 保留 data）、WebView2 前置 |
 | `references/transitions.md` | undo 段补"现也经 `POST /api/assets/{id}/transitions/undo` 与 GUI 暴露" |
 | `SKILL.md` | 部署小节加桌面版一句话指引（Agent 仍用源码/`serve`，不受影响） |
 | `CLAUDE.md` | "开发命令"加桌面版构建命令（`uv sync --extra desktop` + `pyinstaller packaging/asset_hub.spec`）；目录结构提及 `desktop/` 第三接口层 |
