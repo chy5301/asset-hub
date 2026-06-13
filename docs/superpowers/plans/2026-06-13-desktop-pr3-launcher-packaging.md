@@ -88,7 +88,11 @@ class BackgroundServer:
         self.port = port or find_free_port()
         config = uvicorn.Config(
             create_app(), host=self.host, port=self.port,
-            log_level="warning", reload=False, workers=1,
+            reload=False, workers=1,
+            # console=False 的 windowed exe 下 sys.stdout/stderr=None：uvicorn 默认
+            # dictConfig 构造 ColourizedFormatter 会调 sys.stdout.isatty() → 崩。
+            # 关掉自带 logging 配置 + access_log，彻底规避启动期 AttributeError。
+            log_config=None, access_log=False,
         )
         self._server = uvicorn.Server(config)
         self._thread = threading.Thread(target=self._server.run, daemon=True)
@@ -114,6 +118,7 @@ class BackgroundServer:
 
     def stop(self) -> None:
         self._server.should_exit = True
+        self._thread.join(timeout=5.0)  # 等线程真正收束，"干净退出"才名副其实
 ```
 
 - [ ] **Step 4: 跑测试确认通过**
@@ -268,6 +273,30 @@ def test_main_aborts_when_migration_fails(monkeypatch):
     rc = launcher.main()
     assert rc == 1
     assert "migration broke" in calls["box"][1]
+
+
+def test_bootstrap_settings_frozen_propagates_env_to_bare_settings(monkeypatch, tmp_path):
+    """frozen + exe 同级 .env 设 ASSET_HUB_DATA_DIR → 写回 os.environ，
+    后续裸 Settings() 跟随（修 split-brain：预检与真实落点一致）。"""
+    import os
+
+    from asset_hub.config import Settings
+    from asset_hub.desktop import launcher
+
+    custom = tmp_path / "portable-data"
+    exe = tmp_path / "asset-hub.exe"
+    exe.write_text("")
+    (tmp_path / ".env").write_text(f"ASSET_HUB_DATA_DIR={custom}\n")
+
+    monkeypatch.setattr(launcher.runtime, "is_frozen", lambda: True)
+    monkeypatch.setattr(launcher.sys, "executable", str(exe))
+    monkeypatch.delenv("ASSET_HUB_DATA_DIR", raising=False)
+
+    s = launcher._bootstrap_settings()
+
+    assert s.data_dir == custom
+    assert os.environ["ASSET_HUB_DATA_DIR"] == str(custom)
+    assert Settings().data_dir == custom  # 后续裸 Settings() 跟随同一落点
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -283,6 +312,7 @@ Expected: FAIL（launcher 不存在）。
 与 cli/serve 完全独立，不复用 subprocess/PID/detach 那套。
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -294,16 +324,23 @@ from asset_hub.desktop.server import BackgroundServer
 _TITLE = "asset-hub"
 
 
-def _load_settings() -> Settings:
-    """frozen 下按 exe 同级解析 .env（pydantic 默认按 cwd 找，双击 exe 不可控）。"""
+def _bootstrap_settings() -> Settings:
+    """frozen 下按 exe 同级解析 .env，并把最终 data_dir 写回 os.environ。
+
+    关键：migrate/db.get_engine/storage/alembic env.py 内部都是裸 Settings()（按 cwd 找 .env）。
+    若只把 _env_file 喂给这一个 Settings，预检放行的目录与真实 DB/迁移落点会 split-brain。
+    写回 ASSET_HUB_DATA_DIR 让后续所有裸 Settings() 跟随同一落点（env 优先于 .env/default）。
+    """
     if runtime.is_frozen():
         env_file = Path(sys.executable).resolve().parent / ".env"
-        return Settings(_env_file=str(env_file) if env_file.exists() else None)
+        s = Settings(_env_file=str(env_file) if env_file.exists() else None)
+        os.environ["ASSET_HUB_DATA_DIR"] = str(s.data_dir)
+        return s
     return Settings()
 
 
 def main() -> int:
-    settings = _load_settings()
+    settings = _bootstrap_settings()
 
     # 预检 1：可写性（不可写不自动搬家，提示用户移动文件夹）
     if not runtime.is_writable_dir(settings.data_dir):
@@ -378,19 +415,24 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 2: 加 desktop extra**
+- [ ] **Step 2: 加 desktop extra + packaging group**
 
-在 `pyproject.toml` 的 `[project]` 后追加：
+在 `pyproject.toml` 追加（`pyinstaller` 必须显式声明，否则 `uv run pyinstaller` 报找不到——`uv run` 不像 `uvx` 凭空拉工具）：
 
 ```toml
 [project.optional-dependencies]
 desktop = ["pywebview>=5"]
+
+[dependency-groups]
+packaging = ["pyinstaller>=6"]
 ```
+
+> 注：`pyproject.toml` 已有 `[dependency-groups]` 段（含 `dev`），把 `packaging` 加进同一段，不要重复段头。
 
 - [ ] **Step 3: 同步依赖 + 确认可装**
 
-Run: `uv sync --extra desktop`
-Expected: 装上 pywebview，无冲突。
+Run: `uv sync --extra desktop --group packaging`
+Expected: 装上 pywebview + pyinstaller，无冲突，`uv.lock` 更新。
 
 - [ ] **Step 4: 确认源码态可直接跑桌面入口（手验，需 WebView2）**
 
@@ -430,12 +472,12 @@ datas = [
 datas += copy_metadata("asset-hub")  # app.py 用 importlib.metadata.version("asset-hub")
 
 hiddenimports = [
-    # uvicorn auto 选择层（懒 try-import，静态图抓不到）；Windows 不打 uvloop/watchfiles
+    # uvicorn auto 选择层（懒 try-import，静态图抓不到）；Windows 不打 uvloop/watchfiles。
+    # 不列 wsproto_impl：本项目无 WS 路由且未必装 wsproto，列了只多一条构建告警。
     "uvicorn.loops.asyncio",
     "uvicorn.protocols.http.h11_impl",
     "uvicorn.protocols.http.httptools_impl",
     "uvicorn.protocols.websockets.websockets_impl",
-    "uvicorn.protocols.websockets.wsproto_impl",
     "uvicorn.lifespan.on",
     "uvicorn.lifespan.off",
     # 迁移/方言
@@ -443,6 +485,9 @@ hiddenimports = [
     "sqlalchemy.dialects.sqlite",
 ]
 hiddenimports += collect_submodules("asset_hub.alembic.versions")  # 运行时按目录加载
+# pywebview 在 window.open_window 内惰性 import（避免 Linux CI 崩）：PyInstaller 字节码扫描
+# 通常能抓到函数内 import，但显式收集 webview + 其平台后端子模块更稳，避免漏 winforms 等。
+hiddenimports += collect_submodules("webview")
 
 a = Analysis(
     [str(ROOT / "packaging" / "desktop_entry.py")],
@@ -477,13 +522,13 @@ Expected: `frontend/dist/index.html` 存在。
 
 - [ ] **Step 3: 跑 PyInstaller（onedir）**
 
-Run: `uv run --extra desktop pyinstaller packaging/asset_hub.spec --noconfirm`
-Expected: 产出 `dist/asset-hub/asset-hub.exe`，无致命错误。
+Run: `uv run --extra desktop --group packaging pyinstaller packaging/asset_hub.spec --noconfirm`
+Expected: 产出 `dist/asset-hub/asset-hub.exe`，无致命错误。（`--extra desktop` 确保 pywebview 在环境里供 PyInstaller 收集，`--group packaging` 提供 pyinstaller 本体。）
 
 - [ ] **Step 4: 干净机冒烟（手验，关键）**
 
 把 `dist/asset-hub/` 整个拷到一台**无 Python/Node** 的 Windows 机器（或干净用户环境），双击 `asset-hub.exe`：
-- 开窗 → 浏览到资产列表
+- **能真正开窗（console=False 硬验收）** → 浏览到资产列表。若卡在"启动超时"弹框，多半是 uvicorn 日志在 windowed 进程崩了 → 回查 server.py 的 `log_config=None`（源码态/带 console 测不出此问题）
 - 新建一个 asset（验 pydantic + sqlalchemy + sqlite 链路）
 - 导出 xlsx（验 openpyxl 数据文件被收）
 - 关窗重开 → 数据仍在（验 exe 同级 `./data` 持久）
@@ -544,11 +589,11 @@ jobs:
           pnpm --dir frontend install --frozen-lockfile
           pnpm --dir frontend build
 
-      - name: Install python deps (with desktop extra)
-        run: uv sync --extra desktop
+      - name: Install python deps (desktop extra + packaging group)
+        run: uv sync --extra desktop --group packaging
 
       - name: PyInstaller build
-        run: uv run pyinstaller packaging/asset_hub.spec --noconfirm
+        run: uv run --extra desktop --group packaging pyinstaller packaging/asset_hub.spec --noconfirm
 
       - name: Zip onedir
         run: Compress-Archive -Path dist/asset-hub/* -DestinationPath asset-hub-desktop-win64.zip

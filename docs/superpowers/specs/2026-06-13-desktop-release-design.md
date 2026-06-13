@@ -86,6 +86,7 @@ desktop/launcher.py::main()
 - **端口**：选空闲端口（避免 8000 被占）；URL 传给窗口。
 - **传 app 对象**：`uvicorn.Server(Config(app=create_app(), ...))`，**不传字符串** `"asset_hub.api.app:app"` —— 避免 uvicorn 字符串动态 import，让 router 走静态图（PyInstaller 可追踪，见 §9）。
 - **单 worker + `multiprocessing.freeze_support()`**：避免 frozen 下 spawn 子进程。
+- **uvicorn 日志必须关掉默认 dictConfig**：`console=False` 的 windowed exe 下 `sys.stdout/stderr=None`，uvicorn 默认 `ColourizedFormatter` 会调 `sys.stdout.isatty()` → `AttributeError` → server 线程启动期静默崩 → `wait_until_ready` 超时弹"启动超时"，窗口永远开不出（源码态/带 console 测不出）。故 `uvicorn.Config(..., log_config=None, access_log=False)`。
 - **window 必须在主线程**：pywebview 要求；故 uvicorn 放后台线程。
 - **就绪后再开窗**：先 `wait_until_ready` 再 `open_window`，否则窗口首帧可能"连接被拒绝"（skeptic 复核指出的时序问题）。
 
@@ -166,7 +167,21 @@ class Settings(BaseSettings):
 
 `data_dir` 默认从字面量 `Path("data")` 改为 `default_factory=runtime.data_root`。`ASSET_HUB_DATA_DIR` 环境变量/`.env` 覆盖语义不变（pydantic-settings 字段名映射；显式值优先于 `default_factory`）。
 
-**`.env` 逃生口（exe 同级解析）**：`Settings` 已配 `env_file=".env"` + `env_prefix="ASSET_HUB_"`，故在 `.env` 写一行 `ASSET_HUB_DATA_DIR=<路径>` 即可覆盖数据落点。但 pydantic-settings 默认在 **cwd** 找 `.env`，而双击 exe 的 cwd 不可控——所以 frozen 下 launcher 必须显式按 **exe 同级**解析：`Settings(_env_file=Path(sys.executable).parent / ".env")`。这样"在 exe 旁放个 `.env`"才生效，且随便携文件夹一起搬迁；源码态行为不变（cwd=仓库根，`.env` 照旧）。
+**`.env` 逃生口（exe 同级解析 + 写回 os.environ）**：`Settings` 已配 `env_file=".env"` + `env_prefix="ASSET_HUB_"`，故在 `.env` 写一行 `ASSET_HUB_DATA_DIR=<路径>` 即可覆盖数据落点。但 pydantic-settings 默认在 **cwd** 找 `.env`，而双击 exe 的 cwd 不可控——所以 frozen 下 launcher 必须显式按 **exe 同级**解析。
+
+**关键（避免 split-brain）**：解析结果不能只用于预检。`migrate.run_migrations()` / `db.get_engine()` / `storage` / alembic `env.py` 内部都是**裸 `Settings()`**（按 cwd 找 .env），若 launcher 只把 `_env_file` 喂给自己那一个 Settings，预检放行的目录与真实 DB/迁移落点会分裂。**解法**：launcher 启动最早期解析出 `data_dir` 后**写回 `os.environ["ASSET_HUB_DATA_DIR"]`**，使后续所有裸 `Settings()` 自然命中同一落点（env 优先于 .env/default）：
+
+```python
+def _bootstrap_settings() -> Settings:
+    if runtime.is_frozen():
+        env_file = Path(sys.executable).resolve().parent / ".env"
+        s = Settings(_env_file=str(env_file) if env_file.exists() else None)
+        os.environ["ASSET_HUB_DATA_DIR"] = str(s.data_dir)  # 让全链路裸 Settings() 跟随
+        return s
+    return Settings()
+```
+
+源码态行为不变（cwd=仓库根，`.env` 照旧）。必须补一条测试：frozen + exe 同级 `.env` 改 `ASSET_HUB_DATA_DIR` → 后续 `Settings().db_url` 跟随。
 
 ### 7.3 `migrate.py`（新增）
 
@@ -225,9 +240,14 @@ def undo_last(asset_id: uuid.UUID, session: Session = Depends(get_session)) -> T
 ```toml
 [project.optional-dependencies]
 desktop = ["pywebview>=5"]
+
+[dependency-groups]
+packaging = ["pyinstaller>=6"]   # 仅构建期需要；不进运行时 bundle
 ```
 
-核心 `dependencies` 不变 → Agent 侧 `uv sync` 默认不装 pywebview，零影响。构建桌面版时 `uv sync --extra desktop`。
+核心 `dependencies` 不变 → Agent 侧 `uv sync` 默认不装 pywebview/pyinstaller，零影响。
+
+**构建依赖必须显式声明**：`pyinstaller` 不在 core/dev/desktop 任一处则 `uv run pyinstaller` 会报找不到（`uv run` 不像 `uvx` 凭空拉工具）。故单列 `packaging` group。构建命令：`uv sync --extra desktop --group packaging` 后 `uv run --group packaging pyinstaller packaging/asset_hub.spec`。
 
 ### 7.7 启动预检（`desktop/launcher.py` + `window.py`）
 
@@ -248,7 +268,7 @@ PyInstaller **不自动判断形态**，由 spec 的**入口脚本**驱动，四
 1. **入口决定主体**：spec 入口 = `desktop/launcher.py`。顺其静态 import 图收集：`launcher → api.app → routers → services → repositories → models → storage`（routers 在 `app.py` 顶层静态 import，§5 已确认无动态加载）。`launcher` 不 import `cli`，故 `cli`/`serve` 不在图上。
 2. **`excludes=['asset_hub.cli']`**：兜底钉死 + 瘦身，落实"不含 CLI"。
 3. **`hiddenimports`**（补静态分析盲区，仅真正的动态导入）：
-   - uvicorn auto 选择层：`uvicorn.loops.asyncio`、`uvicorn.protocols.http.h11_impl`、`uvicorn.protocols.http.httptools_impl`、`uvicorn.protocols.websockets.websockets_impl`、`uvicorn.protocols.websockets.wsproto_impl`、`uvicorn.lifespan.on`、`uvicorn.lifespan.off`
+   - uvicorn auto 选择层：`uvicorn.loops.asyncio`、`uvicorn.protocols.http.h11_impl`、`uvicorn.protocols.http.httptools_impl`、`uvicorn.protocols.websockets.websockets_impl`、`uvicorn.lifespan.on`、`uvicorn.lifespan.off`（**不**列 `wsproto_impl`：本项目无 WS 路由且未必装 wsproto，列了只多一条构建告警）
    - `alembic.ddl.sqlite`、`sqlalchemy.dialects.sqlite`
    - `typer.testing`（仅当未被 excludes 波及；cli 排除后通常无需，校验后定）
    - Windows **不打** uvloop / watchfiles（reload 关闭，不需要）
