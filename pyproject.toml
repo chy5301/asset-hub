@@ -16,6 +16,9 @@ dependencies = [
     "psutil>=7.2.2",
 ]
 
+[project.optional-dependencies]
+desktop = ["pywebview>=5"]
+
 [project.scripts]
 asset-hub = "asset_hub.cli.main:app"
 
@@ -45,3 +48,4 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.8",
 ]
+packaging = ["pyinstaller>=6"]
