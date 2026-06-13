@@ -38,3 +38,20 @@ export function useRecordTransitionMutation(assetId: string) {
     },
   });
 }
+
+export function useUndoLastTransitionMutation(assetId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<TransitionRead> => {
+      const res = await http.POST("/api/assets/{asset_id}/transitions/undo", {
+        params: { path: { asset_id: assetId } },
+      });
+      return unwrap(res);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.assets.detail(assetId) });
+      qc.invalidateQueries({ queryKey: qk.assets.transitions(assetId) });
+      qc.invalidateQueries({ queryKey: qk.assets.all });
+    },
+  });
+}
