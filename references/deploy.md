@@ -72,7 +72,7 @@ uv run asset-hub serve start --mode prod
 ### 构建
 
 ```bash
-uv sync --extra desktop          # 安装 pywebview 依赖
+uv sync --extra desktop --group packaging  # 安装 pywebview + pyinstaller
 pnpm --dir frontend build         # 产出 frontend/dist
 uv run pyinstaller packaging/asset_hub.spec   # 打包 → dist/asset-hub.exe
 ```
