@@ -177,13 +177,15 @@ from asset_hub import runtime
 from asset_hub.config import Settings
 
 def run_migrations() -> None:
+    import asset_hub
+    alembic_dir = Path(asset_hub.__file__).parent / "alembic"  # 包内资源，两态统一
     cfg = Config()  # 不读相对 alembic.ini
-    cfg.set_main_option("script_location", str(runtime.resource_path("asset_hub", "alembic")))
+    cfg.set_main_option("script_location", str(alembic_dir))
     cfg.set_main_option("sqlalchemy.url", Settings().db_url)
     command.upgrade(cfg, "head")
 ```
 
-- `script_location` 指向**打包进 bundle 的 alembic 目录**（见 §8 datas），不再是相对仓库根的 `src/asset_hub/alembic`。
+- `script_location` 按**包目录解析**：源码态 = `src/asset_hub/alembic`，frozen 态 = `_MEIPASS/asset_hub/alembic`（两者都等于"包目录 `/alembic`"），统一用 `Path(asset_hub.__file__).parent / "alembic"`。**注意**：alembic 在包内，用包目录解析；`frontend/dist` 在包外，才用 `runtime.resource_root()`（§7.1）。不再依赖相对仓库根的路径。
 - `env.py` 现有逻辑（`Settings()` 覆盖 url、`render_as_batch=True`、`import asset_hub.models.*`）原样复用——但注意 `env.py` 被 alembic 动态 exec，其 `import asset_hub.models` 需确保被收进 bundle（§9 hiddenimports 校验）。
 - 与 `db.py` `create_all` 的先后（明确规则）：桌面入口在**起 engine 前先调 `run_migrations()`**，让 alembic 成为唯一 schema 事实源（全新库也由迁移链建表 + stamp）。迁移完成后即使 `get_engine` 再走 `create_all` 也无害（表已存在，只补缺失）；**禁止**在迁移前触发 `create_all`，否则会建出与迁移链 head 不一致的表导致 SQLite `batch_alter` 失败。
 
