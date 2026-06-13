@@ -25,6 +25,7 @@ import {
 import { calcOverdue } from "@/lib/overdue";
 import { formatDate, formatRelative } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { UndoLastTransitionAlert } from "./undo-last-transition-alert";
 
 interface KindMeta {
   label: string;
@@ -103,7 +104,12 @@ export function TransitionTimeline({ assetId, assetStatus }: TransitionTimelineP
 
   return (
     <section>
-      <h2 className="mb-3 text-lg font-medium">流转记录</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-medium">流转记录</h2>
+        {(query.data ?? []).length > 0 && (
+          <UndoLastTransitionAlert assetId={assetId} />
+        )}
+      </div>
       {query.isLoading ? (
         <TimelineSkeleton />
       ) : query.isError ? (
