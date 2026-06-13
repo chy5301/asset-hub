@@ -1,3 +1,4 @@
+import logging
 import os
 from importlib.metadata import version as pkg_version
 from pathlib import Path
@@ -8,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 
+from asset_hub import runtime
 from asset_hub.api.routers import (
     assets,
     attachments,
@@ -27,7 +29,9 @@ from asset_hub.errors import (
     ValidationError,
 )
 
-_FRONTEND_DIST = Path("frontend/dist")
+_log = logging.getLogger(__name__)
+
+_FRONTEND_DIST = runtime.resource_path("frontend", "dist")
 
 _EXC_STATUS: dict[type[AssetHubError], int] = {
     ConflictError: 409,
@@ -60,6 +64,13 @@ def _api_error_payload(exc: AssetHubError) -> dict:
     return payload
 
 
+def _compute_is_dev_mode() -> bool:
+    """frozen 永远 prod-like 自托管，无条件挂 SPA、忽略 ASSET_HUB_MODE=dev。"""
+    if runtime.is_frozen():
+        return False
+    return os.environ.get("ASSET_HUB_MODE") == "dev"
+
+
 def _make_handler(status: int):
     async def handler(request: Request, exc: AssetHubError):
         return JSONResponse(status_code=status, content=_api_error_payload(exc))
@@ -86,7 +97,7 @@ def create_app() -> FastAPI:
     #
     # 路径冲突：vite assetsDir="assets" 与前端 SPA 路由 /assets/{id} 同前缀；hash 资产
     # 永远带扩展名（index-B7-2Mqlb.js），SPA 路由不带扩展名（UUID/"new"），靠 suffix 区分。
-    _is_dev_mode = os.environ.get("ASSET_HUB_MODE") == "dev"
+    _is_dev_mode = _compute_is_dev_mode()
     if (
         not _is_dev_mode
         and _FRONTEND_DIST.is_dir()
@@ -125,6 +136,8 @@ def create_app() -> FastAPI:
             StaticFiles(directory=str(_FRONTEND_DIST), html=True),
             name="spa",
         )
+    else:
+        _log.warning("frontend dist 不存在，跳过 SPA 挂载: %s", _FRONTEND_DIST)
 
     return app
 
