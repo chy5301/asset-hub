@@ -1,6 +1,6 @@
 [project]
 name = "asset-hub"
-version = "2.3.1"
+version = "2.4.0"
 description = "小组资产管理工具"
 requires-python = ">=3.12"
 dependencies = [
@@ -15,6 +15,9 @@ dependencies = [
     "alembic>=1.18.4",
     "psutil>=7.2.2",
 ]
+
+[project.optional-dependencies]
+desktop = ["pywebview>=5"]
 
 [project.scripts]
 asset-hub = "asset_hub.cli.main:app"
@@ -45,3 +48,4 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.8",
 ]
+packaging = ["pyinstaller>=6"]

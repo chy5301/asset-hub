@@ -64,3 +64,33 @@ uv run asset-hub serve start --mode prod
 - 防火墙允许 `:8000`（prod 单端口）/ `:5173`（dev 额外端口）
 - 杀进程用 `taskkill /PID <pid> /F` 或 `Stop-Process -Id <pid> -Force`
 - 详见 `../docs/deployment.md`
+
+## 桌面便携版（人类 GUI）
+
+面向人类用户免安装发布形态：PyInstaller 打包单文件 exe + pywebview 内嵌 WebView2。
+
+### 构建
+
+```bash
+uv sync --extra desktop --group packaging  # 安装 pywebview + pyinstaller
+pnpm --dir frontend build         # 产出 frontend/dist
+uv run pyinstaller packaging/asset_hub.spec   # 打包 → dist/asset-hub.exe
+```
+
+产物目录：`dist/asset-hub/`（含 exe、`_internal/`、`frontend/` 静态资源）。CI 自动归档为 `asset-hub-desktop-win64.zip`。
+
+### 数据落点
+
+- 默认：exe 同级 `./data`（即 `dist/asset-hub/data/`）
+- 若检测到只读位置（`Program Files` 等），启动时弹框提示用户移动整个文件夹到可写目录
+- 逃生口：`.env` 文件设 `ASSET_HUB_DATA_DIR=D:\my-data` 覆盖默认路径
+
+### 升级
+
+1. 下载新版本 zip，解压覆盖整个文件夹（`data/` 会保留）
+2. 首次启动自动执行 `alembic upgrade head`，无需手动迁移
+
+### 前置条件
+
+- Windows 10+ 自带 WebView2 Runtime；若缺失（极少数精简系统），首次启动会提示下载安装
+- 不需要 Python / Node / uv / pnpm 等开发工具链

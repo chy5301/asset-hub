@@ -1,7 +1,10 @@
 from pathlib import Path
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from asset_hub import runtime
 
 
 class Settings(BaseSettings):
@@ -12,7 +15,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    data_dir: Path = Path("data")
+    data_dir: Path = Field(default_factory=runtime.data_root)
     backend_port: int = 8000
     frontend_port: int = 5173
     backend_host: str | None = None
