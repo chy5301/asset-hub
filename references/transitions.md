@@ -122,3 +122,5 @@ asset dismiss <id> [--to-holder --to-location --note --json]
 | 语义 | "我没派发，只是手滑" | "派出后归还" |
 | 适用 | 误操作回退 | 真实业务往返 |
 | 终态 DISPOSE | 可撤 | 无反向 transition，无法救回 |
+
+> undo 现也经 HTTP 暴露：`POST /api/assets/{id}/transitions/undo`（返回被撤销的 TransitionRead；asset 不存在→404，无流转记录→409 state_conflict）。Web GUI 在「流转记录」区提供「撤销上一次」按钮（带不可恢复确认）。

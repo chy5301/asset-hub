@@ -84,6 +84,17 @@ curl -OJ "http://localhost:8000/api/export?format=xlsx&status=IDLE"
 uv run asset-hub serve doctor --json
 ```
 
+## 桌面便携版（Windows）
+
+面向人类用户的免安装 GUI 版本，无需 Python / Node 环境。
+
+1. 从 [Releases](https://github.com/chy5301/asset-hub/releases) 下载最新 `asset-hub-desktop-win64.zip`
+2. 解压到**可写目录**（如 `D:\asset-hub\`，避免 `Program Files` 等只读位置）
+3. 双击 `asset-hub.exe`，首次启动自动初始化数据库
+
+> 数据默认存在 exe 同级 `./data/` 目录。升级时解压覆盖整个文件夹，`data/` 会保留。
+> 若需自定义数据路径，在 exe 同级创建 `.env` 文件写入 `ASSET_HUB_DATA_DIR=D:\my-data`。
+
 ## 路线图
 
 | 里程碑 | 目标 | 状态 |

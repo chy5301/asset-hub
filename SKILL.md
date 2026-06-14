@@ -208,3 +208,5 @@ asset undo <asset_id> --json             # exit 0；data 是被删的 transition
 - envelope error code 完整 inventory（**何时读**：解析 CLI error 遇到未知 code、调试 exit_code、需引用错误处理对照表）：[references/envelope.md](./references/envelope.md)
 - 端到端任务流（**何时读**：用户给出"帮我登记 + 派发 + 归还"完整流程，或需要 `--json` 输出对照样本）：[references/workflows.md](./references/workflows.md)
 - 部署 / serve doctor / 故障排查（**何时读**：`serve start` 失败、`serve doctor` 输出有 issue、用户问"在 Windows 怎么部署 / 怎么备份"）：[references/deploy.md](./references/deploy.md)
+
+> **桌面便携版**：人类用户可用桌面便携版（从 Release 下载 zip → 解压 → 双击 `asset-hub.exe`），无需安装开发工具链。Agent 仍用源码 + `uv run asset-hub` / `serve`，互不影响。

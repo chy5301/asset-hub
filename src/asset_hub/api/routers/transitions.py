@@ -55,3 +55,13 @@ def list_transitions(
     return JSONResponse(
         content=filter_list_with_fields(reads, fields, _TRANSITION_READ_FIELDS)
     )
+
+
+@router.post("/{asset_id}/transitions/undo", response_model=TransitionRead)
+def undo_last_transition(
+    asset_id: uuid.UUID,
+    svc: Annotated[TransitionService, Depends(_get_svc)],
+):
+    """撤销该资产最后一条流转记录（物理删除，元操作不进状态机）。
+    域异常（NotFoundError/StateError）由 api/app.py 集中映射 404/409。"""
+    return svc.undo_last_transition(asset_id)
