@@ -10,5 +10,16 @@ WEBVIEW2_HELP = (
 def open_window(title: str, url: str) -> None:
     import webview  # 惰性导入
 
-    webview.create_window(title, url)
+    # 尺寸依据前端实际布局（2026-06-14 窗口尺寸调查）：外壳容器 max-w-[1400px] + px-6
+    # 两侧 → 内容满宽 ~1448px，故还原宽 1440 喂满主列、保筛选栏单行 + 看板双栏；
+    # 看板 col-span-6 无响应式前缀、<1024 不折叠 → min 宽锁设计基线 1024；
+    # 看板左图固定 height=400 + 顶部 chrome ~120 → 还原高 900 / min 高 700。
+    webview.create_window(
+        title,
+        url,
+        width=1440,
+        height=900,
+        min_size=(1024, 700),
+        maximized=True,
+    )
     webview.start()
