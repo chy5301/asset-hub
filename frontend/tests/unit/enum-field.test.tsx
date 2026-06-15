@@ -7,8 +7,10 @@ import type { FieldDef } from '@/features/assets/form/types';
 
 // 注意（issue #39）：编辑页「空值挂载 → form.reset 程序化写值」的时序回显 bug
 // 只在真实浏览器复现 —— jsdom 的 React 协调会同步重渲染触发器子树，把 bug 抹平，
-// 故本层无法作为该 bug 的回归守卫。真正的回归守卫在 e2e（specs/13-edit-select-enum-reflect）。
-// 这里守的是组件契约：受控值渲染到触发器 / 空值显示占位符 / radio 分支回显。
+// 故本层无法作为该 bug 的回归守卫（含焦点回归）。真正的回归守卫在 e2e
+// （specs/13-edit-select-enum-reflect）。这里只守 jsdom 能可靠区分的组件契约：
+// Select 空值显示占位符 / radio 分支回显受控值。
+// 不在此断言「Select 回显已存值」—— jsdom 下不论修复在否都通过，是假守卫。
 
 // 选项数 > 4 → 走 Select 渲染（ENUM_INLINE_THRESHOLD = 4）
 const SELECT_DEF: FieldDef = {
@@ -45,18 +47,6 @@ function Harness({
 }
 
 describe('EnumField 渲染契约', () => {
-  it('Select 渲染（选项>4）：触发器文字反映受控值', async () => {
-    let methods!: UseFormReturn<FieldValues>;
-    render(<Harness def={SELECT_DEF} onMethods={(m) => (methods = m)} />);
-
-    await act(async () => {
-      methods.reset({ custom_data: { form_factor: '塔式' } });
-    });
-
-    const trigger = document.getElementById('field-form_factor');
-    expect(trigger?.textContent).toContain('塔式');
-  });
-
   it('Select 渲染：空值时触发器显示占位符', () => {
     render(<Harness def={SELECT_DEF} />);
 

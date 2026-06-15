@@ -16,14 +16,17 @@ test.describe("13 · edit-select-enum-reflect", () => {
 
     await page.goto(`/assets/${asset.id}/edit`);
 
-    const valueText = page.locator(
-      '#field-form_factor [data-slot="select-value"]',
-    );
+    const trigger = page.locator("#field-form_factor");
+    const valueText = trigger.locator('[data-slot="select-value"]');
     // 触发器须显示已存值「塔式」，而非占位符
     await expect(valueText).toHaveText("塔式");
-    await expect(page.locator("#field-form_factor")).not.toHaveAttribute(
-      "data-placeholder",
-      "",
-    );
+    await expect(trigger).not.toHaveAttribute("data-placeholder", "");
+
+    // 用户改选另一项后：触发器须更新，且焦点须回到触发器（key 重挂载会丢焦点，
+    // onValueChange 里手动恢复 —— 守住该修复，防止键盘焦点连续性回归）
+    await trigger.click();
+    await page.getByRole("option", { name: "机架" }).click();
+    await expect(valueText).toHaveText("机架");
+    await expect(trigger).toBeFocused();
   });
 });
