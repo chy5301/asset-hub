@@ -111,6 +111,9 @@ uv run asset-hub serve doctor --json
 | **v2.1.0 · 清场期** | brand 升顶层公共字段 + CLI FieldType 暴露 + e2e cache + doctor port_owner | ✅ 已完成 |
 | **v2.2.0 · M4 UI 打磨** | 配色精打磨 + dialog 抽离 + 看板/列表/lightbox/排序 | ✅ 已完成 |
 | **v2.3.0 · asset undo** | 撤销最后一条流转记录元命令（含 v2.2.1 doctor patch） | ✅ 已完成 |
+| **v2.3.1 · 收口治理** | 前端视觉/结构一致性收口 + CLI `--help-json` examples + 版本号治理 | ✅ 已完成 |
+| **v2.4.0 · 桌面便携版** | PyInstaller + pywebview 免安装 GUI + undo API/GUI + 运行时迁移地基 | ✅ 已完成 |
+| **v2.4.1 · enum 回显修复** | 编辑页选项数>4 的 enum 字段回显已存值（#39） | ✅ 已完成 |
 | **M5 · People 实体化** | holder 实体化 + 重名/改名管理 | ❌ 已放弃（YAGNI，2026-05-25） |
 
 > **v2 已宣布功能完整**（2026-05-25）：M5 放弃后路线图无剩余规划里程碑，项目进入按需迭代 / 维护态。决策与维护态待办快照见 [`docs/superpowers/specs/2026-05-25-drop-m5-v2-feature-complete.md`](docs/superpowers/specs/2026-05-25-drop-m5-v2-feature-complete.md)。
