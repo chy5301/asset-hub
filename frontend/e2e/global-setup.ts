@@ -1,6 +1,25 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 
+/**
+ * 定义一个 AssetType 并把其 id 落盘到 e2e/.state/<stateFile>。
+ * type_id 落盘是因为 worker 进程通过文件读取（process.env 修改不跨 worker）；
+ * playwright globalSetup 默认 cwd = frontend/，与 register-asset.ts 用同一相对路径。
+ */
+function seedType(fixture: string, prefix: string, stateFile: string): void {
+  // --prefix 是 CLI 必填，fixtures/*.json 不含此字段
+  const out = execSync(
+    `uv run asset-hub type define --from frontend/e2e/fixtures/${fixture} --prefix ${prefix} --json`,
+    { env: process.env, cwd: ".." },
+  ).toString();
+  const parsed = JSON.parse(out);
+  if (!parsed.success) {
+    throw new Error(`seed type ${fixture} failed: ${JSON.stringify(parsed.error)}`);
+  }
+  fs.writeFileSync(`e2e/.state/${stateFile}`, parsed.data.id, "utf8");
+  console.log(`[e2e setup] seeded ${fixture} type id=${parsed.data.id} → ${stateFile}`);
+}
+
 export default async function globalSetup() {
   const dataDir = process.env.ASSET_HUB_DATA_DIR;
   if (!dataDir) {
@@ -30,24 +49,9 @@ export default async function globalSetup() {
     cwd: "..",
   });
 
-  // 3. seed laptop type (--prefix 是 CLI 必填，fixtures/laptop.json 不含此字段)
-  const result = execSync(
-    "uv run asset-hub type define --from frontend/e2e/fixtures/laptop.json --prefix NB --json",
-    { env: process.env, cwd: ".." },
-  ).toString();
-
-  const parsed = JSON.parse(result);
-  if (!parsed.success) {
-    throw new Error(`seed type failed: ${JSON.stringify(parsed.error)}`);
-  }
-
-  const typeId: string = parsed.data.id;
-  console.log(`[e2e setup] seeded laptop type id=${typeId}`);
-
-  // 3. 把 type_id 落盘到文件，worker 进程通过文件读取（process.env 修改不跨 worker）
-  // playwright globalSetup 默认 cwd = playwright.config.ts 所在 dir = frontend/，
-  // 与 register-asset.ts (worker cwd 也是 frontend/) 用同一相对路径
+  // 3. seed types（laptop = 默认；workstation 含选项数>4 的 enum form_factor → 走 Select
+  // 渲染，用于 issue #39 回归：编辑页选项>4 的 enum 字段须回显已存值）
   fs.mkdirSync("e2e/.state", { recursive: true });
-  fs.writeFileSync("e2e/.state/type-id.txt", typeId, "utf8");
-  console.log("[e2e setup] wrote type-id to e2e/.state/type-id.txt");
+  seedType("laptop.json", "NB", "type-id.txt");
+  seedType("workstation.json", "WS", "ws-type-id.txt");
 }

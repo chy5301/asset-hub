@@ -1,0 +1,7 @@
+{
+  "name": "工作站(e2e)",
+  "icon": "monitor",
+  "custom_fields": [
+    { "key": "form_factor", "label": "机箱形态", "type": "enum", "options": ["塔式", "机架", "迷你", "刀片", "一体机"], "required": false }
+  ]
+}

@@ -18,9 +18,13 @@ export function registerAsset(opts: {
   name: string;
   sn: string;
   custom?: Record<string, unknown>;
+  /** 落盘的 type-id 文件名（global-setup 写入 e2e/.state/ 下）。默认 laptop 类型 */
+  typeIdFile?: string;
 }): RegisteredAsset {
-  const typeId = fs.readFileSync("e2e/.state/type-id.txt", "utf8").trim();
-  if (!typeId) throw new Error("type-id.txt 为空（global-setup 未跑？）");
+  const typeId = fs
+    .readFileSync(`e2e/.state/${opts.typeIdFile ?? "type-id.txt"}`, "utf8")
+    .trim();
+  if (!typeId) throw new Error("type-id 文件为空（global-setup 未跑？）");
 
   const customJson = JSON.stringify(opts.custom ?? { ram_gb: 16 });
   // execFileSync argv 数组直传子进程，不走 shell — 避免 name/sn 含元字符时注入或解析错
