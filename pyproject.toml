@@ -1,6 +1,6 @@
 [project]
 name = "asset-hub"
-version = "2.4.1"
+version = "2.4.2"
 description = "小组资产管理工具"
 requires-python = ">=3.12"
 dependencies = [
