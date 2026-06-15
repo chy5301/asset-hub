@@ -12,16 +12,16 @@ jobs:
     permissions:
       contents: write # softprops/action-gh-release 创建 Release 需写权限
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: Setup Node + pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -42,7 +42,7 @@ jobs:
         run: Compress-Archive -Path dist/asset-hub/* -DestinationPath asset-hub-desktop-${{ github.ref_name }}-win64.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: asset-hub-desktop-win64
           path: asset-hub-desktop-${{ github.ref_name }}-win64.zip
@@ -52,7 +52,7 @@ jobs:
       # 自动生成的 release notes 是基线，作者可事后改成「发版升级指南」风格。
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: asset-hub-desktop-${{ github.ref_name }}-win64.zip
           generate_release_notes: true
