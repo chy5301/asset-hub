@@ -50,4 +50,17 @@ export default async function globalSetup() {
   fs.mkdirSync("e2e/.state", { recursive: true });
   fs.writeFileSync("e2e/.state/type-id.txt", typeId, "utf8");
   console.log("[e2e setup] wrote type-id to e2e/.state/type-id.txt");
+
+  // 4. seed workstation type（含选项数>4 的 enum form_factor → 走 Select 渲染）
+  // 用于 issue #39 回归：编辑页选项>4 的 enum 字段须回显已存值
+  const wsResult = execSync(
+    "uv run asset-hub type define --from frontend/e2e/fixtures/workstation.json --prefix WS --json",
+    { env: process.env, cwd: ".." },
+  ).toString();
+  const wsParsed = JSON.parse(wsResult);
+  if (!wsParsed.success) {
+    throw new Error(`seed workstation type failed: ${JSON.stringify(wsParsed.error)}`);
+  }
+  fs.writeFileSync("e2e/.state/ws-type-id.txt", wsParsed.data.id, "utf8");
+  console.log(`[e2e setup] seeded workstation type id=${wsParsed.data.id}`);
 }
