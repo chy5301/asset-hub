@@ -10,6 +10,11 @@ WEBVIEW2_HELP = (
 def open_window(title: str, url: str) -> None:
     import webview  # 惰性导入
 
+    # WebView2 默认 ALLOW_DOWNLOADS=False，会把 DownloadStarting 静默 Cancel——
+    # 导出（/api/export 返 Content-Disposition: attachment）在桌面版下不来文件（#42）。
+    # 必须在 start 前开启，让原生保存对话框接管下载。
+    webview.settings["ALLOW_DOWNLOADS"] = True
+
     # 尺寸依据前端实际布局（2026-06-14 窗口尺寸调查）：外壳容器 max-w-[1400px] + px-6
     # 两侧 → 内容满宽 ~1448px，故还原宽 1440 喂满主列、保筛选栏单行 + 看板双栏；
     # 看板 col-span-6 无响应式前缀、<1024 不折叠 → min 宽锁设计基线 1024；
